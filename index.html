@@ -2,19 +2,232 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <title>IEEE Oda Girişi</title>
-  <meta http-equiv="refresh" content="0; url=gate.html">
-  <link rel="canonical" href="gate.html">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IEEE İKÇÜ — TechOps</title>
+
+  <!-- SEO -->
+  <meta name="description" content="IEEE İKÇÜ TechOps — Altyapı, güvenlik, oda erişimi ve sistem operasyonları." />
+  <link rel="canonical" href="https://ieeetechops.com/" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="IEEE İKÇÜ — TechOps" />
+  <meta property="og:description" content="Altyapı · Güvenlik · Oda Erişimi · Durum İzleme" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://ieeetechops.com/" />
+  <meta property="og:image" content="/og-techops.png" />
+
+  <!-- PWA / Favicon (opsiyonel) -->
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto;display:grid;place-items:center;height:100vh;margin:0}
-    .box{max-width:560px;text-align:center}
-    a{color:#0a7cc1;text-decoration:none;font-weight:700}
+    :root{
+      /* TechOps 3 renk */
+      --bg:#0A0F1F;          /* Kömür Lacivert */
+      --primary:#00C8FF;     /* Elektrik Mavisi */
+      --accent:#FF6B00;      /* Amber Turuncu */
+      --muted:#8892A0;
+      --card:rgba(255,255,255,0.04);
+      --border:rgba(255,255,255,0.08);
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,"Helvetica Neue",Arial;
+      background:
+        radial-gradient(1200px 800px at 80% -10%, rgba(0,200,255,0.15), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(255,107,0,0.12), transparent 50%),
+        var(--bg);
+      color:#E6F1FF; line-height:1.45;
+    }
+    a{color:var(--primary); text-decoration:none}
+    .container{max-width:1080px; margin:0 auto; padding:24px}
+    header{display:flex; align-items:center; justify-content:space-between; gap:16px}
+    .brand{display:flex; align-items:center; gap:14px; font-weight:700; letter-spacing:.3px}
+    .brand small{color:var(--muted); font-weight:600}
+    .logo{
+      width:42px; height:42px; display:grid; place-items:center; border-radius:10px;
+      background:linear-gradient(180deg, rgba(0,200,255,.18), rgba(0,200,255,.04));
+      border:1px solid var(--border);
+    }
+    /* inline minimal “Core Systems” işareti */
+    .logo svg{width:28px; height:28px; display:block}
+    nav{display:flex; gap:16px}
+    nav a{color:#cfe8ff; opacity:.9}
+    nav a:hover{opacity:1}
+    .cta{display:flex; gap:12px}
+    .btn{
+      padding:10px 16px; border-radius:10px; border:1px solid var(--border);
+      background:var(--card); color:#E6F1FF; font-weight:600; backdrop-filter:blur(6px)
+    }
+    .btn.primary{background:linear-gradient(180deg, rgba(0,200,255,.18), rgba(0,200,255,.07)); border-color:rgba(0,200,255,.35)}
+    .btn.accent{background:linear-gradient(180deg, rgba(255,107,0,.18), rgba(255,107,0,.07)); border-color:rgba(255,107,0,.35)}
+    .btn:hover{transform:translateY(-1px); transition:.2s ease}
+
+    .hero{padding:64px 0 32px}
+    .hero h1{
+      font-size:clamp(28px, 4.2vw, 48px); margin:18px 0 10px;
+      letter-spacing:.2px;
+    }
+    .hero p{color:#cfe0ff; max-width:720px; margin:10px 0 26px}
+    .badge{display:inline-flex; gap:8px; align-items:center; color:#b8dfff;
+      border:1px solid rgba(0,200,255,.35); background:rgba(0,200,255,.08);
+      border-radius:999px; padding:6px 12px; font-weight:600}
+    .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin:36px 0 12px}
+    @media (max-width:900px){ .grid{grid-template-columns:1fr 1fr} }
+    @media (max-width:640px){
+      header{flex-wrap:wrap}
+      nav{flex-wrap:wrap}
+      .cta{width:100%}
+      .grid{grid-template-columns:1fr}
+    }
+    .card{
+      border:1px solid var(--border); background:var(--card); border-radius:14px; padding:18px;
+      transition:transform .18s ease, border-color .18s ease; height:100%
+    }
+    .card:hover{transform:translateY(-2px); border-color:rgba(0,200,255,.35)}
+    .card h3{margin:8px 0 6px; font-size:18px}
+    .card p{color:#cfe0ff}
+    .chip{display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px;
+      font-size:12px; color:#9fb3c9; border:1px dashed var(--border); background:rgba(255,255,255,0.03)}
+    footer{border-top:1px solid var(--border); margin-top:40px; padding:18px 0; color:#a6b4c6; font-size:14px}
+    .links{display:flex; flex-wrap:wrap; gap:12px}
   </style>
 </head>
 <body>
-  <div class="box">
-    <p>Yönlendiriliyor…</p>
-    <p><a href="gate.html">Tıkla: Oda Girişi</a></p>
+  <div class="container">
+    <!-- HEADER -->
+    <header>
+      <div class="brand">
+        <span class="logo" aria-label="TechOps">
+          <!-- Minimal Core Systems işareti -->
+          <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <circle cx="32" cy="36" r="10" fill="var(--primary)"/>
+            <path d="M16 44a20 20 0 0 0 32 0" stroke="var(--primary)" stroke-width="6" stroke-linecap="round"/>
+            <path d="M20 24a22 22 0 0 1 24 0" stroke="var(--primary)" stroke-width="6" stroke-linecap="round"/>
+            <path d="M24 14a28 28 0 0 1 16 0" stroke="var(--primary)" stroke-width="6" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <div>
+          IEEE İKÇÜ <small>TechOps</small>
+        </div>
+      </div>
+      <nav>
+        <a href="#features">Özellikler</a>
+        <a href="#status">Sistem Durumu</a>
+        <a href="#docs">Dökümantasyon</a>
+        <a href="#contact">İletişim</a>
+      </nav>
+      <div class="cta">
+        <a class="btn accent" href="/gate.html">Oda Girişi</a>
+        <a class="btn primary" href="https://status.ieeetechops.com" target="_blank" rel="noopener">Status</a>
+      </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero">
+      <span class="badge">⚡ Altyapı · Güvenlik · Operasyon</span>
+      <h1>TechOps: IEEE İKÇÜ’nün çekirdeği</h1>
+      <p>Oda erişimi, kimlik doğrulama, altyapı izleme ve iç sistemlerin güvenli operasyonu.
+        Kulübün “çalışan” kısmı bizde: hızlı, görünmez ve güvenilir.</p>
+      <div class="cta">
+        <a class="btn primary" href="/gate.html">QR ile Oda Girişi</a>
+        <a class="btn" href="#features">Neleri Yönetiyoruz?</a>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features" class="grid">
+      <article class="card">
+        <span class="chip">🔐 Erişim</span>
+        <h3>Oda & Donanım Erişimi</h3>
+        <p>QR + (opsiyonel) PIN doğrulama, saat bazlı yetki ve denetim. Kötüye kullanımı engelleyen kural motoru.</p>
+        <a href="/gate.html">Hemen dene →</a>
+      </article>
+
+      <article class="card">
+        <span class="chip">📊 İzleme</span>
+        <h3>Sistem Durumu</h3>
+        <p>Web servisleri, veritabanı ve ağ sağlığı. Arıza anında otomatik bildirim ve kesintisiz loglama.</p>
+        <a href="https://status.ieeetechops.com" target="_blank" rel="noopener">Status sayfası →</a>
+      </article>
+
+      <article class="card">
+        <span class="chip">🛡️ Güvenlik</span>
+        <h3>Politikalar & Olay Yönetimi</h3>
+        <p>Yetki devri, olay kök neden analizi (RCA), denetim kayıtları ve acil durum devralma prosedürleri.</p>
+        <a href="#docs">Dokümanlar →</a>
+      </article>
+    </section>
+
+    <!-- STATUS / CTA -->
+    <section id="status" class="grid">
+      <article class="card">
+        <h3>Hızlı Kısayollar</h3>
+        <p>
+          <a href="/gate.html">• Oda Girişi</a><br/>
+          <a href="/admin">• Yönetim Paneli</a><br/>
+          <a href="mailto:ieeeikcu@gmail.com">• Destek talebi</a>
+        </p>
+      </article>
+      <article class="card">
+        <h3>En Son Bakım Penceresi</h3>
+        <p>Planlı bakım: Her Çarşamba 23:00–00:00 (UTC+3). Kritik güncellemelerde e-posta ile bilgilendirme yapılır.</p>
+      </article>
+      <article class="card">
+        <h3>Anonim Geri Bildirim</h3>
+        <p>Oda erişimi, cihaz arızası veya portal hataları: <a href="https://forms.gle/" target="_blank" rel="noopener">formu doldur</a>.</p>
+      </article>
+    </section>
+
+    <!-- DOCS -->
+    <section id="docs" class="grid">
+      <article class="card">
+        <h3>Operasyon El Kitabı</h3>
+        <p>Erişim kuralları, yedekleme, devralma (failover) ve RCA formatı.</p>
+        <a href="/docs/techops-handbook.pdf">PDF indir →</a>
+      </article>
+      <article class="card">
+        <h3>API & Entegrasyonlar</h3>
+        <p>QR doğrulama, webhook olayları, IAM entegrasyonları.</p>
+        <a href="/docs/api.html">API referansı →</a>
+      </article>
+      <article class="card">
+        <h3>KVKK & Gizlilik</h3>
+        <p>Oda kameraları / etkinlik çekimleri için aydınlatma metni ve saklama politikası.</p>
+        <a href="/docs/privacy.html">Detaylar →</a>
+      </article>
+    </section>
+
+    <!-- CONTACT -->
+    <section id="contact" class="grid">
+      <article class="card">
+        <h3>İletişim</h3>
+        <p>E-posta: <a href="mailto:ieeeikcu@gmail.com">ieeeikcu@gmail.com</a><br/> Ofis: IEEE Oda — Mühendislik Fakültesi</p>
+      </article>
+      <article class="card">
+        <h3>Durum Bildirimleri</h3>
+        <p>Kesinti/bakım duyurularını almak için <a href="https://status.ieeetechops.com" target="_blank" rel="noopener">status</a> sayfasından abone ol.</p>
+      </article>
+      <article class="card">
+        <h3>Katkı / Açık Kaynak</h3>
+        <p>TechOps araçlarını GitHub’da paylaşıyoruz. PR’a açığız.</p>
+        <a href="https://github.com/" target="_blank" rel="noopener">Github →</a>
+      </article>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+      <div class="links">
+        <span>© <span id="y"></span> IEEE İKÇÜ TechOps</span> •
+        <a href="/docs/terms.html">Kullanım Şartları</a> •
+        <a href="/docs/privacy.html">Gizlilik</a>
+      </div>
+    </footer>
   </div>
+
+  <script>
+    // yıl otomatik
+    document.getElementById('y').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
