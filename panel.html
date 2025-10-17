@@ -124,13 +124,8 @@
   .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px #0006;font-weight:700;opacity:0;pointer-events:none;transition:.25s}
   .toast.show{opacity:1;pointer-events:auto}
 </style>
-
-<!-- jsPDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-/CP6VlxqP9WcV2L9rboq2nGJb8whfVd3oLwV6h19Nf0M/vFZkQF0P3h1Y4N3u9T9pK3mZb2j6Xb3qAPq8r2VOA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
-<!-- Firebase Storage (compat) -->
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 </head>
 <body>
@@ -885,9 +880,15 @@ async function generateInvoicePdf(rec, user){
 
 // Onay dinleyici: status approved/received olduğunda PDF kes
 function attachDuesApprovalListener(uid){
-  const ref = db.ref('duesPaymentsIndex').orderByChild('userId').equalTo(uid);
-  ref.on('child_added', snap => maybeInvoice(uid, snap.val()));
-  ref.on('child_changed', snap => maybeInvoice(uid, snap.val()));
+  // 1) Index: admin paneli burayı güncelliyorsa buradan yakalar
+  const q1 = db.ref('duesPaymentsIndex').orderByChild('userId').equalTo(uid);
+  q1.on('child_added', s => maybeInvoice(uid, { id: s.key, ...s.val() }));
+  q1.on('child_changed', s => maybeInvoice(uid, { id: s.key, ...s.val() }));
+
+  // 2) Kişisel dal: admin sadece user dalını güncelliyorsa buradan yakalar
+  const q2 = db.ref(`duesPayments/${uid}`);
+  q2.on('child_added', s => maybeInvoice(uid, { id: s.key, ...s.val() }));
+  q2.on('child_changed', s => maybeInvoice(uid, { id: s.key, ...s.val() }));
 }
 
 async function maybeInvoice(uid, rec){
