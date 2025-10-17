@@ -124,6 +124,14 @@
   .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px #0006;font-weight:700;opacity:0;pointer-events:none;transition:.25s}
   .toast.show{opacity:1;pointer-events:auto}
 </style>
+
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-/CP6VlxqP9WcV2L9rboq2nGJb8whfVd3oLwV6h19Nf0M/vFZkQF0P3h1Y4N3u9T9pK3mZb2j6Xb3qAPq8r2VOA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<!-- Firebase Storage (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+
+
 </head>
 <body>
 <div class="wrap">
@@ -750,6 +758,161 @@ $('duesSend')?.addEventListener('click', withLoading($('duesSend'), async ()=>{
     $('duesStatus').textContent='Gönderilemedi (yetki/bağlantı hatası).';
   }
 }));
+
+// ====== AİDAT: Onay Gelince PDF Kes ve İndir (storage yok) ======
+
+// Tekrar indirmeyi engellemek için local flag
+function hasInvoiced(id){ try{ return JSON.parse(localStorage.getItem('invoices_done')||'{}')[id]; }catch{ return false; } }
+function markInvoiced(id){ const m = JSON.parse(localStorage.getItem('invoices_done')||'{}'); m[id]=true; localStorage.setItem('invoices_done', JSON.stringify(m)); }
+
+// Para formatı (₺)
+const fmtTRY = v => new Intl.NumberFormat('tr-TR', { style:'currency', currency:'TRY' }).format(+v||0);
+
+// Sıra numarası üretimi (yıl + kısa id)
+function makeInvoiceNo(rec){
+  const d = new Date(rec.createdAt||Date.now());
+  const y = d.getFullYear();
+  const short = (rec.id||'xxxxxx').slice(-6).toUpperCase();
+  return `IEEE-${y}-${short}`;
+}
+
+// PDF üretici (jsPDF)
+async function generateInvoicePdf(rec, user){
+  // jsPDF UMD
+  const { jsPDF } = window.jspdf || {};
+  if(!jsPDF){ alert('PDF kütüphanesi yüklenemedi.'); return; }
+  const doc = new jsPDF({ unit:'pt', format:'a4' }); // 595x842pt
+
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 48;
+
+  // Başlık şeridi
+  doc.setFillColor(10,124,193); // #0a7cc1
+  doc.rect(0,0,pageW,72,'F');
+
+  // Başlık Yazıları
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold'); doc.setFontSize(18);
+  doc.text('IEEE İKÇÜ TechOps', margin, 42);
+  doc.setFont('helvetica','normal'); doc.setFontSize(12);
+  doc.text('Aidat / Fatura Belgesi', margin, 60);
+
+  // İç metin rengine dön
+  doc.setTextColor(16,36,59);
+
+  // Fatura Üst Bilgiler
+  const invNo = makeInvoiceNo(rec);
+  const issueAt = new Date().toLocaleString('tr-TR');
+  const month = rec.month || '—';
+
+  // Sağ üst kutu
+  const boxX = pageW - margin - 220, boxY = 96, boxW = 220, boxH = 84;
+  doc.setDrawColor(233,239,248);
+  doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8);
+  doc.setFont('helvetica','bold'); doc.text('FATURA / MAKBUZ', boxX+14, boxY+22);
+  doc.setFont('helvetica','normal');
+  doc.text(`No: ${invNo}`, boxX+14, boxY+42);
+  doc.text(`Tarih: ${issueAt}`, boxX+14, boxY+62);
+
+  // Alıcı Bilgileri
+  const whoY = 110;
+  doc.setFont('helvetica','bold'); doc.text('ÖDEMEYİ YAPAN', margin, whoY);
+  doc.setFont('helvetica','normal');
+  doc.text(`${user.displayName || user.email || user.uid}`, margin, whoY+18);
+  if (user.email) doc.text(`${user.email}`, margin, whoY+36);
+
+  // Kulüp bilgisi
+  const orgY = whoY + 64;
+  doc.setFont('helvetica','bold'); doc.text('KURUM', margin, orgY);
+  doc.setFont('helvetica','normal');
+  doc.text('IEEE İKÇÜ Öğrenci Kolu — TechOps', margin, orgY+18);
+  doc.text('Amaç: Aidat tahsilatı ve kulüp faaliyetleri', margin, orgY+36);
+
+  // Çizgi
+  doc.setDrawColor(233,239,248);
+  doc.line(margin, orgY+56, pageW-margin, orgY+56);
+
+  // Kalem (item) alanı
+  const itemsY = orgY + 84;
+  doc.setFont('helvetica','bold'); doc.text('KALEM', margin, itemsY);
+  doc.text('DÖNEM', margin+260, itemsY);
+  doc.text('TUTAR', pageW - margin - 100, itemsY, { align:'right' });
+
+  doc.setFont('helvetica','normal');
+  const rowY = itemsY + 22;
+  doc.text('Üye Aidatı', margin, rowY);
+  doc.text(`${month}`, margin+260, rowY);
+  doc.text(fmtTRY(rec.amount), pageW - margin - 100, rowY, { align:'right' });
+
+  // Ara toplam / toplam
+  const sumY = rowY + 36;
+  doc.setDrawColor(233,239,248);
+  doc.line(margin, sumY, pageW-margin, sumY);
+
+  doc.setFont('helvetica','bold');
+  doc.text('TOPLAM', margin, sumY+22);
+  doc.text(fmtTRY(rec.amount), pageW - margin - 100, sumY+22, { align:'right' });
+
+  // Notlar
+  const notesY = sumY + 54;
+  doc.setFont('helvetica','bold'); doc.text('NOT', margin, notesY);
+  doc.setFont('helvetica','normal');
+  doc.text('Ödeme alındı/onaylandı. Bu belge elektronik olarak oluşturulmuştur.', margin, notesY+18);
+
+  // Alt kısım
+  doc.setTextColor(109,122,144);
+  doc.setFontSize(10);
+  doc.text('© IEEE İKÇÜ TechOps', margin, 820);
+
+  // Dosya adı
+  const fname = `ieee-techops-fatura_${rec.month || 'ay'}_${invNo}.pdf`;
+
+  // Otomatik indir
+  doc.save(fname);
+
+  // (İsteğe bağlı) "Faturalarım" tablosuna yansıt (storage yok: sadece metadata)
+  try{
+    const meta = {
+      createdAt: Date.now(),
+      title: `Aidat (${month})`,
+      total: +(rec.amount||0),
+      status: 'paid',
+      invoiceNo: invNo
+    };
+    await db.ref(`userInvoices/${user.uid}/${rec.id}`).set(meta);
+  }catch(e){ console.warn('userInvoices yazılamadı:', e); }
+}
+
+// Onay dinleyici: status approved/received olduğunda PDF kes
+function attachDuesApprovalListener(uid){
+  const ref = db.ref('duesPaymentsIndex').orderByChild('userId').equalTo(uid);
+  ref.on('child_added', snap => maybeInvoice(uid, snap.val()));
+  ref.on('child_changed', snap => maybeInvoice(uid, snap.val()));
+}
+
+async function maybeInvoice(uid, rec){
+  try{
+    if(!rec || rec.userId !== uid) return;
+    const ok = (rec.status||'').toLowerCase();
+    if(!(ok === 'approved' || ok === 'received' || ok === 'paid')) return;
+    if(hasInvoiced(rec.id)) return; // zaten kesildi
+    const u = await waitAuth(); if(!u) return;
+    await generateInvoicePdf(rec, u);
+    markInvoiced(rec.id);
+    toast('Fatura indirildi ✅');
+    notifyNow('Aidat', 'Ödeme onaylandı, fatura indirildi.');
+  }catch(e){
+    console.error('invoice fail:', e);
+  }
+}
+
+// Mevcut akışın sonunda auth sonrası çağır:
+(async ()=>{
+  try{
+    const u = await waitAuth();
+    if(u) attachDuesApprovalListener(u.uid);
+  }catch(_){}
+})();
 
 
 
