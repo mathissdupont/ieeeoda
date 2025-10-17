@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<title>Giriş Yap — Heptapus Group</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --bg:#e9eef5; --ink:#102238; --muted:#6f7d93;
+    --pri:#1279d6; --pri-2:#0a63b0; --ok:#1a7f37; --err:#c62828;
+    --card:#ffffffcc; --edge:#dbe4f1;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f141b; --ink:#e9eef5; --muted:#9fb0c8;
+      --card:#0d1622cc; --edge:#213042;
+    }
+    input,button{color-scheme: dark;}
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
+    margin:0; color:var(--ink);
+    background: radial-gradient(1200px 600px at 10% -10%, #b9d8ff33, transparent),
+                radial-gradient(900px 500px at 120% 20%, #9be7ff22, transparent),
+                var(--bg);
+    display:grid; place-items:center; padding:24px;
+  }
+  .box{
+    width:min(420px, 92vw);
+    background:var(--card);
+    backdrop-filter: blur(6px);
+    border:1px solid var(--edge);
+    border-radius:16px;
+    box-shadow:0 18px 40px #0a254014;
+    padding:22px 20px;
+  }
+  h2{margin:0 0 6px; font-size:22px; letter-spacing:.2px}
+  p.sub{margin:0 0 14px; color:var(--muted); font-size:14px}
+  .group{margin-top:12px; position:relative}
+  label{display:block; font-size:13px; color:var(--muted); margin-bottom:6px}
+  input{
+    width:100%; padding:12px 44px 12px 12px; border-radius:12px;
+    border:1px solid var(--edge); background:#ffffffee; outline:none;
+    transition:border .15s, box-shadow .15s;
+  }
+  input:focus{ border-color:#84baf6; box-shadow:0 0 0 4px #1279d612; }
+  .icon{
+    position:absolute; right:10px; top:35px; width:22px; height:22px; color:#6f86a0; display:grid; place-items:center; cursor:pointer;
+  }
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  .row.between{justify-content:space-between}
+  .help{font-size:13px; color:var(--muted)}
+  .status{min-height:22px; margin-top:10px; font-weight:700}
+  .ok{color:#1a7f37} .err{color:#c62828}
+  button{
+    width:100%; padding:12px; border-radius:12px; border:0; cursor:pointer;
+    background:linear-gradient(90deg, var(--pri) 0%, #12a0ff 100%); color:#fff; font-weight:800;
+    box-shadow:0 8px 20px #1279d623; transition:transform .08s ease, box-shadow .15s ease;
+  }
+  button:hover{ transform:translateY(-1px); box-shadow:0 12px 26px #1279d635; }
+  button:disabled{opacity:.65; cursor:progress}
+  .ghost{background:#eaf2fd; color:#0a3c6e}
+  a{color:var(--pri-2); text-decoration:none; font-weight:700}
+  .links{display:flex; justify-content:space-between; gap:8px; margin-top:10px}
+  .check{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted)}
+  .spinner{width:16px;height:16px;border:2px solid #fff;border-right-color:transparent;border-radius:50%;display:inline-block;vertical-align:middle;animation:spin .7s linear infinite;margin-left:8px}
+  .btn-google{
+    background:#fff; color:#202124; border:1px solid var(--edge);
+    display:flex; align-items:center; justify-content:center; gap:10px; margin-top:10px;
+  }
+  .btn-google:hover{ transform:translateY(-1px); box-shadow:0 10px 22px #00000014; }
+  .g-icon{width:18px; height:18px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* === BRAND LOGO === */
+  .logo-wrap{display:flex;justify-content:center;align-items:center;margin:4px 0 14px}
+  .logo-wrap img{max-height:48px; width:auto; object-fit:contain}
+  @media (prefers-color-scheme: dark){
+    .logo-wrap img{filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));}
+  }
+</style>
+</head>
+<body>
+  <div class="box">
+
+    <!-- LOGO -->
+    <div class="logo-wrap">
+      <a href="/" aria-label="Heptapus Group">
+        <!-- açık tema için light, koyu tema için dark versiyon kullanmak istersen alttaki iki satırı kullan -->
+        <!-- <img id="brandLogo" src="/assets/heptapus-logo-light.png" data-dark="/assets/heptapus-logo-dark.png" alt="Heptapus Group"> -->
+        <img src="/assets/heptapus_logo_white.png" alt="Heptapus Group">
+      </a>
+    </div>
+
+    <h2>Giriş Yap</h2>
+    <p class="sub">IEEE oda takibi için hesabına gir.</p>
+
+    <div class="group">
+      <label for="email">E-posta</label>
+      <input id="email" type="email" placeholder="ornek@ogr.ikcu.edu.tr" autocomplete="username" inputmode="email" />
+    </div>
+
+    <div class="group">
+      <label for="pass">Şifre</label>
+      <input id="pass" type="password" placeholder="••••••••" autocomplete="current-password" />
+      <span id="toggle" class="icon" title="Göster/Gizle">👁️</span>
+    </div>
+
+    <div class="row between" style="margin-top:6px">
+      <label class="check"><input id="remember" type="checkbox" /> Beni hatırla</label>
+      <a id="reset" href="#">Şifremi unuttum</a>
+    </div>
+
+    <div class="group">
+      <button id="btn">Giriş</button>
+      <button id="googleBtn" class="btn-google">
+        <svg class="g-icon" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.5 32.9 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.7 3l5.7-5.7C33.4 6.1 28.9 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c10 0 19-7.3 19-20 0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16.2 18.9 14 24 14c3 0 5.7 1.1 7.7 3l5.7-5.7C33.4 6.1 28.9 4 24 4 16.1 4 9.2 8.5 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5.1l-6.2-5.1C29.2 36 26.7 37 24 37c-5.2 0-9.5-3.1-11-7.4l-6.6 5.1C9.2 39.5 16.1 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3C34.8 31.4 29.9 36 24 36c-5.2 0-9.5-3.1-11-7.4l-6.6 5.1C9.2 39.5 16.1 44 24 44c10 0 19-7.3 19-20 0-1.2-.1-2.3-.4-3.5z"/></svg>
+        Google ile Giriş Yap
+      </button>
+    </div>
+
+    <div class="links">
+      <span class="help">Hesabın yok mu?</span>
+      <a href="register.html">Kayıt ol</a>
+    </div>
+
+    <div id="st" class="status"></div>
+  </div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script>
+  // === FIREBASE ===
+  const firebaseConfig = {
+    apiKey: "AIzaSyDJtcrJ6Eh4BfZnn0M-4z9QYi_2AS-ikHw",
+    authDomain: "ieee-oda.firebaseapp.com",
+    databaseURL: "https://ieee-oda-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "ieee-oda",
+    storageBucket: "ieee-oda.firebasestorage.app",
+    messagingSenderId: "788998880363",
+    appId: "1:788998880363:web:5eacc71c326cffe7b3452e"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
+  // === UI refs ===
+  const $ = id => document.getElementById(id);
+  const st = $('st'), email=$('email'), pass=$('pass'), btn=$('btn'), gbtn=$('googleBtn');
+  const next = new URL(location.href).searchParams.get('next') || 'panel.html';
+
+  // şifre göster/gizle
+  $('toggle').onclick = ()=>{
+    const v = pass.type === 'password' ? 'text' : 'password';
+    pass.type = v;
+    $('toggle').textContent = v === 'text' ? '🙈' : '👁️';
+  };
+
+  // beni hatırla → kalıcı oturum
+  let rememberChecked = false;
+  $('remember').addEventListener('change', async (e)=>{
+    rememberChecked = e.target.checked;
+    const mode = rememberChecked ? firebase.auth.Auth.Persistence.LOCAL
+                                 : firebase.auth.Auth.Persistence.SESSION;
+    try{ await auth.setPersistence(mode); }catch{}
+  });
+
+  function setLoading(on, which='email'){
+    const target = which==='google' ? gbtn : btn;
+    target.disabled = on;
+    target.innerHTML = on ? (which==='google' ? 'Google ile bağlanılıyor <span class="spinner"></span>'
+                                              : 'Giriş yapılıyor <span class="spinner"></span>')
+                          : (which==='google' ? gbtn.dataset._t || 'Google ile Giriş Yap' : 'Giriş');
+    if(!target.dataset._t) target.dataset._t = target.textContent;
+  }
+
+  function showError(err){
+    const msg = (err && (err.message||err.code)) || 'Giriş hatası';
+    st.className='status err';
+    if (String(err.code||'').includes('auth/invalid-credential') || String(msg).includes('password')) {
+      st.textContent = 'E-posta veya şifre hatalı.';
+    } else if (String(err.code||'').includes('too-many-requests')) {
+      st.textContent = 'Çok fazla deneme. Biraz bekleyip tekrar deneyin.';
+    } else if (String(err.code||'').includes('user-not-found')) {
+      st.textContent = 'Böyle bir kullanıcı yok. Kayıt olabilirsiniz.';
+    } else if (String(err.code||'').includes('popup-closed-by-user')) {
+      st.textContent = 'Popup kapatıldı. Tekrar deneyin.';
+    } else if (String(err.code||'').includes('operation-not-supported-in-this-environment')) {
+      st.textContent = 'Tarayıcı popup desteklemiyor, yönlendirerek deniyorum.';
+    } else {
+      st.textContent = msg;
+    }
+  }
+
+  // e-posta/şifre ile giriş
+  $('btn').onclick = async ()=>{
+    st.textContent=''; st.className='status';
+    const mail = email.value.trim();
+    const pw   = pass.value;
+    if(!mail || !pw){ st.className='status err'; st.textContent='E-posta ve şifre gerekli.'; return; }
+    try{
+      setLoading(true,'email');
+      await auth.signInWithEmailAndPassword(mail, pw);
+      location.replace(next);
+    }catch(e){ showError(e); }
+    finally{ setLoading(false,'email'); }
+  };
+
+  // şifre sıfırla
+  $('reset').onclick = async (e)=>{
+    e.preventDefault();
+    const mail = email.value.trim();
+    if(!mail){ st.className='status err'; st.textContent='Şifre sıfırlama için e-posta girin.'; return; }
+    try{
+      await auth.sendPasswordResetEmail(mail);
+      st.className='status ok'; st.textContent='Şifre sıfırlama maili gönderildi.';
+    }catch(err){ showError(err); }
+  };
+
+  // Google ile giriş
+  async function googleSignIn(){
+    st.textContent=''; st.className='status';
+    try{
+      const mode = rememberChecked ? firebase.auth.Auth.Persistence.LOCAL
+                                   : firebase.auth.Auth.Persistence.SESSION;
+      await auth.setPersistence(mode);
+    }catch{}
+
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try{
+      setLoading(true,'google');
+      await auth.signInWithPopup(provider);
+      location.replace(next);
+    }catch(e){
+      if(String(e.code||'').includes('operation-not-supported') || String(e.code||'').includes('popup-blocked')){
+        try{
+          await auth.signInWithRedirect(provider);
+          return;
+        }catch(er){ showError(er); }
+      }else{
+        showError(e);
+      }
+    }finally{
+      setLoading(false,'google');
+    }
+  }
+  $('googleBtn').onclick = googleSignIn;
+
+  // enter tuşu
+  document.addEventListener('keydown', e=>{ if(e.key==='Enter') $('btn').click(); });
+
+  // oturum açıksa yönlendir
+  auth.onAuthStateChanged(u=>{ if(u) location.replace(next); });
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+/          /gate.html           301
+/login     /login.html          200
+/register  /register.html       200
+/panel     /panel.html          200
+/admin     /admin.html          200

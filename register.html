@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<title>Kayıt Ol — Heptapus Group</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { --ink:#12223a; --muted:#6d7a90; --pri:#0a7cc1; --bg:#f4f7fb; --edge:#d7dfeb; --card:#fff; }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f141b; --ink:#e9eef5; --muted:#9fb0c8; --edge:#2a3a52; --card:#0f1a27; --pri:#2aa3ff; }
+  }
+
+  *{box-sizing:border-box}
+  body{
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
+    background:
+      radial-gradient(1000px 500px at -10% -10%, #b9d8ff33, transparent),
+      radial-gradient(900px 400px at 110% 10%, #9be7ff22, transparent),
+      var(--bg);
+    color:var(--ink); margin:0; padding:24px;
+    display:grid; place-items:center; min-height:100dvh;
+  }
+
+  .box{
+    width:min(520px, 94vw);
+    background:var(--card);
+    border:1px solid var(--edge);
+    border-radius:16px;
+    box-shadow:0 12px 30px #001a3b1a;
+    padding:24px 22px 22px;
+  }
+
+  /* LOGO */
+  .logo-wrap{display:flex;justify-content:center;align-items:center;margin:4px 0 14px}
+  .logo-wrap img{max-height:54px; width:auto; object-fit:contain}
+  @media (prefers-color-scheme: dark){
+    .logo-wrap img{filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));}
+  }
+
+  h2{margin:0 0 6px}
+  p.muted{margin:0 0 14px; color:var(--muted); font-size:14px}
+
+  label{display:block; font-size:13px; color:#406080; margin:10px 0 6px}
+  @media (prefers-color-scheme: dark){ label{ color:#b7c6da; } }
+
+  input{
+    width:100%; padding:12px; border-radius:12px;
+    border:1px solid var(--edge); background:#fbfdff; font-size:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    input{ background:#0e1622; color:var(--ink); border-color:#2a3a52; }
+    input::placeholder{ color:#9fb0c8; }
+  }
+
+  .row{display:flex; gap:10px; flex-wrap:wrap}
+  button{
+    width:100%; padding:12px; border:none; border-radius:12px; font-weight:800; cursor:pointer
+  }
+  .primary{background:linear-gradient(90deg,var(--pri),#5ec1ff); color:#031424}
+  .google{
+    background:#fff; color:#202124; border:1px solid var(--edge);
+    display:flex; align-items:center; justify-content:center; gap:8px
+  }
+
+  .link{display:inline-block; margin-top:10px; color:var(--pri); text-decoration:none; font-weight:600}
+  .status{min-height:22px; margin-top:10px; font-weight:700}
+  .ok{color:#1a7f37} .err{color:#b00020} .mutedText{color:var(--muted)}
+  .brand{
+    display:inline-block;margin:6px 0 12px;padding:6px 10px;border:1px solid var(--edge);
+    border-radius:999px;font-size:12px;background:#f0f6ff;color:#0a5aa6;font-weight:700
+  }
+  @media (prefers-color-scheme: dark){
+    .brand{ background:#132235; color:#cfe3ff; border-color:#2a3a52; }
+  }
+</style>
+</head>
+<body>
+<div class="box">
+
+  <!-- LOGO -->
+  <div class="logo-wrap">
+    <a href="/" aria-label="Heptapus Group">
+      <!-- açık/koyu tema için iki ayrı dosya: -->
+      <img id="brandLogo"
+           src="/assets/heptapus_logo_white.png"
+           data-dark="/assets/heptapus_logo_white.png"
+           alt="Heptapus Group">
+    </a>
+  </div>
+
+  <h2>Hesap Oluştur</h2>
+  <div class="brand">Heptapus Group</div>
+  <p class="muted">E-posta/şifre ile kayıt olabilir veya Google ile devam edebilirsin.</p>
+
+  <label>Ad Soyad (profil ismi)</label>
+  <input id="displayName" placeholder="Örn. Samet Ünsal" />
+
+  <label>E-posta</label>
+  <input id="email" type="email" placeholder="ornek@ogr.ikcu.edu.tr" autocomplete="username" />
+
+  <label>Şifre</label>
+  <input id="password" type="password" placeholder="En az 6 karakter" autocomplete="new-password" />
+
+  <div class="row" style="margin-top:12px">
+    <button id="emailSignup" class="primary">Kayıt Ol</button>
+  </div>
+
+  <div class="row" style="margin-top:8px">
+    <button id="googleBtn" class="google">Google ile Devam Et</button>
+  </div>
+
+  <a class="link" href="login.html">Zaten hesabın var mı? Giriş yap</a>
+  <div id="status" class="status mutedText"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDJtcrJ6Eh4BfZnn0M-4z9QYi_2AS-ikHw",
+    authDomain: "ieee-oda.firebaseapp.com",
+    databaseURL: "https://ieee-oda-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "ieee-oda",
+    storageBucket: "ieee-oda.firebasestorage.app",
+    messagingSenderId: "788998880363",
+    appId: "1:788998880363:web:5eacc71c326cffe7b3452e"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db   = firebase.database();
+
+  const $ = id => document.getElementById(id);
+  const show = (msg, ok=false)=>{ const el=$('status'); el.className='status '+(ok?'ok':'err'); el.textContent=msg; };
+  const muted = (msg)=>{ const el=$('status'); el.className='status mutedText'; el.textContent=msg; };
+  const panelNext = new URL(location.href).searchParams.get('next') || 'panel.html';
+
+  async function upsertUserDoc(user, displayNameOverride){
+    try{
+      await db.ref('users/'+user.uid).set({
+        email: user.email || null,
+        displayName: displayNameOverride || user.displayName || null,
+        role: 'user',
+        createdAt: Date.now()
+      });
+    }catch(e){ console.warn('users write skipped:', e); }
+  }
+
+  async function signupEmail(){
+    const email = $('email').value.trim();
+    const pass  = $('password').value;
+    const name  = $('displayName').value.trim();
+    if (!email || !pass) return show('E-posta ve şifre gerekli.');
+    muted('Hesap oluşturuluyor…');
+    try{
+      const { user } = await auth.createUserWithEmailAndPassword(email, pass);
+      if (name) await user.updateProfile({ displayName: name });
+      await upsertUserDoc(user, name);
+      try{ await user.sendEmailVerification(); }catch(_) {}
+      show('Kayıt başarılı. Yönlendiriliyor…', true);
+      setTimeout(()=> location.replace(panelNext), 500);
+    }catch(e){ show(e?.message || 'Kayıt hatası'); }
+  }
+
+  async function signupGoogle(){
+    const prov = new firebase.auth.GoogleAuthProvider();
+    try{
+      muted('Google ile giriş yapılıyor…');
+      const { user } = await auth.signInWithPopup(prov);
+      await upsertUserDoc(user);
+      show('Giriş başarılı. Yönlendiriliyor…', true);
+      setTimeout(()=> location.replace(panelNext), 300);
+    }catch(e){ show(e?.message || 'Google ile giriş hatası'); }
+  }
+
+  $('emailSignup').onclick = signupEmail;
+  $('googleBtn').onclick   = signupGoogle;
+  document.addEventListener('keydown', e=>{ if(e.key==='Enter') signupEmail(); });
+  auth.onAuthStateChanged(u=>{ if(u) location.replace(panelNext); });
+
+  // Tema durumuna göre logo değiştir
+  (function(){
+    var img=document.getElementById('brandLogo');
+    if(!img) return;
+    var light=img.getAttribute('src');
+    var dark =img.dataset.dark;
+    if(!dark) return;
+    var mm = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+    function apply(){ img.src = (mm && mm.matches) ? dark : light; }
+    if(mm && typeof mm.addEventListener==='function'){ mm.addEventListener('change', apply); }
+    apply();
+  })();
+</script>
+</body>
+</html>

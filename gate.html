@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<title>Oda Girişi (QR)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{--ink:#12223a; --muted:#6d7a90; --edge:#bcd2e8; --bg:#f4f7fb; --pri:#0a7cc1; --ok:#1a7f37; --err:#b00020;}
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto; margin:0; background:var(--bg); color:var(--ink)}
+  .wrap{max-width:860px; margin:24px auto; padding:16px}
+  .card{background:#fff; border-radius:14px; box-shadow:0 8px 22px #002b5c14; padding:18px}
+  h1{margin:0 0 8px; font-size:22px}
+  #reader{width:100%; min-height:240px; background:#eef4fb; border:1px dashed var(--edge); border-radius:12px; display:grid; place-items:center}
+  .status{margin-top:10px; min-height:20px; font-weight:600}
+  .ok{color:var(--ok)} .err{color:var(--err)} .muted{color:var(--muted)}
+  .pill{display:inline-block; padding:6px 10px; background:#e6f3ff; color:#0a5aa6; border-radius:999px; font-size:12px}
+  .row{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+  input,button,select{padding:12px; border-radius:10px; border:1px solid #d7dfeb; font-size:14px; background:#fbfdff}
+  button{background:var(--pri); color:#fff; border:none; cursor:pointer; font-weight:800}
+  button.ghost{background:#eef4fb; color:#0b3a6f}
+  .hint{font-size:13px; color:#60738a; margin-top:8px}
+  .right{margin-left:auto}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>Oda Girişi</h1>
+    <span class="pill">Kamerayı QR’a tutun ya da oda kodunu girin</span>
+
+    <div class="row" style="align-items:center">
+      <button id="startBtn">📷 Kamerayı Başlat</button>
+      <select id="camSelect" class="hide"></select>
+      <button id="restartBtn" class="ghost hide">Yeniden Başlat</button>
+      <button id="torchBtn" class="ghost hide">🔦 Fener</button>
+      <label class="right"><input type="file" id="fileScan" accept="image/*" class="hide"> Galeriden tara</label>
+    </div>
+
+    <div id="reader" style="margin-top:12px"></div>
+    <div id="scanStatus" class="status muted">Hazır</div>
+
+    <div class="row">
+      <input id="roomInput" placeholder="Oda Kodu (ör. LAB-101)" />
+      <input id="keyInput"  placeholder="Oda Anahtarı (KEY)" />
+      <button id="manualBtn" type="button">Onayla</button>
+    </div>
+    <div class="hint">
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+<script>
+  // === FIREBASE config (seninki) ===
+  const firebaseConfig = {
+    apiKey: "AIzaSyDJtcrJ6Eh4BfZnn0M-4z9QYi_2AS-ikHw",
+    authDomain: "ieee-oda.firebaseapp.com",
+    databaseURL: "https://ieee-oda-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "ieee-oda",
+    storageBucket: "ieee-oda.firebasestorage.app",
+    messagingSenderId: "788998880363",
+    appId: "1:788998880363:web:5eacc71c326cffe7b3452e"
+  };
+  firebase.initializeApp(firebaseConfig);
+
+  // === utils ===
+  const $ = id => document.getElementById(id);
+  const scanStatus = $('scanStatus');
+  const show = (cls, txt)=>{ scanStatus.className='status '+cls; scanStatus.textContent=txt; };
+  const PANEL_URL = 'panel.html';
+  const LOGIN_URL = 'login.html?next=' + encodeURIComponent(PANEL_URL);
+  const urlParam = (n)=>{ try{ return new URL(location.href).searchParams.get(n); }catch(_){ return null; } };
+
+  function parseQr(text){
+    try{
+      if (text.includes('://')){
+        const u = new URL(text);
+        return { room: u.searchParams.get('room'), key: u.searchParams.get('key') };
+      }
+      const pairs = Object.fromEntries(text.split('|').map(p=>p.split('=')));
+      return { room: pairs.room, key: pairs.key };
+    }catch{ return { room:null, key:null }; }
+  }
+
+  async function verifyRoomKey(room, key){
+    if (!room || !key) throw new Error("Oda kodu veya anahtar eksik.");
+    const snap = await firebase.database().ref(`roomKeys/${room}`).get();
+    if (!snap.exists()) throw new Error("Oda tanımsız.");
+    const expected = String(snap.val()||'').trim();
+    if (expected !== String(key).trim()) throw new Error("Anahtar hatalı.");
+    return true;
+  }
+
+  function storeGate(room, key){
+    sessionStorage.setItem('gate_room', room);
+    sessionStorage.setItem('gate_key', key);
+    sessionStorage.setItem('gate_verified', '1');
+  }
+  function goNext(){
+    firebase.auth().onAuthStateChanged(u=>{ u ? location.replace(PANEL_URL) : location.replace(LOGIN_URL); });
+  }
+  async function handleRoomKey(room, key){
+    show('muted','Doğrulanıyor…');
+    await verifyRoomKey(room, key);
+    storeGate(room, key);
+    show('ok', `Geçiş onay: ${room}. Yönlendiriliyor…`);
+    setTimeout(goNext, 300);
+  }
+
+  // === QR scanner (responsive + controls) ===
+  let qr = null, currentCamId = null, torchOn = false;
+  const readerEl = $('reader');
+
+  function calcQrBox(){
+    // container genişliğinin %80’i, 180–360px arası
+    const w = Math.max(180, Math.min(360, Math.floor(readerEl.getBoundingClientRect().width * 0.8)));
+    return { width: w, height: w };
+  }
+
+  async function listCameras(){
+    try{
+      const cams = await Html5Qrcode.getCameras();
+      const sel = $('camSelect'); sel.innerHTML='';
+      cams.forEach(c=>{
+        const o = document.createElement('option');
+        o.value = c.id; o.textContent = c.label || (c.id.includes('back')?'Arka Kamera': 'Kamera');
+        sel.appendChild(o);
+      });
+      if(cams[0]) sel.value = cams[0].id;
+      sel.classList.remove('hide');
+      $('restartBtn').classList.remove('hide');
+      $('fileScan').classList.remove('hide');
+      return cams;
+    }catch(e){
+      show('err','Kameralar listelenemedi: '+e);
+      throw e;
+    }
+  }
+
+  async function startCamera(camId){
+    if(!qr) qr = new Html5Qrcode("reader", { verbose: false });
+    if(qr.isScanning) await qr.stop();
+    const config = { fps: 10, qrbox: calcQrBox() };
+    const constraints = camId ? { deviceId: { exact: camId } } : { facingMode: "environment" };
+    await qr.start(constraints, config, onScanSuccess, onScanFail);
+    currentCamId = camId || null;
+    $('torchBtn').classList.remove('hide'); // deneyeceğiz, destek yoksa hata verirsek gizleriz
+  }
+
+  function onScanSuccess(decodedText){
+    qr.pause(true);
+    show('muted','QR doğrulanıyor...');
+    (async ()=>{
+      try{
+        const {room,key} = parseQr(decodedText);
+        await handleRoomKey(room, key);
+      }catch(e){
+        show('err', e.message||String(e));
+        setTimeout(()=>qr.resume(), 1200);
+      }
+    })();
+  }
+  function onScanFail(){ /* sessiz geç */ }
+
+  // Torch toggle (her cihaz desteklemez)
+  $('torchBtn').onclick = async ()=>{
+    if(!qr || !qr.getState()) return;
+    try{
+      // html5-qrcode 2.x için constraint uygulama:
+      await qr.applyVideoConstraints({ advanced: [{ torch: !torchOn }]});
+      torchOn = !torchOn;
+      $('torchBtn').textContent = torchOn ? '🔦 Fener (Açık)' : '🔦 Fener';
+    }catch{ $('torchBtn').classList.add('hide'); }
+  };
+
+  // Start button = user gesture (iOS için şart)
+  $('startBtn').onclick = async ()=>{
+    show('muted','Kamera izinleri isteniyor…');
+    try{
+      await listCameras();
+      await startCamera($('camSelect').value);
+      show('muted','Kamera aktif. QR’ı okutun.');
+    }catch(e){
+      show('err','Kamera açılamadı: '+(e?.message||e));
+    }
+  };
+
+  $('camSelect').onchange = ()=> startCamera($('camSelect').value).catch(e=>show('err','Başlatılamadı: '+e));
+  $('restartBtn').onclick = ()=> startCamera($('camSelect').value).catch(e=>show('err','Başlatılamadı: '+e));
+
+  // Resimden tarama
+  $('fileScan').onchange = async (ev)=>{
+    const f = ev.target.files && ev.target.files[0];
+    if(!f) return;
+    if(!qr) qr = new Html5Qrcode("reader");
+    try{
+      const result = await qr.scanFile(f, true);
+      onScanSuccess(result);
+    }catch(e){ show('err','Resimden okuma başarısız: '+(e?.message||e)); }
+  };
+
+  // URL parametresi ile otomatik geçiş (QR deep-link)
+  (async ()=>{
+    const r = urlParam('room'); const k = urlParam('key');
+    if (r && k){
+      try { await handleRoomKey(r,k); return; }
+      catch(e){ show('err', e.message||String(e)); }
+    }
+    show('muted','Hazır. Kamerayı başlatın veya manuel girin.');
+  })();
+
+  // Manuel
+  $('manualBtn').addEventListener('click', async ()=>{
+    const room = $('roomInput').value.trim();
+    const key  = $('keyInput').value.trim();
+    try{ await handleRoomKey(room, key); }catch(e){ show('err', e.message||String(e)); }
+  });
+
+  // responsive qrbox yeniden hesapla
+  let resizeTimer=null;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(async ()=>{
+      if(qr && qr.isScanning){ try{ await qr.stop(); await startCamera(currentCamId||$('camSelect').value); }catch{} }
+    }, 200);
+  });
+</script>
+</body>
+</html>

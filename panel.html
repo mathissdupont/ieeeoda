@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<title>Oda Paneli</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --bg:#f6f9ff; --ink:#10243b; --muted:#6d7a90; --edge:#e9eff8;
+    --pri:#0a7cc1; --pri-2:#095f97; --ok:#1a7f37; --warn:#b06b00; --err:#c62828; --card:#fff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f141b; --ink:#e9eef5; --muted:#9fb0c8; --edge:#223244; --card:#0f1a27;
+      --pri:#2aa3ff; --pri-2:#63b7ff; --ok:#2ecc71; --warn:#ffd27a; --err:#ff6b6b;
+    }
+    .card{ background:var(--card); border:1px solid var(--edge); box-shadow:0 8px 22px #0006; }
+    th{ background:#122030; color:var(--ink); }
+    td{ color:var(--ink); border-bottom-color:#203043; }
+    input, select, textarea{ background:#111a24; color:var(--ink); border:1px solid #2b3b50; }
+    input:focus, select:focus, textarea:focus{ border-color:#4aa3ff; box-shadow:0 0 0 3px #4aa3ff26; outline:none; }
+    input::placeholder, textarea::placeholder{ color:#9fb0c8; }
+    select, select option{ background:#111a24; color:var(--ink); }
+    .btn.light{ background:#172436; color:#d7e7ff; border:1px solid #2b3b50; }
+    .pill{ background:#152233; color:#9bd0ff; border:1px solid #223244; }
+    .presence{ border-color:#223244; }
+    .presence.in{ background:#0f2a1b; color:#7ee2a8; }
+    .presence.out{ background:#2a1d00; color:#ffb86b; }
+    .fabbar{ background:#0f1a27; border-top:1px solid #223244; }
+  }
+
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial; background:var(--bg); color:var(--ink); margin:0}
+  .wrap{max-width:1100px; margin:20px auto; padding:16px}
+  .top{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+  .title{display:flex; align-items:center; gap:10px}
+  .pill{display:inline-flex; align-items:center; gap:6px; padding:6px 10px; background:#e6f3ff; color:#0a5aa6; border-radius:999px; font-size:12px}
+  .presence{display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid var(--edge)}
+  .presence.in{background:#e8f6ee; color:#126b3a}
+  .presence.out{background:#fff2e0; color:#9a5a00}
+  .card{background:var(--card); border-radius:16px; box-shadow:0 10px 24px #001a3b16; padding:16px; margin-top:14px; border:1px solid var(--edge)}
+  .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)} .warn{color:var(--warn)}
+  h2{margin:0; font-size:20px}
+  h3{margin:0 0 10px; font-size:16px}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  .btn{padding:12px 12px; border-radius:12px; border:none; font-weight:800; cursor:pointer; background:var(--pri); color:#fff; display:flex; align-items:center; justify-content:center; gap:8px}
+  .btn.secondary{background:#6b7a90}
+  .btn.light{background:#eaf2fd; color:#0b3a6f}
+  .btn:disabled{opacity:.55; cursor:not-allowed}
+  .stat .big{font-size:22px; font-weight:900}
+  table{width:100%; border-collapse:collapse}
+  th,td{padding:10px 12px; border-bottom:1px solid var(--edge); font-size:14px; text-align:left; vertical-align:top}
+  th{background:#f2f6fc}
+  input,select,textarea{width:100%; padding:12px; border:1px solid var(--edge); border-radius:12px; background:#fbfdff}
+  textarea{resize:vertical}
+  .statusline{min-height:22px; font-weight:700}
+  .right{margin-left:auto}
+
+  .chip{display:inline-block; padding:4px 8px; border:1px solid var(--edge); border-radius:999px; font-size:12px}
+  .chip.open{background:#fff7e6; color:#8a5a00}
+  .chip.approved{background:#e9f8ee; color:#126b3a}
+  .chip.declined{background:#ffe9e9; color:#9a1b1b}
+
+  @media (max-width:640px){
+    .fabbar{position:sticky; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--edge); padding:10px; display:grid; grid-template-columns:repeat(5,1fr); gap:8px}
+    .fabbar .btn{padding:12px 6px; font-size:12px}
+  }
+
+  dialog{border:none; border-radius:16px; padding:0; width:min(560px,calc(100% - 24px)); background:var(--card); border:1px solid var(--edge)}
+  .dlg-head{padding:14px 16px; border-bottom:1px solid var(--edge); font-weight:800}
+  .dlg-body{padding:16px}
+  .dlg-foot{padding:14px 16px; border-top:1px solid var(--edge); display:flex; gap:8px; justify-content:flex-end}
+
+  .seg{display:flex; gap:8px; flex-wrap:wrap}
+  .seg .chip{padding:8px 12px; border:1px solid var(--edge); border-radius:999px; cursor:pointer; background:#f7fbff}
+  .seg .chip.active{background:var(--pri); color:#fff; border-color:var(--pri)}
+  .stars{display:flex; gap:6px; font-size:20px; cursor:pointer; user-select:none}
+  .stars span{filter:grayscale(1); opacity:.5}
+  .stars span.on{filter:none; opacity:1}
+
+  .chips{display:flex; flex-wrap:wrap; gap:8px; align-items:center; border:1px solid var(--edge); border-radius:12px; padding:8px; background:#fbfdff}
+  .chips .chip{background:#eef6ff; border:1px solid var(--edge); border-radius:999px; padding:6px 10px; cursor:pointer}
+  .chips input{border:none; outline:none; min-width:160px; flex:1; background:transparent; padding:6px 4px}
+  @media (prefers-color-scheme: dark){
+    .chips{background:#0e1622; border-color:#2b3b50}
+    .chips .chip{background:#132235; border-color:#2b3b50; color:#d7e7ff}
+  }
+
+  .spinner{width:16px;height:16px;border:2px solid #fff;border-right-color:transparent;border-radius:50%;display:inline-block;vertical-align:middle;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ==== DARK MODE FİXLER ==== */
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0b1118; --ink:#e8eef6; --muted:#a9b7c8;
+      --edge:#253449; --card:#0f1a27;
+      --pri:#2aa3ff; --pri-2:#58bfff;
+      --ok:#6ee7a5; --warn:#ffd27a; --err:#ff8585;
+    }
+    body{ background:var(--bg); color:var(--ink); }
+    .card{ background:var(--card); border:1px solid var(--edge); box-shadow:0 8px 22px rgba(0,0,0,.35); }
+    th{ background:#18283b; color:var(--ink); }
+    td, th{ border-bottom-color:#27384f; }
+    input, select, textarea{ background:#0e1622; color:var(--ink); border:1px solid #2d3e55; }
+    input:focus, select:focus, textarea:focus{ border-color:#4aa3ff; box-shadow:0 0 0 3px rgba(74,163,255,.18); outline:none; }
+    input::placeholder, textarea::placeholder{ color:#90a4bf; opacity:1; }
+    select option{ background:#0e1622; color:var(--ink); }
+    .btn{ background:linear-gradient(90deg, var(--pri) 0%, var(--pri-2) 100%); color:#031424; }
+    .btn.light{ background:#132235; color:#d7e7ff; border:1px solid #2d3e55; }
+    .btn.secondary{ background:#394b63; color:#e8eef6; }
+    .btn:disabled{ opacity:.6; }
+    .pill{ background:#132235; color:#9bd0ff; border:1px solid #2d3e55; }
+    .presence{ border-color:#2d3e55; }
+    .presence.in{ background:#103022; color:#9ff0c0; }
+    .presence.out{ background:#2e200f; color:#ffca85; }
+    .fabbar{ background:#0f1a27; border-top:1px solid var(--edge); }
+    .statusline.muted{ color:var(--muted); }
+    .statusline.ok{ color:var(--ok); }
+    .statusline.warn{ color:var(--warn); }
+    .statusline.err{ color:var(--err); }
+  }
+  /* toast */
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px #0006;font-weight:700;opacity:0;pointer-events:none;transition:.25s}
+  .toast.show{opacity:1;pointer-events:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="top">
+    <div class="title">
+      <h2>Oda Paneli</h2>
+      <span id="roomPill" class="pill"></span>
+      <span id="presence" class="presence" aria-live="polite">Durum yükleniyor…</span>
+    </div>
+    <div class="right row">
+      <div class="muted" id="hello"></div>
+      <button id="logout" class="btn secondary">Çıkış</button>
+    </div>
+  </div>
+
+  <!-- Quick stats & actions -->
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="row" style="gap:24px">
+        <div>
+          <div class="muted">Bugün toplam süre</div>
+          <div id="sumToday" class="big">—</div>
+        </div>
+        <div>
+          <div class="muted">Son hareket</div>
+          <div id="lastAction">—</div>
+        </div>
+      </div>
+      <div class="right row">
+        <button id="enterBtn" class="btn" disabled>⤴️ Giriş</button>
+        <button id="exitBtn" class="btn light" disabled>⤵️ Çıkış (Yorum)</button>
+        <button id="breakStartBtn" class="btn" disabled>☕ Mola</button>
+        <button id="breakEndBtn" class="btn" disabled>🔙 Mola Bitir</button>
+      </div>
+    </div>
+    <div id="opStatus" class="statusline muted" style="margin-top:8px"></div>
+  </div>
+  
+  <div class="card">
+    <h3>Bugün Zaman Çizelgesi</h3>
+    <div id="timeline" style="height:18px;background:#e6eefb;border-radius:999px;position:relative"></div>
+    <div id="timelineLegend" class="muted" style="margin-top:6px;font-size:12px"></div>
+  </div>
+
+
+  <!-- Reservation -->
+  <div class="card">
+    <h3>Oda Rezervasyonu</h3>
+    <div class="row">
+      <input id="resTitle" placeholder="Başlık (örn. Proje toplantısı)" />
+      <input id="resStart" type="datetime-local" />
+      <input id="resEnd" type="datetime-local" />
+    </div>
+    <textarea id="resNote" rows="2" placeholder="Not (ihtiyaçlar, katılımcılar, vb.)"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button id="resSend" class="btn" disabled>📅 Rezervasyon Talep Et</button>
+      <div id="resStatus" class="statusline muted"></div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="muted" style="margin:6px 0 4px">Yaklaşan rezervasyonlar</div>
+      <table>
+        <thead><tr><th>Zaman</th><th>Başlık</th><th>Durum</th></tr></thead>
+        <tbody id="resRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Inventory -->
+  <div class="card">
+    <h3>Eksik / Ekipman Talebi</h3>
+    <div class="row">
+      <select id="invCat" style="max-width:200px">
+        <option value="genel">Kategori</option>
+        <option>Temizlik</option>
+        <option>Elektrik</option>
+        <option>Donanım</option>
+        <option>Kırtasiye</option>
+        <option>Diğer</option>
+      </select>
+      <input id="invName" placeholder="Ürün / Ekipman adı (örn. Marker kalem)" />
+      <input id="invQty" type="number" min="1" value="1" style="max-width:140px" placeholder="Adet" />
+    </div>
+    <textarea id="invNote" rows="3" placeholder="Detay/Not (marka, renk, ölçü, vs.)"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button id="invSend" class="btn" disabled>🚀 Talep Gönder</button>
+      <div id="invStatus" class="statusline muted"></div>
+    </div>
+  </div>
+
+  <!-- My logs -->
+  <div class="card">
+    <h3>Son Kayıtlarım</h3>
+    <table>
+      <thead><tr><th>Zaman</th><th>Aksiyon</th><th>Oda</th><th>Kaynak</th></tr></thead>
+      <tbody id="myRows"></tbody>
+    </table>
+  </div>
+
+  <!-- My invoices -->
+  <div class="card">
+      <h3>Faturalarım</h3>
+      <table>
+        <thead><tr><th>Zaman</th><th>Başlık</th><th>Tutar</th><th>Durum</th></tr></thead>
+        <tbody id="myInvRows"><tr><td colspan="4" class="muted">Yükleniyor…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+    <h3>Aidat Bildir</h3>
+    <div class="row" style="align-items:flex-end; gap:8px">
+      <input id="duesMonth" placeholder="YYYY-MM (örn. 2025-10)" style="max-width:180px">
+      <input id="duesAmount" type="number" min="0" step="0.01" placeholder="Tutar (₺)" style="max-width:160px">
+      <button id="duesSend" class="btn" disabled>🧾 Aidat Bildir</button>
+    </div>
+    <div id="duesStatus" class="statusline muted" style="margin-top:6px"></div>
+  </div>
+
+  <!-- Mobile sticky action bar -->
+  <div class="fabbar">
+    <button id="m_enter"  class="btn" disabled>⤴️</button>
+    <button id="m_exit"   class="btn light" disabled>⤵️</button>
+    <button id="m_bstart" class="btn" disabled>☕</button>
+    <button id="m_bend"   class="btn" disabled>🔙</button>
+    <button id="undoBtn" class="btn light" style="margin-left:8px">↩️ Geri Al</button>
+  </div>
+</div>
+
+<!-- ÇIKIŞ YORUM MODALI (kameralı + people chips) -->
+<dialog id="exitDlg">
+  <div class="dlg-head">Oda Çıkış — Son Durum</div>
+  <div class="dlg-body">
+    <label>Durum</label>
+    <div class="seg" id="statusSeg">
+      <div class="chip" data-val="clean">🧽 Temiz / Düzenli</div>
+      <div class="chip" data-val="messy">🧹 Dağınık / Toplanmalı</div>
+      <div class="chip" data-val="issue">⚠️ Sorun / Arıza</div>
+    </div>
+    <label style="margin-top:12px">Genel Memnuniyet</label>
+    <div class="stars" id="stars" aria-label="Puan"><span>⭐</span><span>⭐</span><span>⭐</span><span>⭐</span><span>⭐</span></div>
+    <label style="margin-top:12px">Kısa Yorum</label>
+    <textarea id="fbComment" rows="3" placeholder="Örn. projeksiyon bulanık, çöpler dolu, klima gürültülü..."></textarea>
+
+    <!-- FOTOĞRAF (sadece kameradan) -->
+    <label style="margin-top:12px">Oda fotoğrafı</label>
+    <div class="row" style="gap:8px; align-items:flex-start">
+      <button id="openCam" class="btn light" type="button">📷 Kameradan Çek</button>
+      <img id="exitPreview" alt="Önizleme" style="display:none;max-height:120px;border:1px solid var(--edge);border-radius:8px">
+    </div>
+    <div id="photoStatus" class="statusline muted" style="margin-top:6px"></div>
+
+    <label style="margin-top:12px">Kimlerle beraberdin? (Enter)</label>
+    <div class="chips" id="withBox"><input id="withInput" placeholder="Örn. Ali Y., Ayşe K." /></div>
+    <div class="seg" style="margin-top:10px">
+      <div class="chip tag" data-tag="temizlik">🧼 Temizlik</div>
+      <div class="chip tag" data-tag="donanım">🖥️ Donanım</div>
+      <div class="chip tag" data-tag="elektrik">🔌 Elektrik</div>
+      <div class="chip tag" data-tag="düzen">🗂️ Düzen</div>
+    </div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn light" id="fbCancel" type="button">Vazgeç</button>
+    <button id="fbSend" class="btn" type="button">Gönder & Çıkış Kaydet</button>
+  </div>
+</dialog>
+
+<!-- Kamera Diyaloğu -->
+<dialog id="camDlg" style="border:none;border-radius:16px;padding:0;width:min(520px,calc(100% - 24px));background:var(--card);border:1px solid var(--edge)">
+  <div class="dlg-head">Kameradan Fotoğraf</div>
+  <div class="dlg-body" style="display:flex;flex-direction:column;gap:8px">
+    <video id="camVideo" playsinline autoplay style="width:100%;max-height:320px;background:#000;border-radius:12px"></video>
+    <canvas id="camCanvas" style="display:none"></canvas>
+    <div class="muted" style="font-size:12px">İpucu: Arka kamera için “environment” tercih edilir; iOS Safari’de sessiz modda çekimler sessiz olur.</div>
+  </div>
+  <div class="dlg-foot">
+    <button id="camCancel" class="btn light" type="button">Vazgeç</button>
+    <button id="camShoot" class="btn" type="button">📸 Çek</button>
+  </div>
+</dialog>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+<script>
+  // ==== FIREBASE ====
+  const firebaseConfig = {
+    apiKey: "AIzaSyDJtcrJ6Eh4BfZnn0M-4z9QYi_2AS-ikHw",
+    authDomain: "ieee-oda.firebaseapp.com",
+    databaseURL: "https://ieee-oda-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "ieee-oda",
+    storageBucket: "ieee-oda.firebasestorage.app",
+    messagingSenderId: "788998880363",
+    appId: "1:788998880363:web:5eacc71c326cffe7b3452e"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth(), db = firebase.database();
+
+  // ==== helpers ====
+  const $ = id => document.getElementById(id);
+  const room = sessionStorage.getItem('gate_room');
+  const verified = sessionStorage.getItem('gate_verified') === '1';
+  $('roomPill').textContent = room ? `Oda: ${room}` : '(QR yok)';
+  const presenceEl = $('presence');
+  const opMsg = (msg, type='muted')=>{ const el=$('opStatus'); el.className='statusline '+type; el.textContent=msg||''; };
+  const fmt = ts => new Date(ts||0).toLocaleString();
+
+  const actIds = ['enterBtn','exitBtn','breakStartBtn','breakEndBtn','invSend','m_enter','m_exit','m_bstart','m_bend','fbSend','resSend'];
+  const setActionsEnabled = on => actIds.forEach(id => { const b=$(id); if(b) b.disabled=!on; });
+
+  function waitAuth(){ return new Promise(res => { const u = auth.currentUser; if(u) return res(u); const unsub=auth.onAuthStateChanged(x=>{unsub();res(x)}); }); }
+  async function requireLogin(){ const u = await waitAuth(); if(!u){ location.replace('login.html?next='+encodeURIComponent('panel.html')); throw new Error('Oturum yok.'); } return u; }
+
+  opMsg('');
+
+  function toast(msg){ const t=$('toast'); if(!t) return; t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 1800); }
+
+  async function ensureNotifyPerm(){
+    try{ if(!('Notification' in window)) return;
+      if(Notification.permission==='default') await Notification.requestPermission();
+    }catch{}
+  }
+  function notifyNow(title, body){
+    try{ if(('Notification' in window) && Notification.permission==='granted'){
+      new Notification(title, { body });
+    }}catch{}
+  }
+
+
+  (async () => {
+    const u = await waitAuth();
+    if (!u) { location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
+    if (!verified || !room) { location.replace('gate.html'); return; }
+    $('hello').textContent = `Merhaba, ${u.displayName || u.email || u.uid}`;
+    attachMyLog(u.uid);
+    attachReservations(room, u.uid);
+    await hydratePresenceAndStats(u.uid);
+    attachMyInvoices(u.uid);
+    setActionsEnabled(true);
+  })();
+
+  $('logout')?.addEventListener('click', ()=> auth.signOut().then(()=>location.replace('login.html')));
+
+  function setPresence(inRoom){
+    presenceEl.className = 'presence '+(inRoom?'in':'out');
+    presenceEl.textContent = inRoom ? 'İçeridesin' : 'Dışarıdasın';
+    ['enterBtn','m_enter'].forEach(id=>{ const b=$(id); if(b) b.disabled=inRoom; });
+    ['exitBtn','m_exit'].forEach(id=>{ const b=$(id); if(b) b.disabled=!inRoom; });
+  }
+
+  async function fetchRows(uid, since){
+    try{
+      const s = await db.ref(`attendanceByUser/${uid}`).orderByChild('createdAt').startAt(since).get();
+      return Object.values(s.val()||{});
+    }catch(_){
+      const s2 = await db.ref(`attendanceByUser/${uid}`).limitToLast(1000).get();
+      return Object.values(s2.val()||{}).filter(r => (r.createdAt||0) >= since);
+    }
+  }
+
+  let liveTimer=null;
+  async function hydratePresenceAndStats(uid){
+    const since = Date.now() - 30*86400000;
+    const rows = (await fetchRows(uid, since)).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    let inside=false, lastEnter=null;
+    for(const r of rows){
+      if(r.roomId!==room) continue;
+      if(r.action==='enter'){ inside=true; lastEnter=r.createdAt; }
+      if(r.action==='exit'){ inside=false; lastEnter=null; }
+    }
+    setPresence(inside);
+    const myLast = [...rows].reverse().find(r=>r.roomId===room);
+    $('lastAction').textContent = myLast ? `${myLast.action} @ ${fmt(myLast.createdAt)}` : '—';
+    renderTodaySum(rows, inside, lastEnter);
+    renderTimeline(rows);
+  }
+
+  function renderTodaySum(allRows, insideNow, lastEnter){
+    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+    const today = (allRows||[]).filter(r=>r.roomId===room && (r.createdAt||0)>=startOfDay.getTime()).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    let total = 0, openStart=null;
+    for(const r of today){
+      if(r.action==='enter') openStart = r.createdAt;
+      if(r.action==='exit' && openStart){ total += (r.createdAt - openStart); openStart=null; }
+    }
+    if(insideNow && (openStart||lastEnter)) total += (Date.now() - (openStart||lastEnter));
+    const show = ms => {
+      const h = Math.floor(ms/3600000), m = Math.floor((ms%3600000)/60000), s = Math.floor((ms%60000)/1000);
+      $('sumToday').textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    };
+    show(total);
+    if(liveTimer) clearInterval(liveTimer);
+    if(insideNow){
+      const start = (openStart||lastEnter||Date.now());
+      liveTimer = setInterval(()=> show(total + (Date.now() - start)), 1000);
+    }
+  }
+  function renderTimeline(allRows){
+    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+    const dayStart = startOfDay.getTime(), dayEnd = dayStart + 86400000;
+    const rows = (allRows||[]).filter(r=>r.roomId===room && (r.createdAt||0)>=dayStart).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    const container=$('timeline'); if(!container) return; container.innerHTML='';
+    let open=null, segs=[];
+    rows.forEach(r=>{
+      if(r.action==='enter') open=r.createdAt;
+      if(r.action==='exit' && open){ segs.push([open, r.createdAt]); open=null; }
+    });
+    if(open) segs.push([open, Date.now()]);
+    segs.forEach(([s,e])=>{
+      const l = Math.max(0, (s-dayStart)/(dayEnd-dayStart)*100);
+      const w = Math.max(0.5, (e-s)/(dayEnd-dayStart)*100);
+      const b=document.createElement('div');
+      b.style.position='absolute'; b.style.left=l+'%'; b.style.width=w+'%'; b.style.top='0'; b.style.bottom='0';
+      b.style.background='linear-gradient(90deg,var(--pri),var(--pri-2))'; b.style.borderRadius='999px';
+      container.appendChild(b);
+    });
+    const totalMs = segs.reduce((a,[s,e])=>a+(e-s),0);
+    const h = Math.floor(totalMs/3600000), m = Math.floor((totalMs%3600000)/60000);
+    $('timelineLegend').textContent = segs.length ? `Toplam: ${h} sa ${m} dk (blok: ${segs.length})` : 'Bugün kayıt yok';
+  }
+  // çağır: hydratePresenceAndStats() sonunda:
+
+
+  let myLogUnsub = null;
+  function attachMyLog(uid){
+    const ref = db.ref(`attendanceByUser/${uid}`).limitToLast(40);
+    if (myLogUnsub) ref.off('value', myLogUnsub);
+    myLogUnsub = ref.on('value', snap=>{
+      const tbody = $('myRows'); if(!tbody) return; tbody.innerHTML='';
+      const rows = Object.values(snap.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      tbody.innerHTML = rows.map(r=>`<tr><td>${fmt(r.createdAt||0)}</td><td>${r.action}</td><td>${r.roomId}</td><td>${r.method||''}</td></tr>`).join('');
+    });
+  }
+
+  async function refreshMyLog(uid){
+    const s = await db.ref(`attendanceByUser/${uid}`).limitToLast(40).get();
+    const tbody = $('myRows'); if(!tbody) return;
+    const rows = Object.values(s.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    tbody.innerHTML = rows.map(r=>`<tr><td>${fmt(r.createdAt||0)}</td><td>${r.action}</td><td>${r.roomId}</td><td>${r.method||''}</td></tr>`).join('');
+  }
+
+  let writing = false;
+  async function writeAttendance(action, extra={}){
+    if (writing) return;
+    writing = true;
+    try{
+      const u = await requireLogin();
+      const pushId = db.ref().child('attendanceByUser').push().key;
+      const rec = { userId:u.uid, userName:u.displayName||u.email||'unknown', roomId:room, action, createdAt: firebase.database.ServerValue.TIMESTAMP, ua:navigator.userAgent||'', method:'panel', ...extra };
+      const updates = {};
+      setUndo({ uid:u.uid, room, pushId, action });
+      updates[`/attendanceByUser/${u.uid}/${pushId}`] = rec;
+      updates[`/attendanceByRoom/${room}/${pushId}`] = rec;
+      await db.ref().update(updates);
+      await hydratePresenceAndStats(u.uid); await refreshMyLog(u.uid);
+    } finally { writing = false; }
+  }
+
+  // son işlem için "geri al" bilgisi
+function setUndo(payload){
+    localStorage.setItem('lastOp', JSON.stringify({ at: Date.now(), ...payload }));
+  }
+  async function tryUndo(){
+    const d = JSON.parse(localStorage.getItem('lastOp')||'null'); if(!d) return toast('Geri alınacak işlem yok');
+    if(Date.now() - d.at > 10000) return toast('Süre doldu (10 sn).');
+    try{
+      // iki dalı da sil: attendanceByUser & attendanceByRoom
+      await db.ref(`/attendanceByUser/${d.uid}/${d.pushId}`).remove();
+      await db.ref(`/attendanceByRoom/${d.room}/${d.pushId}`).remove();
+      localStorage.removeItem('lastOp');
+      toast('İşlem geri alındı'); notifyNow('Oda','Son işlem geri alındı');
+      await hydratePresenceAndStats(d.uid); await refreshMyLog(d.uid);
+    }catch(e){ toast('Geri alınamadı'); console.error(e); }
+  }
+
+  const withLoading = (btn, fn) => async ()=>{ if(!btn) return; const old=btn.innerHTML; btn.disabled=true; btn.innerHTML=old+' <span class="spinner"></span>'; try{ await fn(); } finally{ btn.disabled=false; btn.innerHTML=old; } };
+
+  const enterBtn=$('enterBtn'), exitBtn=$('exitBtn'), bStart=$('breakStartBtn'), bEnd=$('breakEndBtn');
+  enterBtn?.addEventListener('click', withLoading(enterBtn, async ()=>{ await writeAttendance('enter'); opMsg('Giriş kaydedildi.', 'ok'); setPresence(true); }));
+  bStart?.addEventListener('click', withLoading(bStart, async ()=>{ await writeAttendance('break_start'); opMsg('Mola başlatıldı.', 'ok'); }));
+  bEnd?.addEventListener('click', withLoading(bEnd, async ()=>{ await writeAttendance('break_end'); opMsg('Mola bitti.', 'ok'); }));
+  $('m_enter')?.addEventListener('click', ()=> enterBtn?.click());
+  $('m_exit')?.addEventListener('click', ()=> exitBtn?.click());
+  $('m_bstart')?.addEventListener('click', ()=> bStart?.click());
+  $('m_bend')?.addEventListener('click', ()=> bEnd?.click());
+
+  // ==== Exit dialog (tags + stars + people) ====
+  const statusSeg = $('statusSeg'); let fbStatusVal='clean';
+  statusSeg.querySelectorAll('.chip').forEach(ch=>{ if(ch.dataset.val==='clean') ch.classList.add('active'); ch.addEventListener('click', ()=>{ statusSeg.querySelectorAll('.chip').forEach(x=>x.classList.remove('active')); ch.classList.add('active'); fbStatusVal=ch.dataset.val; }); });
+  const starEl=$('stars'); let rating=0; [...starEl.children].forEach((s,i)=> s.addEventListener('click', ()=>{ rating=i+1; [...starEl.children].forEach((x,k)=> x.classList.toggle('on', k<rating)); }));
+  const activeTags=new Set(); document.querySelectorAll('.tag').forEach(t=> t.addEventListener('click', ()=>{ const k=t.dataset.tag; activeTags.has(k)?(activeTags.delete(k),t.classList.remove('active')):(activeTags.add(k),t.classList.add('active')); }));
+  const withBox=$('withBox'), withInput=$('withInput');
+  function addPerson(raw){ const name=(raw||'').replace(/,/g,' ').trim(); if(!name) return; const exists=[...withBox.querySelectorAll('.person')].some(n=>n.textContent.toLowerCase()===name.toLowerCase()); if(exists){ withInput.value=''; return; } const chip=document.createElement('span'); chip.className='chip person'; chip.textContent=name; chip.title='Kaldır'; chip.onclick=()=>chip.remove(); withBox.insertBefore(chip, withInput); withInput.value=''; }
+  withInput.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===','){ e.preventDefault(); addPerson(withInput.value); } if(e.key==='Backspace'&&!withInput.value){ const last=withBox.querySelector('.person:last-of-type'); last&&last.remove(); }});
+  withInput.addEventListener('blur', ()=> addPerson(withInput.value));
+
+  const exitDlg=$('exitDlg'); exitBtn?.addEventListener('click', ()=> exitDlg.showModal()); $('fbCancel')?.addEventListener('click', ()=> exitDlg.close());
+
+  // ==== KAMERA: aç/kapa/çek ====
+  let __camStream = null;
+  let photoDataUrl = ''; // kameradan çekilen son foto (DataURL)
+
+  const exitPreview = document.getElementById('exitPreview');
+  const photoStatus = document.getElementById('photoStatus');
+  const openCam     = document.getElementById('openCam');
+  const camDlg      = document.getElementById('camDlg');
+  const camVideo    = document.getElementById('camVideo');
+  const camCanvas   = document.getElementById('camCanvas');
+  const camShootBtn = document.getElementById('camShoot');
+  const camCancelBtn= document.getElementById('camCancel');
+
+  async function startCamera(){
+    try{
+      __camStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      });
+      camVideo.srcObject = __camStream;
+      await camVideo.play();
+    }catch(e){
+      console.error('Kamera açılamadı:', e);
+      alert('Kamera açılamadı. Tarayıcı izinlerini kontrol et.');
+      stopCamera();
+      camDlg?.close();
+    }
+  }
+  function stopCamera(){
+    if(__camStream){
+      __camStream.getTracks().forEach(t=>t.stop());
+      __camStream = null;
+    }
+    camVideo.srcObject = null;
+  }
+
+  openCam?.addEventListener('click', ()=>{
+    photoDataUrl = ''; // yeni çekim için sıfırla
+    camDlg.showModal();
+    startCamera();
+  });
+  camCancelBtn?.addEventListener('click', ()=>{
+    stopCamera();
+    camDlg.close();
+  });
+  camShootBtn?.addEventListener('click', ()=>{
+    try{
+      const vw = camVideo.videoWidth, vh = camVideo.videoHeight;
+      if(!vw || !vh) return;
+      const maxW=1024, maxH=768;
+      const ratio = Math.min(maxW/vw, maxH/vh, 1);
+      const w = Math.round(vw*ratio), h = Math.round(vh*ratio);
+      camCanvas.width = w; camCanvas.height = h;
+      const ctx = camCanvas.getContext('2d');
+      ctx.drawImage(camVideo, 0, 0, w, h);
+      photoDataUrl = camCanvas.toDataURL('image/jpeg', 0.72);
+      exitPreview.src = photoDataUrl;
+      exitPreview.style.display = 'inline-block';
+      if(photoStatus) photoStatus.textContent = 'Kameradan fotoğraf çekildi.';
+    }catch(e){
+      console.error(e);
+      alert('Fotoğraf çekilemedi.');
+    }finally{
+      stopCamera();
+      camDlg.close();
+    }
+  });
+
+  // ==== ÇIKIŞ GÖNDERME: foto sadece kamera ile ====
+  $('fbSend')?.addEventListener('click', withLoading($('fbSend'), async ()=>{
+    const u = await requireLogin();
+    const comment = $('fbComment').value.trim();
+    const tags = Array.from(activeTags);
+    const people = [...withBox.querySelectorAll('.person')].map(x=>x.textContent);
+
+    // sadece kameradan gelen dataURL (yoksa boş)
+    const photoB64 = photoDataUrl || '';
+
+    const fbRef = db.ref(`roomFeedback/${room}`).push();
+    await fbRef.set({
+      userId:u.uid, userName:u.displayName||u.email||'unknown',
+      status:fbStatusVal, rating, comment, tags, withPeople:people,
+      photoB64, createdAt: Date.now()
+    });
+
+    await writeAttendance('exit', { feedbackId: fbRef.key });
+    setPresence(false); opMsg('Çıkış + yorum kaydedildi.', 'ok');
+
+    // temizlik
+    $('fbComment').value='';
+    activeTags.clear(); document.querySelectorAll('.tag').forEach(t=>t.classList.remove('active'));
+    statusSeg.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+    statusSeg.querySelector('[data-val="clean"]').classList.add('active'); fbStatusVal='clean';
+    rating=0; [...starEl.children].forEach(x=>x.classList.remove('on'));
+    [...withBox.querySelectorAll('.person')].forEach(x=>x.remove()); withInput.value='';
+    if(exitPreview){ exitPreview.style.display='none'; }
+    if(photoStatus){ photoStatus.textContent=''; }
+    photoDataUrl = '';
+    exitDlg.close();
+  }));
+
+  // ==== Reservations ====
+  function attachReservations(roomId, uid){
+    const now = Date.now(), soon = now + 30*86400000;
+    db.ref(`roomReservations/${roomId}`).orderByChild('startAt').startAt(now).endAt(soon).on('value', s=>{
+      const rows = Object.values(s.val()||{}).sort((a,b)=>(a.startAt||0)-(b.startAt||0));
+      const tb = $('resRows'); tb.innerHTML = rows.length? rows.map(r=>`
+        <tr>
+          <td>${new Date(r.startAt).toLocaleString()} – ${new Date(r.endAt).toLocaleTimeString()}</td>
+          <td>${(r.title||'')}</td>
+          <td><span class="chip ${r.status||'pending'}">${r.status||'pending'}</span></td>
+        </tr>`).join('') : `<tr><td colspan="3" class="muted">Yaklaşan rezervasyon yok</td></tr>`;
+    });
+
+    $('resSend')?.addEventListener('click', withLoading($('resSend'), async ()=>{
+      const title = $('resTitle').value.trim();
+      const start = $('resStart').value ? new Date($('resStart').value).getTime() : 0;
+      const end   = $('resEnd').value ? new Date($('resEnd').value).getTime()   : 0;
+      const note  = $('resNote').value.trim();
+      if(!title || !start || !end || end<=start){ $('resStatus').className='statusline err'; $('resStatus').textContent='Başlık ve geçerli zaman aralığı girin.'; return; }
+
+      const snap = await db.ref(`roomReservations/${roomId}`).orderByChild('startAt').startAt(start-6*3600e3).endAt(end+6*3600e3).get();
+      const clash = Object.values(snap.val()||{}).some(r => (r.status!=='declined') && !(r.endAt<=start || r.startAt>=end));
+      if(clash) { $('resStatus').className='statusline warn'; $('resStatus').textContent='Bu aralık başka rezervasyonla çakışıyor (admin onayına düşecek).'; }
+
+      const ref = db.ref(`roomReservations/${roomId}`).push();
+      const u = await requireLogin();
+      const rec = { id:ref.key, roomId:roomId, userId:u.uid, userName:u.displayName||u.email||'unknown', title, note, startAt:start, endAt:end, status:'pending', createdAt:Date.now() };
+      await ref.set(rec);
+      await db.ref(`userReservations/${u.uid}/${ref.key}`).set(rec);
+
+      $('resStatus').className='statusline ok'; $('resStatus').textContent='Rezervasyon isteği iletildi (onay bekliyor).';
+      $('resTitle').value=''; $('resStart').value=''; $('resEnd').value=''; $('resNote').value='';
+    }));
+  }
+
+  // Inventory
+  $('invSend')?.addEventListener('click', withLoading($('invSend'), async ()=>{
+    const u = await requireLogin();
+    const name = $('invName').value.trim();
+    const qty  = Math.max(1, parseInt(($('invQty').value||'1'),10));
+    const note = $('invNote').value.trim();
+    const cat  = $('invCat').value || 'genel';
+    if(!name){ $('invStatus').className='statusline err'; $('invStatus').textContent='Ürün adı gerekli.'; return; }
+    const ref = db.ref(`inventoryRequests/${room}`).push();
+    await ref.set({ id: ref.key, userId:u.uid, userName:u.displayName||u.email||'unknown', roomId: room, name, qty, note, cat, status:'pending', createdAt: Date.now() });
+    $('invStatus').className='statusline ok'; $('invStatus').textContent='Talep kaydedildi.'; $('invName').value=''; $('invQty').value='1'; $('invNote').value=''; $('invCat').value='genel';
+  }));
+  $('undoBtn')?.addEventListener('click', tryUndo);
+
+  window.addEventListener('keydown', e=>{
+    if(e.target && /input|textarea|select/i.test(e.target.tagName)) return;
+    const k = e.key.toLowerCase();
+    if(k==='e'){ $('enterBtn')?.click(); }
+    else if(k==='x'){ $('exitBtn')?.click(); }
+    else if(k==='b'){ $('breakStartBtn')?.click(); }
+    else if(k==='n'){ $('breakEndBtn')?.click(); }
+    else if(k==='r'){ $('resSend')?.click(); }
+    else if(k==='u'){ $('undoBtn')?.click(); }
+  });
+  function attachMyInvoices(uid){
+    const ref = db.ref(`userInvoices/${uid}`).limitToLast(100);
+    ref.on('value', s=>{
+      const tb = $('myInvRows'); if(!tb) return;
+      const rows = Object.values(s.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      tb.innerHTML = rows.length ? rows.map(r=>`
+        <tr>
+          <td>${fmt(r.createdAt)}</td>
+          <td>${(r.title||'')}</td>
+          <td>₺${(r.total||0).toFixed(2)}</td>
+          <td>${(r.status||'unpaid')}</td>
+        </tr>
+      `).join('') : `<tr><td colspan="4" class="muted">Fatura yok</td></tr>`;
+    });
+  }
+
+  // ==== Aidat (dues) ====
+
+function ymNow(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+
+async function loadDuesConfig(){
+  try{
+    const s = await db.ref('dues/config').get();
+    const cfg = s.val()||{};
+    if($('duesMonth'))  $('duesMonth').value  = $('duesMonth').value || ymNow();
+    if($('duesAmount') && (cfg.amount!=null)) $('duesAmount').value = cfg.amount;
+  }catch{}
+}
+
+// sayfa açılışında enable et
+(async()=>{
+  await loadDuesConfig();
+  const u = await waitAuth();
+  if(u && $('duesSend')) $('duesSend').disabled = false;
+})();
+
+$('duesSend')?.addEventListener('click', withLoading($('duesSend'), async ()=>{
+  try{
+    const u = await requireLogin();
+    const month = ($('duesMonth').value || '').trim() || ymNow();
+    const amt   = parseFloat(($('duesAmount').value||'').trim());
+    if(!(amt>=0)) { $('duesStatus').className='statusline err'; $('duesStatus').textContent='Geçerli tutar gir.'; return; }
+
+    const ref = db.ref(`duesPayments/${u.uid}`).push();
+    const rec = {
+      id: ref.key,
+      userId: u.uid,
+      userName: u.displayName || u.email || 'unknown',
+      amount: +(amt||0),
+      month,
+      status:'pending',
+      createdAt: Date.now()
+    };
+
+    // kullanıcı kendi dalına kaydeder
+    await ref.set(rec);
+    // admin listesi için index mirror
+    await db.ref(`duesPaymentsIndex/${ref.key}`).set(rec);
+
+    $('duesStatus').className='statusline ok';
+    $('duesStatus').textContent='Aidat bildirimin gönderildi (onay bekliyor).';
+  }catch(e){
+    console.error(e);
+    $('duesStatus').className='statusline err';
+    $('duesStatus').textContent='Gönderilemedi (yetki/bağlantı hatası).';
+  }
+}));
+
+
+
+</script>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+</body>
+</html>
