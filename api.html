@@ -1,0 +1,51 @@
+<!doctype html><html lang="tr"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>API — TechOps</title>
+<link rel="stylesheet" href="assets/techops.css">
+</head><body>
+<div class="bg-grid"></div><div class="bg-lines"></div>
+
+<header class="container">
+  <div class="brand">
+    <span class="logo"><img src="assets/techops.png" alt="TechOps"/></span>
+    <div>TechOps</div>
+  </div>
+  <nav>
+    <a href="index.html">Ana Sayfa</a>
+    <a href="docs.html">Dökümantasyon</a>
+    <a href="contact.html">İletişim</a>
+  </nav>
+  <div class="cta">
+  </div>
+</header>
+
+<main class="container section">
+  <div class="backbar"><a class="backbtn" href="#" data-back>↩ Geri</a></div>
+
+  <h1 class="reveal">API Referansı</h1>
+
+  <div class="card reveal">
+    <h3>POST /api/verify</h3>
+    <p>QR token doğrulama. Header: <code>Authorization: Bearer &lt;token&gt;</code></p>
+    <pre class="card" style="overflow:auto;padding:12px"><code>{
+  "qr": "base64url",
+  "pin": "optional"
+}</code></pre>
+  </div>
+
+  <div class="card reveal">
+    <h3>POST /api/events</h3>
+    <p>Oda girişi/çıkışı logları (webhook).</p>
+  </div>
+</main>
+
+<footer class="container">
+  <div class="links">
+    <span>© <span id="y"></span> IEEE İKÇÜ TechOps</span> •
+    <a href="terms.html">Kullanım Şartları</a> •
+    <a href="privacy.html">Gizlilik</a>
+  </div>
+</footer>
+
+<script src="assets/techops.js"></script>
+</body></html>

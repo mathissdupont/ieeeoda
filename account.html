@@ -1,0 +1,71 @@
+<!doctype html><html lang="tr"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Hesap Yönetimi — TechOps</title>
+<link rel="stylesheet" href="assets/techops.css">
+</head><body>
+<div class="bg-grid"></div><div class="bg-lines"></div>
+
+<header class="container">
+  <div class="brand">
+    <span class="logo"><img src="assets/techops.png" alt="TechOps"/></span>
+    <div>TechOps</div>
+  </div>
+  <nav>
+    <a href="index.html">Ana Sayfa</a>
+    <a href="docs.html">Dökümantasyon</a>
+    <a href="contact.html">İletişim</a>
+  </nav>
+  <div class="cta">
+  </div>
+</header>
+
+<main class="container section">
+  <div class="backbar"><a class="backbtn" href="#" data-back>↩ Geri</a></div>
+
+  <h1 class="reveal">Hesap Yönetimi (IAM)</h1>
+  <p class="badge reveal">IAM • RBAC • Denetim</p>
+
+  <div class="card reveal">
+    <h3>Rol Tabanlı Yetkilendirme (RBAC)</h3>
+    <ul>
+      <li><strong>Üye</strong>: Etkinlik ve genel portal erişimi.</li>
+      <li><strong>Aktif Üye</strong>: Proje/komite araçlarına sınırlı yazma yetkisi.</li>
+      <li><strong>Koordinatör</strong>: Komite varlıkları (sayfa, belge) üzerinde tam yetki.</li>
+      <li><strong>TechOps</strong>: Altyapı erişimi, log görüntüleme, bakım işlemleri.</li>
+      <li><strong>Denetim</strong>: Salt-okunur denetim kayıtları, RCA erişimi.</li>
+    </ul>
+  </div>
+
+  <div class="card reveal">
+    <h3>Kimlik Doğrulama</h3>
+    <ul>
+      <li><strong>SSO</strong>: Üniversite e-postası veya kulüp domaini ile giriş (Google Workspace/Microsoft Entra).</li>
+      <li><strong>2FA</strong>: TOTP uygulaması — kritik panellerde zorunlu.</li>
+      <li><strong>Cihaz Doğrulama</strong>: Şüpheli cihaz/IP’de ek doğrulama.</li>
+    </ul>
+  </div>
+
+  <div class="card reveal">
+    <h3>Hesap Yaşam Döngüsü</h3>
+    <ol>
+      <li><strong>Oluşturma</strong>: Aday üyelik kabulü → otomatik “Üye”.</li>
+      <li><strong>Yükseltme</strong>: Puan/katkı, komite onayı → “Aktif Üye/Koordinatör”.</li>
+      <li><strong>Atama</strong>: TechOps/Denetim rolleri yönetim kararıyla verilir.</li>
+      <li><strong>Askıya Alma</strong>: İhlal, ayrılık veya inaktivite → süreli/süresiz.</li>
+      <li><strong>Arşivleme</strong>: Mezun/ayrılanların erişimi kapatılır, alias’lar temizlenir.</li>
+    </ol>
+  </div>
+
+  <div class="notice reveal">Teknik akış (örnek): Firebase Auth/Entra SSO → RBAC talebi (ticket) → çift onay → role binding.</div>
+</main>
+
+<footer class="container">
+  <div class="links">
+    <span>© <span id="y"></span> IEEE İKÇÜ TechOps</span> •
+    <a href="terms.html">Kullanım Şartları</a> •
+    <a href="privacy.html">Gizlilik</a>
+  </div>
+</footer>
+
+<script src="assets/techops.js"></script>
+</body></html>
