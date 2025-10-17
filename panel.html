@@ -231,8 +231,8 @@
   <div class="card">
       <h3>Faturalarım</h3>
       <table>
-        <thead><tr><th>Zaman</th><th>Başlık</th><th>Tutar</th><th>Durum</th></tr></thead>
-        <tbody id="myInvRows"><tr><td colspan="4" class="muted">Yükleniyor…</td></tr></tbody>
+        <thead><tr><th>Zaman</th><th>Başlık</th><th>Tutar</th><th>Durum</th><th></th></tr></thead>
+        <tbody id="myInvRows"><tr><td colspan="5" class="muted">Yükleniyor…</td></tr></tbody>
       </table>
     </div>
 
@@ -686,21 +686,7 @@ function setUndo(payload){
     else if(k==='r'){ $('resSend')?.click(); }
     else if(k==='u'){ $('undoBtn')?.click(); }
   });
-  function attachMyInvoices(uid){
-    const ref = db.ref(`userInvoices/${uid}`).limitToLast(100);
-    ref.on('value', s=>{
-      const tb = $('myInvRows'); if(!tb) return;
-      const rows = Object.values(s.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-      tb.innerHTML = rows.length ? rows.map(r=>`
-        <tr>
-          <td>${fmt(r.createdAt)}</td>
-          <td>${(r.title||'')}</td>
-          <td>₺${(r.total||0).toFixed(2)}</td>
-          <td>${(r.status||'unpaid')}</td>
-        </tr>
-      `).join('') : `<tr><td colspan="4" class="muted">Fatura yok</td></tr>`;
-    });
-  }
+
 
   // ==== Aidat (dues) ====
 
@@ -760,8 +746,6 @@ $('duesSend')?.addEventListener('click', withLoading($('duesSend'), async ()=>{
 function hasInvoiced(id){ try{ return JSON.parse(localStorage.getItem('invoices_done')||'{}')[id]; }catch{ return false; } }
 function markInvoiced(id){ const m = JSON.parse(localStorage.getItem('invoices_done')||'{}'); m[id]=true; localStorage.setItem('invoices_done', JSON.stringify(m)); }
 
-// Para formatı (₺)
-const fmtTRY = v => new Intl.NumberFormat('tr-TR', { style:'currency', currency:'TRY' }).format(+v||0);
 
 // Sıra numarası üretimi (yıl + kısa id)
 function makeInvoiceNo(rec){
@@ -788,7 +772,7 @@ async function generateInvoicePdf(rec, user){
   // Başlık Yazıları
   doc.setTextColor(255,255,255);
   doc.setFont('helvetica','bold'); doc.setFontSize(18);
-  doc.text('IEEE İKÇÜ TechOps', margin, 42);
+  doc.text('IEEE IKCU TechOps', margin, 42);
   doc.setFont('helvetica','normal'); doc.setFontSize(12);
   doc.text('Aidat / Fatura Belgesi', margin, 60);
 
@@ -804,14 +788,14 @@ async function generateInvoicePdf(rec, user){
   const boxX = pageW - margin - 220, boxY = 96, boxW = 220, boxH = 84;
   doc.setDrawColor(233,239,248);
   doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8);
-  doc.setFont('helvetica','bold'); doc.text('FATURA / MAKBUZ', boxX+14, boxY+22);
+  doc.setFont('helvetica','bold'); doc.text('MAKBUZ', boxX+14, boxY+22);
   doc.setFont('helvetica','normal');
   doc.text(`No: ${invNo}`, boxX+14, boxY+42);
   doc.text(`Tarih: ${issueAt}`, boxX+14, boxY+62);
 
   // Alıcı Bilgileri
   const whoY = 110;
-  doc.setFont('helvetica','bold'); doc.text('ÖDEMEYİ YAPAN', margin, whoY);
+  doc.setFont('helvetica','bold'); doc.text('ODEMEYI YAPAN', margin, whoY);
   doc.setFont('helvetica','normal');
   doc.text(`${user.displayName || user.email || user.uid}`, margin, whoY+18);
   if (user.email) doc.text(`${user.email}`, margin, whoY+36);
@@ -820,8 +804,8 @@ async function generateInvoicePdf(rec, user){
   const orgY = whoY + 64;
   doc.setFont('helvetica','bold'); doc.text('KURUM', margin, orgY);
   doc.setFont('helvetica','normal');
-  doc.text('IEEE İKÇÜ Öğrenci Kolu — TechOps', margin, orgY+18);
-  doc.text('Amaç: Aidat tahsilatı ve kulüp faaliyetleri', margin, orgY+36);
+  doc.text('IEEE IKCU Ogrenci Kolu — TechOps', margin, orgY+18);
+  doc.text('Amaç: Aidat tahsilati ve kulup faaliyetleri', margin, orgY+36);
 
   // Çizgi
   doc.setDrawColor(233,239,248);
@@ -830,12 +814,12 @@ async function generateInvoicePdf(rec, user){
   // Kalem (item) alanı
   const itemsY = orgY + 84;
   doc.setFont('helvetica','bold'); doc.text('KALEM', margin, itemsY);
-  doc.text('DÖNEM', margin+260, itemsY);
+  doc.text('DONEM', margin+260, itemsY);
   doc.text('TUTAR', pageW - margin - 100, itemsY, { align:'right' });
 
   doc.setFont('helvetica','normal');
   const rowY = itemsY + 22;
-  doc.text('Üye Aidatı', margin, rowY);
+  doc.text('Uye Aidati', margin, rowY);
   doc.text(`${month}`, margin+260, rowY);
   doc.text(fmtTRY(rec.amount), pageW - margin - 100, rowY, { align:'right' });
 
@@ -852,12 +836,12 @@ async function generateInvoicePdf(rec, user){
   const notesY = sumY + 54;
   doc.setFont('helvetica','bold'); doc.text('NOT', margin, notesY);
   doc.setFont('helvetica','normal');
-  doc.text('Ödeme alındı/onaylandı. Bu belge elektronik olarak oluşturulmuştur.', margin, notesY+18);
+  doc.text('Ödeme alindi. Bu belge elektronik olarak olusturulmustur.', margin, notesY+18);
 
   // Alt kısım
   doc.setTextColor(109,122,144);
   doc.setFontSize(10);
-  doc.text('© IEEE İKÇÜ TechOps', margin, 820);
+  doc.text('© IEEE IKCU TechOps', margin, 820);
 
   // Dosya adı
   const fname = `ieee-techops-fatura_${rec.month || 'ay'}_${invNo}.pdf`;
@@ -877,20 +861,6 @@ async function generateInvoicePdf(rec, user){
     await db.ref(`userInvoices/${user.uid}/${rec.id}`).set(meta);
   }catch(e){ console.warn('userInvoices yazılamadı:', e); }
 }
-
-// Onay dinleyici: status approved/received olduğunda PDF kes
-function attachDuesApprovalListener(uid){
-  // 1) Index: admin paneli burayı güncelliyorsa buradan yakalar
-  const q1 = db.ref('duesPaymentsIndex').orderByChild('userId').equalTo(uid);
-  q1.on('child_added', s => maybeInvoice(uid, { id: s.key, ...s.val() }));
-  q1.on('child_changed', s => maybeInvoice(uid, { id: s.key, ...s.val() }));
-
-  // 2) Kişisel dal: admin sadece user dalını güncelliyorsa buradan yakalar
-  const q2 = db.ref(`duesPayments/${uid}`);
-  q2.on('child_added', s => maybeInvoice(uid, { id: s.key, ...s.val() }));
-  q2.on('child_changed', s => maybeInvoice(uid, { id: s.key, ...s.val() }));
-}
-
 async function maybeInvoice(uid, rec){
   try{
     if(!rec || rec.userId !== uid) return;
@@ -907,6 +877,68 @@ async function maybeInvoice(uid, rec){
   }
 }
 
+// Para formatı
+const fmtTRY = v => new Intl.NumberFormat('tr-TR', { style:'currency', currency:'TRY' }).format(+v||0);
+
+// PDF fonksiyonunu zaten eklemiştik: generateInvoicePdf(rec, user)  (aynı kalsın)
+
+// Faturalarım tablosunu doldur + butonla indir
+function attachDuesTable(uid){
+  const ref = db.ref(`duesPayments/${uid}`).limitToLast(200);
+  ref.on('value', snap=>{
+    const tb = $('myInvRows'); if(!tb) return;
+    const rows = Object.values(snap.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    tb.innerHTML = rows.length ? rows.map(r=> {
+      const canInvoice = ['approved','paid','received'].includes(String(r.status||'').toLowerCase());
+      const btn = canInvoice
+        ? `<button class="btn light btn-make-invoice">Fatura oluştur</button>`
+        : `<span class="muted">—</span>`;
+      return `
+        <tr data-id="${r.id}">
+          <td>${fmt(r.createdAt)}</td>
+          <td>Aidat (${r.month || '—'})</td>
+          <td>${fmtTRY(r.amount)}</td>
+          <td>${(r.status || 'pending')}</td>
+          <td>${btn}</td>
+        </tr>`;
+    }).join('') : `<tr><td colspan="5" class="muted">Fatura yok</td></tr>`;
+  });
+
+  // Event delegation: satırdaki butona basılınca PDF indir
+  $('myInvRows').addEventListener('click', async (e)=>{
+    const btn = e.target.closest('.btn-make-invoice');
+    if(!btn) return;
+    const tr = btn.closest('tr');
+    const id = tr?.dataset?.id; if(!id) return;
+    try{
+      const u = await waitAuth();
+      const s = await db.ref(`duesPayments/${uid}/${id}`).get();
+      const rec = { id, ...s.val() };
+      await generateInvoicePdf(rec, u);              // PDF oluştur & indir
+      toast('Fatura indirildi ✅');
+    }catch(err){
+      console.error(err); toast('Fatura oluşturulamadı');
+    }
+  });
+}
+
+// >>> sayfa açılışındaki IIFE’da, hydrate’lerden sonra çağır:
+(async () => {
+  const u = await waitAuth();
+  if (!u) { location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
+  if (!verified || !room) { location.replace('gate.html'); return; }
+  $('hello').textContent = `Merhaba, ${u.displayName || u.email || u.uid}`;
+  attachMyLog(u.uid);
+  attachReservations(room, u.uid);
+  await hydratePresenceAndStats(u.uid);
+  attachDuesTable(u.uid);       // <-- YENİ
+  setActionsEnabled(true);
+})();
+
+
+
+
+
 // Mevcut akışın sonunda auth sonrası çağır:
 (async ()=>{
   try{
@@ -914,6 +946,8 @@ async function maybeInvoice(uid, rec){
     if(u) attachDuesApprovalListener(u.uid);
   }catch(_){}
 })();
+
+
 
 
 
