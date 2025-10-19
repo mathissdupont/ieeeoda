@@ -652,23 +652,89 @@
         </tr>`).join('') : `<tr><td colspan="3" class="muted">Yaklaşan rezervasyon yok</td></tr>`;
     });
 
-    $('resSend')?.addEventListener('click', withLoading($('resSend'), async ()=>{
-      const title = $('resTitle').value.trim();
-      const start = $('resStart').value ? new Date($('resStart').value).getTime() : 0;
-      const end   = $('resEnd').value ? new Date($('resEnd').value).getTime()   : 0;
-      const note  = $('resNote').value.trim();
-      if(!title || !start || !end || end<=start){ $('resStatus').className='statusline err'; $('resStatus').textContent='Başlık ve geçerli zaman aralığı girin.'; return; }
-      const snap = await db.ref(`roomReservations/${roomId}`).orderByChild('startAt').startAt(start-6*3600e3).endAt(end+6*3600e3).get();
-      const clash = Object.values(snap.val()||{}).some(r => (r.status!=='declined') && !(r.endAt<=start || r.startAt>=end));
-      if(clash) { $('resStatus').className='statusline warn'; $('resStatus').textContent='Bu aralık başka rezervasyonla çakışıyor (admin onayına düşecek).'; }
-      const ref = db.ref(`roomReservations/${roomId}`).push();
-      const u = await requireLogin();
-      const rec = { id:ref.key, roomId:roomId, userId:u.uid, userName:u.displayName||u.email||'unknown', title, note, startAt:start, endAt:end, status:'pending', createdAt:Date.now() };
-      await ref.set(rec);
-      await db.ref(`userReservations/${u.uid}/${ref.key}`).set(rec);
-      $('resStatus').className='statusline ok'; $('resStatus').textContent='Rezervasyon isteği iletildi (onay bekliyor).';
-      $('resTitle').value=''; $('resStart').value=''; $('resEnd').value=''; $('resNote').value='';
-    }));
+
+async function reserveAtomic(roomId, payload) {
+  const { startAt, endAt } = payload;
+  if (!startAt || !endAt || endAt <= startAt) throw new Error('Geçersiz zaman');
+
+  const slotKey = `${startAt}-${endAt}`;
+  const lockRef = db.ref(`roomReservationsLock/${roomId}/${slotKey}`);
+
+  // 1) TRANSACTION ile kilit
+  const txn = await lockRef.transaction(v => v ? v : true, false, false);
+  if (!txn.committed || txn.snapshot.val() !== true) {
+    throw new Error('Bu aralık şu an meşgul (kilit alınamadı).');
+  }
+
+  try {
+    // 2) kayıt yaz
+    const ref = db.ref(`roomReservations/${roomId}`).push();
+    const rec = {
+      id: ref.key,
+      roomId,
+      userId: payload.userId,
+      userName: payload.userName,
+      title: payload.title,
+      note: payload.note || '',
+      startAt,
+      endAt,
+      status: 'pending',      // CF karar verecek
+      createdAt: Date.now()
+    };
+    await ref.set(rec);
+    await db.ref(`userReservations/${payload.userId}/${ref.key}`).set(rec);
+    return ref.key;
+  } catch (e) {
+    // 3) hata durumunda kilidi bırak
+    await lockRef.remove();
+    throw e;
+  }
+}
+
+// ——— “Rezervasyon Gönder” butonu
+$('resSend')?.addEventListener('click', async () => {
+  const show = (txt, cls='muted') => { const el=$('resStatus'); el.className='statusline '+cls; el.textContent=txt; };
+
+  try{
+    const u = await requireLogin();
+    const title = $('resTitle').value.trim();
+    const start = $('resStart').value ? new Date($('resStart').value).getTime() : 0;
+    const end   = $('resEnd').value ? new Date($('resEnd').value).getTime()   : 0;
+    const note  = $('resNote').value.trim();
+
+    if (!title || !start || !end || end <= start) { show('Başlık ve geçerli zaman aralığı girin.', 'err'); return; }
+
+    $('resSend').disabled = true; show('Gönderiliyor…');
+
+    const id = await reserveAtomic(room, {
+      userId: (await waitAuth()).uid,
+      userName: (await waitAuth()).displayName || (await waitAuth()).email || 'unknown',
+      title, note, startAt: start, endAt: end
+    });
+
+    show('Talep iletildi. Karar birazdan görünecek (oto kontrol çalışıyor)…', 'ok');
+
+    // Karar görünene kadar mini-poll (isteğe bağlı)
+    const checkRef = db.ref(`roomReservations/${room}/${id}`);
+    const off = checkRef.on('value', s => {
+      const v = s.val() || {};
+      if (v.status && v.decisionNote) {
+        show(`Durum: ${v.status} (${v.decisionNote})`, v.status==='approved' ? 'ok' : (v.status==='declined' ? 'err' : 'warn'));
+        checkRef.off('value', off);
+      }
+    });
+
+    // formu temizle
+    $('resTitle').value=''; $('resStart').value=''; $('resEnd').value=''; $('resNote').value='';
+
+  }catch(e){
+    console.error(e);
+    show(e.message || 'Gönderilemedi', 'err');
+  }finally{
+    $('resSend').disabled = false;
+  }
+});
+
   }
 
   // ==== Günlük Takvim (30 dk slot) ====

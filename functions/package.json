@@ -1,0 +1,14 @@
+{
+  "name": "techops-functions",
+  "private": true,
+  "engines": { "node": "18" },
+  "scripts": {
+    "serve": "firebase emulators:start",
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.5.0",
+    "firebase-functions": "^5.0.1",
+    "luxon": "^3.5.0"
+  }
+}

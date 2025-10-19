@@ -3,319 +3,396 @@
 <head>
 <meta charset="UTF-8" />
 <link rel="icon" href="assets/techops.ico" type="image/x-icon" />
-<title>Panel — TechOps</title>
+<title>TechOps — Admin Panel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   :root{
-    --ink:#11243b; --muted:#6d7a90; --bg:#f6f9ff; --card:#fff; --edge:#e6ebf4;
-    --pri:#0a7cc1; --pri-2:#0b5fa3; --ok:#1a7f37; --err:#b00020; --warn:#8a5a00;
+    --bg:#0b1118; --card:#0f1a27; --ink:#e8eef6; --muted:#9bb0c8; --edge:#1f2b3b;
+    --pri:#2aa3ff; --pri-2:#58bfff; --ok:#62d29a; --err:#ff8a8a; --warn:#ffd27a;
+    --radius:16px; --radius-sm:12px; --ring:0 0 0 3px rgba(42,163,255,.22);
+    --shadow: 0 20px 50px rgba(0,0,0,.35);
   }
-  @media (prefers-color-scheme: dark){
+  @media (prefers-color-scheme: light){
     :root{
-      --bg:#0b1118; --ink:#e8eef6; --muted:#a9b7c8; --card:#0f1a27; --edge:#253449;
-      --pri:#2aa3ff; --pri-2:#58bfff; --ok:#6ee7a5; --err:#ff8585; --warn:#ffd27a;
+      --bg:#f6f9ff; --card:#ffffff; --ink:#0e2136; --muted:#6d7a90; --edge:#e6ebf4;
+      --pri:#0a7cc1; --pri-2:#0b5fa3; --ok:#1a7f37; --err:#b00020; --warn:#8a5a00;
+      --shadow: 0 16px 40px rgba(0,43,92,.08);
     }
-    input,select,textarea,button{color-scheme:dark}
   }
 
   *{box-sizing:border-box}
-  body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial; background:var(--bg); color:var(--ink)}
+  html,body{height:100%}
+  body{
+    margin:0; font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
+    background:
+      radial-gradient(1200px 800px at 70% -10%, rgba(90,170,255,.12), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(100,255,210,.10), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+  }
 
-  /* ===== APP LAYOUT (panel.html stili) ===== */
+  /* topbar */
   .topbar{
-    position:sticky; top:0; z-index:20; background:var(--card); border-bottom:1px solid var(--edge);
-    display:flex; align-items:center; gap:12px; padding:12px 16px;
+    position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:12px; padding:12px 16px;
+    backdrop-filter:saturate(140%) blur(10px);
+    background: color-mix(in oklab, var(--card) 88%, transparent);
+    border-bottom:1px solid var(--edge);
   }
-  .brand{font-weight:800; letter-spacing:.2px}
-  .topbar .right{margin-left:auto; display:flex; gap:10px; align-items:center}
-  .pill{display:inline-block; padding:6px 10px; background:#e6f3ff; color:#0a5aa6; border-radius:999px; font-size:12px}
-  @media (prefers-color-scheme: dark){ .pill{ background:#132235; color:#9bd0ff; border:1px solid #2a3a52 } }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:900}
+  .badge{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--pri),var(--pri-2));box-shadow:0 8px 20px rgba(42,163,255,.35)}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;font-size:12px;border:1px solid var(--edge);background:rgba(255,255,255,.04)}
+  .mini{display:inline-flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--edge);border-radius:999px;background:rgba(255,255,255,.04);font-size:12px}
+  .bar{width:80px;height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+  .bar>i{display:block;height:100%;width:30%;background:linear-gradient(90deg,var(--pri),var(--pri-2))}
+  .right{margin-left:auto;display:flex;gap:10px;align-items:center}
 
-  .app{
-    display:grid; grid-template-columns:260px 1fr; gap:16px; max-width:1400px; margin:16px auto; padding:0 12px 32px;
+  /* shell */
+  .wrap{max-width:1400px;margin:18px auto;padding:0 12px 32px}
+
+  /* toolbar (filtre/CSV/QR) */
+  .card{
+    background: linear-gradient(180deg, color-mix(in oklab, var(--card) 96%, transparent), var(--card));
+    border:1px solid var(--edge); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px;
   }
-  @media (max-width:1000px){ .app{ grid-template-columns:1fr } }
-
-  .sidebar{
-    position:sticky; top:66px; align-self:start; background:var(--card);
-    border:1px solid var(--edge); border-radius:14px; padding:12px;
-  }
-  .content{ min-width:0 }
-
-  .card{background:var(--card); border-radius:14px; border:1px solid var(--edge); box-shadow:0 8px 22px #002b5c14; padding:16px}
-  @media (prefers-color-scheme: dark){ .card{ box-shadow:0 10px 24px rgba(0,0,0,.35) } }
-
-  /* vertical tabs */
-  .tabs{ display:flex; flex-direction:column; gap:8px }
-  .tabs button{
-    width:100%; text-align:left; padding:10px 12px; border-radius:10px;
-    background:#eef4fb; color:#0b3a6f; border:1px solid transparent; cursor:pointer; font-weight:700;
-  }
-  .tabs button.active{ background:linear-gradient(90deg,var(--pri),var(--pri-2)); color:#031424 }
-  @media (prefers-color-scheme: dark){
-    .tabs button{ background:#132235; color:#cfe3ff; border:1px solid #2a3a52 }
-    .tabs button.active{ background:var(--pri); color:#031424; border-color:transparent }
-  }
-
-  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)} .warn{color:var(--warn)}
-  input,select,button,textarea{padding:10px 12px; border-radius:10px; border:1px solid #d8e0ee; background:#fbfdff; font-size:14px}
-  textarea{resize:vertical}
-  @media (prefers-color-scheme: dark){
-    input,select,textarea{ background:#0e1622; border:1px solid #2a3a52; color:var(--ink) }
-    input:focus,select:focus,textarea:focus{ border-color:#4aa3ff; box-shadow:0 0 0 3px rgba(74,163,255,.18); outline:none }
+  input,select,button,textarea{
+    padding:10px 12px; border-radius:12px; border:1px solid var(--edge);
+    background:rgba(255,255,255,.04); color:var(--ink); font-size:14px;
+    transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
   }
-  button{background:linear-gradient(90deg,var(--pri),var(--pri-2)); color:#031424; border:none; cursor:pointer; font-weight:800}
-  button.ghost{background:#eef4fb; color:#0b3a6f}
-  button.red{background:#cf2d39; color:#fff}
-  @media (prefers-color-scheme: dark){ button.ghost{ background:#132235; color:#d7e7ff; border:1px solid #2a3a52 } }
+  input:focus,select:focus,textarea:focus{outline:none;border-color:color-mix(in oklab,var(--pri) 65%, var(--edge)); box-shadow:var(--ring)}
+  button{background:linear-gradient(90deg,var(--pri),var(--pri-2)); color:#031424; border:none; cursor:pointer; font-weight:900; transition:transform .08s ease}
+  button:hover{ transform: translateY(-1px) }
+  button:active{ transform: translateY(0) scale(.99) }
+  button.ghost{ background:rgba(255,255,255,.04); color:var(--ink); border:1px solid var(--edge) }
+  button.red{ background:#cf2d39; color:#fff }
   button:disabled{opacity:.6; cursor:not-allowed}
 
-  /* tablolar */
-  .table-wrap{ overflow:auto; border:1px solid var(--edge); border-radius:12px }
-  table{width:100%; border-collapse:collapse; min-width:720px}
-  th,td{padding:10px 12px; border-bottom:1px solid var(--edge); font-size:14px; text-align:left; vertical-align:top}
-  th{background:#f2f6fc}
-  @media (prefers-color-scheme: dark){
-    th{ background:#18283b; color:var(--ink) }
-    td,th{ border-bottom-color:#2a3a52 }
-  }
+  /* tiles */
+  .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}
+  @media (max-width:1100px){ .tiles{grid-template-columns:repeat(3,minmax(0,1fr));} }
+  @media (max-width:820px){ .tiles{grid-template-columns:repeat(2,minmax(0,1fr));} }
+  @media (max-width:520px){ .tiles{grid-template-columns:1fr;} }
+  .tile{background:var(--card); border:1px solid var(--edge); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px; box-shadow:0 10px 24px #001a3b16}
+  .tile h3{margin:0;font-size:16px}
+  .tile p{margin:0;font-size:12px;color:var(--muted)}
+  .btn{padding:12px 12px;border-radius:12px;border:none;font-weight:800;cursor:pointer;background:var(--pri);color:#031424;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+  .btn.light{background:rgba(255,255,255,.06);color:var(--ink);border:1px solid var(--edge)}
 
-  /* durum rozetleri */
-  .chip{display:inline-block; padding:4px 8px; border:1px solid var(--edge); border-radius:999px; font-size:12px}
-  .chip.pending{background:#fff7e6; color:#8a5a00}
-  .chip.approved{background:#e9f8ee; color:#126b3a}
-  .chip.declined{background:#ffe9e9; color:#9a1b1b}
-  @media (prefers-color-scheme: dark){
-    .chip{ border-color:#2a3a52 }
-    .chip.pending{ background:#2e240f; color:#ffd27a }
-    .chip.approved{ background:#103323; color:#8fe7b3 }
-    .chip.declined{ background:#3a1414; color:#ff9c9c }
-  }
+  /* tables */
+  .table-wrap{overflow:auto;border:1px solid var(--edge);border-radius:12px}
+  table{width:100%;border-collapse:separate;border-spacing:0;min-width:760px}
+  th,td{padding:12px;border-bottom:1px solid var(--edge);font-size:14px;text-align:left;vertical-align:top}
+  th{position:sticky;top:0;background:color-mix(in oklab,var(--card) 98%, transparent);z-index:1;font-weight:900}
+  tbody tr:hover td{background:rgba(42,163,255,.06)}
+  .empty{padding:18px;text-align:center;color:var(--muted)}
 
-  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
-  @media (max-width:900px){ .grid-2{ grid-template-columns:1fr } }
-  .qrbox{display:flex; align-items:center; gap:12px}
-  canvas.qr{border:1px solid var(--edge); border-radius:12px; background:#fff}
-  @media (prefers-color-scheme: dark){ canvas.qr{ background:#0b1118 } }
-  .empty{padding:16px; text-align:center; color:var(--muted)}
-  .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0}
+  /* chips */
+  .chip{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid var(--edge); border-radius:999px; font-size:12px; font-weight:800}
+  .chip.pending{background:rgba(255,210,122,.12); color:var(--warn); border-color: rgba(255,210,122,.35)}
+  .chip.approved{background:rgba(98,210,154,.12); color:var(--ok); border-color: rgba(98,210,154,.35)}
+  .chip.declined{background:rgba(255,138,138,.12); color:var(--err); border-color: rgba(255,138,138,.35)}
 
-  /* toast + modals */
-  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px #0006;font-weight:700;opacity:0;pointer-events:none;transition:.25s}
-  .toast.show{opacity:1;pointer-events:auto}
-  dialog{border:none;border-radius:16px;padding:0;width:min(760px,calc(100% - 24px));background:var(--card);border:1px solid var(--edge)}
-  .dlg-head{padding:14px 16px; border-bottom:1px solid var(--edge); font-weight:800}
+  /* dialogs */
+  dialog{border:none;border-radius:16px;padding:0;width:min(95vw,1200px);background:var(--card);border:1px solid var(--edge); box-shadow:var(--shadow)}
+  .dlg-head{padding:14px 16px;border-bottom:1px solid var(--edge);font-weight:900;display:flex;align-items:center;justify-content:space-between}
   .dlg-body{padding:16px}
-  .dlg-foot{padding:14px 16px; border-top:1px solid var(--edge); display:flex; gap:8px; justify-content:flex-end}
-  .photo-full{max-width:100%; border-radius:12px; border:1px solid var(--edge)}
+  .dlg-foot{padding:12px 16px;border-top:1px solid var(--edge);display:flex;gap:8px;justify-content:flex-end}
+
+  /* QR canvases */
+  .qr{border:1px solid var(--edge);border-radius:12px;background:#fff}
+
+  /* toast */
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 8px 24px #0006;font-weight:800;opacity:0;pointer-events:none;transition:.25s}
+  .toast.show{opacity:1;pointer-events:auto}
+  /* === DIALOG İÇİ OKUNAKLILIK FIX (dark mode ağırlıklı) === */
+dialog .dlg-body,
+dialog table,
+dialog th,
+dialog td { color: var(--ink) !important; }
+
+@media (prefers-color-scheme: dark){
+  /* Dialog zemini biraz aç */
+  dialog{
+    background:#111a27 !important;
+    border-color:#2a3a52 !important;
+  }
+  /* Tablo başlığı/çizgiler */
+  dialog .table-wrap{ background: transparent; }
+  dialog th{
+    background:#162338 !important;
+    color:#e8eef6 !important;
+    border-bottom:1px solid #2a3a52 !important;
+  }
+  dialog td{
+    color:#dfe7f4 !important;
+    border-bottom:1px solid #223449 !important;
+  }
+  /* Satır arası ayrım + hover */
+  dialog tbody tr{ background: rgba(255,255,255,.01); }
+  dialog tbody tr:hover td{ background: rgba(74,163,255,.08) !important; }
+
+  /* Durum rozetleri (chip) daha belirgin */
+  dialog .chip{ border-color:#2a3a52 !important; }
+  dialog .chip.pending{
+    background:#2e240f !important; color:#ffd27a !important; border-color:#5a471e !important;
+  }
+  dialog .chip.approved{
+    background:#103022 !important; color:#9ff0c0 !important; border-color:#1e3a2f !important;
+  }
+  dialog .chip.declined{
+    background:#3a1414 !important; color:#ff9b9b !important; border-color:#5a2020 !important;
+  }
+
+  /* Form elemanları (select, ghost butonlar) */
+  dialog select,
+  dialog input,
+  dialog textarea{
+    background:#0e1622 !important; color:#e8eef6 !important; border:1px solid #2d3e55 !important;
+  }
+  dialog select:focus,
+  dialog input:focus,
+  dialog textarea:focus{ box-shadow:0 0 0 3px rgba(74,163,255,.22) !important; }
+
+  dialog button.ghost{
+    background:#17253a !important; color:#e8eef6 !important; border:1px solid #2d3e55 !important;
+  }
+}
+
+/* Masaüstünde de metni netleştir (light mode için küçük dokunuş) */
+dialog th{ font-weight:800; }
+dialog td{ color: var(--ink); }
+
 </style>
 </head>
 <body>
 
 <!-- ===== Topbar ===== -->
-<header class="topbar">
-  <div class="brand">TechOps • Panel</div>
-  <span id="mePill" class="pill"></span>
+<header class="topbar" aria-label="Üst menü">
+  <div class="brand"><span class="badge"></span><span>TechOps • Admin Panel</span></div>
+  <span id="mePill" class="pill">—</span>
   <div class="right">
-    <span id="occupy" class="muted">Doluluk: —</span>
-    <span id="cash" class="muted">Kasa: —</span>
+    <span class="mini" title="Yaklaşık doluluk (24s)">
+      <span id="occupy">Doluluk: —</span>
+      <span class="bar"><i style="width:40%"></i></span>
+    </span>
+    <span id="cash" class="pill">Kasa: —</span>
     <button id="logout" class="ghost">Çıkış</button>
   </div>
 </header>
 
-<div class="app">
+<div class="wrap">
 
-  <!-- ===== Sidebar (dikey tablar) ===== -->
-  <aside class="sidebar">
-    <div class="tabs">
-      <button data-tab="att" class="active">Giriş/Çıkış</button>
-      <button data-tab="fb">Çıkış Yorumları</button>
-      <button data-tab="inv">Eksik/Ekipman</button>
-      <button data-tab="res">Rezervasyonlar</button>
-      <button data-tab="admin">Admin Yönetimi</button>
-      <button data-tab="fin">Finans</button>
-    </div>
-  </aside>
-
-  <!-- ===== Main content ===== -->
-  <main class="content">
-
-    <!-- Filtre / QR -->
-    <div class="card" style="margin-bottom:16px">
-      <div class="row" style="align-items:flex-end; gap:14px">
-        <div class="row">
-          <label>Oda</label>
-          <select id="roomSelect"></select>
-          <button id="refresh">Yenile</button>
-          <label class="row" style="gap:6px"><input type="checkbox" id="live"> Canlı izle</label>
-        </div>
-
-        <div class="row">
-          <label>Tarih</label>
-          <select id="datePreset">
-            <option value="today">Bugün</option>
-            <option value="yesterday">Dün</option>
-            <option value="7d" selected>Son 7 gün</option>
-            <option value="30d">Son 30 gün</option>
-            <option value="custom">Özel</option>
-          </select>
-          <input type="datetime-local" id="startAt" />
-          <input type="datetime-local" id="endAt" />
-        </div>
-
-        <div class="row" style="margin-left:auto">
-          <button id="csvAttend">Attendance CSV</button>
-          <button id="csvFeedback">Feedback CSV</button>
-          <button id="csvInv">Inventory CSV</button>
-          <button id="csvRes">Reservations CSV</button>
-          <span id="status" class="muted"></span>
-        </div>
-      </div>
-
-      <hr style="border:none;border-top:1px solid var(--edge); margin:12px 0">
-
-      <div class="grid-2">
-        <div>
-          <h4>Oda / Anahtar</h4>
-          <div class="row">
-            <input id="newRoomId" placeholder="Oda kodu (örn. LAB-101)" />
-            <input id="newRoomKey" placeholder="Anahtar (örn. ABCD12)" />
-            <button id="addRoom">Ekle/Güncelle</button>
-            <button id="delRoom" class="red">Odayı Sil</button>
-          </div>
-          <div class="row" style="margin-top:8px">
-            <button id="rotateKey">Seçili Odanın Anahtarını Yenile</button>
-            <input id="gateBase" style="flex:1" placeholder="QR gate tabanı (örn. https://site.com/gate.html)">
-          </div>
-        </div>
-
-        <div>
-          <h4>QR üret (seçili oda)</h4>
-          <div class="qrbox">
-            <canvas id="qrCanvas" class="qr" width="160" height="160"></canvas>
-            <div>
-              <div class="muted" id="qrText" style="max-width:420px; overflow-wrap:anywhere"></div>
-              <div class="row" style="margin-top:8px">
-                <button id="makeQR">QR Oluştur</button>
-                <button id="downloadQR" class="ghost">PNG indir</button>
-                <button id="openQR" class="ghost">Büyüt</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Sekme içerikleri -->
-    <section id="tab-att" class="card">
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Aksiyon</th><th>Oda</th><th>Kaynak</th></tr></thead>
-          <tbody id="attBody"><tr><td colspan="5" class="empty">Veri yok</td></tr></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="tab-fb" class="card" style="display:none">
-      <div class="toolbar">
-        <input id="fbQuery" placeholder="Ara (kullanıcı / yorum / etiket)" style="min-width:260px">
-        <select id="fbState">
-          <option value="all">Tümü</option>
-          <option value="open">Sadece açık</option>
-          <option value="resolved">Sadece çözülen</option>
-        </select>
-        <button class="ghost" id="fbClear">Filtreyi Temizle</button>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Durum</th><th>Puan</th><th>Yorum</th><th>Etiketler</th><th>Yönet</th></tr></thead>
-          <tbody id="fbBody"><tr><td colspan="7" class="empty">Veri yok</td></tr></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="tab-inv" class="card" style="display:none">
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Adet</th><th>Ürün</th><th>Not</th><th>Durum</th><th>İşlem</th></tr></thead>
-          <tbody id="invBody"><tr><td colspan="7" class="empty">Veri yok</td></tr></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="tab-res" class="card" style="display:none">
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Başlangıç</th><th>Bitiş</th><th>Kullanıcı</th><th>Başlık</th><th>Not</th><th>Durum</th><th>İşlem</th></tr></thead>
-          <tbody id="resBody"><tr><td colspan="7" class="empty">Veri yok</td></tr></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="tab-admin" class="card" style="display:none">
+  <!-- ===== Üst Araç Çubuğu (filtreler + csv + QR kısayolu) ===== -->
+  <section class="card" style="margin-bottom:14px">
+    <div class="row" style="align-items:flex-end">
       <div class="row">
-        <input id="emailFind" placeholder="Kullanıcı e-postası" style="min-width:260px">
-        <button id="findUser">Bul</button>
-        <span id="findRes" class="muted"></span>
+        <label>Oda</label>
+        <select id="roomSelect"></select>
+        <button id="refresh" class="ghost">Yenile</button>
+        <label class="row" style="gap:6px"><input type="checkbox" id="live"> Canlı izle</label>
       </div>
-      <div class="row" style="margin-top:8px">
-        <button id="makeAdmin">Admin Yap</button>
-        <button id="removeAdmin" class="ghost">Adminliği Kaldır</button>
+      <div class="row">
+        <label>Tarih</label>
+        <select id="datePreset">
+          <option value="today">Bugün</option>
+          <option value="yesterday">Dün</option>
+          <option value="7d" selected>Son 7 gün</option>
+          <option value="30d">Son 30 gün</option>
+          <option value="custom">Özel</option>
+        </select>
+        <input type="datetime-local" id="startAt" />
+        <input type="datetime-local" id="endAt" />
       </div>
-      <div class="muted" style="margin-top:8px">
-        Not: Kullanıcıyı bulmak için Realtime DB’de <code>/users</code> altında <code>email</code> tutuluyor. Adminlik: <code>/admins/{uid}: true</code>.
+      <div class="row" style="margin-left:auto">
+        <button id="csvAttend" class="ghost">Attendance CSV</button>
+        <button id="csvFeedback" class="ghost">Feedback CSV</button>
+        <button id="csvInv" class="ghost">Inventory CSV</button>
+        <button id="csvRes" class="ghost">Reservations CSV</button>
+        <button id="openQRmgr" class="ghost">QR / Oda Anahtarı</button>
+        <span id="status" class="muted"></span>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section id="tab-fin" class="card" style="display:none">
-      <div class="row" style="gap:12px; align-items:flex-end; margin-bottom:10px">
-        <div>
-          <h4 style="margin:0 0 6px">Aylık Aidat Oluştur</h4>
-          <div class="row" style="gap:8px">
-            <input id="finMonth" placeholder="YYYY-MM (örn. 2025-02)" style="max-width:160px">
-            <input id="finDueAmount" type="number" min="0" step="0.01" placeholder="Tutar (₺)" style="max-width:140px">
-            <input id="finEmails" placeholder="E-posta(lar), virgülle" style="min-width:280px" />
-            <button id="makeDues">Aidat Kes</button>
-          </div>
-          <div class="muted" style="font-size:12px; margin-top:6px">
-            E-postalar <code>/users</code> ile eşleştirilir; her kişi için “Aidat {YYYY-MM}” faturası açılır.
-          </div>
+  <!-- ===== Ana Menü (YAN MENÜ YOK) — Kartlar ===== -->
+  <section class="tiles">
+    <div class="tile"><h3>Giriş/Çıkış Kayıtları</h3><p>Seçili aralık için tüm hareketler</p><button class="btn" data-open="dlg-att">📋 Aç</button></div>
+    <div class="tile"><h3>Çıkış Yorumları</h3><p>Puanlama / fotoğraf / etiket</p><button class="btn light" data-open="dlg-fb">💬 Aç</button></div>
+    <div class="tile"><h3>Eksik / Ekipman</h3><p>İstekler ve faturaya dönüştürme</p><button class="btn light" data-open="dlg-inv">📦 Aç</button></div>
+    <div class="tile"><h3>Rezervasyonlar</h3><p>Onayla / reddet / sil</p><button class="btn light" data-open="dlg-res">📅 Aç</button></div>
+    <div class="tile"><h3>Admin Yönetimi</h3><p>E-posta ile admin ver/kaldır</p><button class="btn light" data-open="dlg-admin">🛡️ Aç</button></div>
+    <div class="tile"><h3>Finans</h3><p>Faturalar & Aidat bildirimleri</p><button class="btn light" data-open="dlg-fin">💰 Aç</button></div>
+  </section>
 
-          <h4 style="margin:10px 0 6px">Aidat Bildirimleri</h4>
-          <div class="row" style="gap:8px; margin-bottom:6px">
-            <button id="reloadDues" class="ghost">Yenile</button>
-            <span class="muted">Kullanıcıların “Aidat Bildir” talepleri. Onay → kasa artar.</span>
-          </div>
-          <div class="table-wrap" style="margin-bottom:14px">
-            <table>
-              <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Dönem</th><th>Tutar</th><th>Durum</th><th>İşlem</th></tr></thead>
-              <tbody id="duesTable"><tr><td colspan="6" class="empty">Veri yok</td></tr></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <hr style="border:none;border-top:1px solid var(--edge); margin:12px 0">
-
-      <h4 style="margin:0 0 6px">En Son Faturalar</h4>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Başlık</th><th>Tutar</th><th>Durum</th><th>İşlem</th></tr></thead>
-          <tbody id="invTable"><tr><td colspan="6" class="empty">Veri yok</td></tr></tbody>
-        </table>
-      </div>
-    </section>
-
-  </main>
 </div>
 
-<!-- Modals -->
+<!-- ===== DIALOGS ===== -->
+
+<!-- Attendance -->
+<dialog id="dlg-att">
+  <div class="dlg-head"><span>Giriş/Çıkış</span><button class="ghost" data-close>✕</button></div>
+  <div class="dlg-body">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Aksiyon</th><th>Oda</th><th>Kaynak</th></tr></thead>
+        <tbody id="attBody"><tr><td colspan="5" class="empty">Veri yok</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="ghost" data-close>Kapat</button></div>
+</dialog>
+
+<!-- Feedback -->
+<dialog id="dlg-fb">
+  <div class="dlg-head"><span>Çıkış Yorumları</span><button class="ghost" data-close>✕</button></div>
+  <div class="dlg-body">
+    <div class="row" style="margin-bottom:8px">
+      <input id="fbQuery" placeholder="Ara (kullanıcı / yorum / etiket)" style="min-width:260px">
+      <select id="fbState">
+        <option value="all">Tümü</option>
+        <option value="open">Sadece açık</option>
+        <option value="resolved">Sadece çözülen</option>
+      </select>
+      <button class="ghost" id="fbClear">Filtreyi Temizle</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Durum</th><th>Puan</th><th>Yorum</th><th>Etiketler</th><th>Yönet</th></tr></thead>
+        <tbody id="fbBody"><tr><td colspan="7" class="empty">Veri yok</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="ghost" data-close>Kapat</button></div>
+</dialog>
+
+<!-- Inventory -->
+<dialog id="dlg-inv">
+  <div class="dlg-head"><span>Eksik / Ekipman</span><button class="ghost" data-close>✕</button></div>
+  <div class="dlg-body">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Adet</th><th>Ürün</th><th>Not</th><th>Durum</th><th>İşlem</th></tr></thead>
+        <tbody id="invBody"><tr><td colspan="7" class="empty">Veri yok</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="ghost" data-close>Kapat</button></div>
+</dialog>
+
+<!-- Reservations -->
+<dialog id="dlg-res">
+  <div class="dlg-head"><span>Rezervasyonlar</span><button class="ghost" data-close>✕</button></div>
+  <div class="dlg-body">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Başlangıç</th><th>Bitiş</th><th>Kullanıcı</th><th>Başlık</th><th>Not</th><th>Durum</th><th>İşlem</th></tr></thead>
+        <tbody id="resBody"><tr><td colspan="7" class="empty">Veri yok</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="ghost" data-close>Kapat</button></div>
+</dialog>
+
+<!-- Admin -->
+<dialog id="dlg-admin">
+  <div class="dlg-head"><span>Admin Yönetimi</span><button class="ghost" data-close>✕</button></div>
+  <div class="dlg-body">
+    <div class="row">
+      <input id="emailFind" placeholder="Kullanıcı e-postası" style="min-width:260px">
+      <button id="findUser">Bul</button>
+      <span id="findRes" class="muted"></span>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="makeAdmin">Admin Yap</button>
+      <button id="removeAdmin" class="ghost">Adminliği Kaldır</button>
+    </div>
+    <div class="muted" style="margin-top:8px">
+      Not: Kullanıcılar <code>/users</code> altında <code>email</code> ile aranır. Adminlik: <code>/admins/{uid}: true</code>.
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="ghost" data-close>Kapat</button></div>
+</dialog>
+
+<!-- Finance -->
+<dialog id="dlg-fin">
+  <div class="dlg-head"><span>Finans</span><button class="ghost" data-close>✕</button></div>
+  <div class="dlg-body">
+    <div class="row" style="gap:12px; align-items:flex-end; margin-bottom:10px">
+      <div>
+        <h4 style="margin:0 0 6px">Aylık Aidat Oluştur</h4>
+        <div class="row" style="gap:8px">
+          <input id="finMonth" placeholder="YYYY-MM (örn. 2025-02)" style="max-width:160px">
+          <input id="finDueAmount" type="number" min="0" step="0.01" placeholder="Tutar (₺)" style="max-width:140px">
+          <input id="finEmails" placeholder="E-posta(lar), virgülle" style="min-width:280px" />
+          <button id="makeDues">Aidat Kes</button>
+        </div>
+        <div class="muted" style="font-size:12px; margin-top:6px">
+          E-postalar <code>/users</code> ile eşleştirilir; her kişi için “Aidat {YYYY-MM}” faturası açılır.
+        </div>
+
+        <h4 style="margin:10px 0 6px">Aidat Bildirimleri</h4>
+        <div class="row" style="gap:8px; margin-bottom:6px">
+          <button id="reloadDues" class="ghost">Yenile</button>
+          <span class="muted">Kullanıcıların “Aidat Bildir” talepleri. Onay → kasa artar.</span>
+        </div>
+        <div class="table-wrap" style="margin-bottom:14px">
+          <table>
+            <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Dönem</th><th>Tutar</th><th>Durum</th><th>İşlem</th></tr></thead>
+            <tbody id="duesTable"><tr><td colspan="6" class="empty">Veri yok</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--edge); margin:12px 0">
+
+    <h4 style="margin:0 0 6px">En Son Faturalar</h4>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Başlık</th><th>Tutar</th><th>Durum</th><th>İşlem</th></tr></thead>
+        <tbody id="invTable"><tr><td colspan="6" class="empty">Veri yok</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="ghost" data-close>Kapat</button></div>
+</dialog>
+
+<!-- QR / Room Key Manager -->
+<dialog id="dlg-qr">
+  <div class="dlg-head"><span>QR & Oda Anahtarı</span><button class="ghost" data-close>✕</button></div>
+  <div class="dlg-body">
+    <div class="row" style="align-items:flex-end;gap:12px">
+      <input id="newRoomId" placeholder="Oda kodu (örn. LAB-101)" />
+      <input id="newRoomKey" placeholder="Anahtar (örn. ABCD12)" />
+      <button id="addRoom">Ekle/Güncelle</button>
+      <button id="delRoom" class="red">Odayı Sil</button>
+      <button id="rotateKey" class="ghost">Seçili Odanın Anahtarını Yenile</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <input id="gateBase" style="flex:1" placeholder="QR gate tabanı (örn. https://site.com/gate.html)">
+    </div>
+    <div class="row" style="margin-top:12px;gap:16px;align-items:center">
+      <canvas id="qrCanvas" class="qr" width="160" height="160" aria-label="Küçük QR"></canvas>
+      <div style="max-width:640px">
+        <div class="muted" id="qrText" style="overflow-wrap:anywhere"></div>
+        <div class="row" style="margin-top:8px">
+          <button id="makeQR">QR Oluştur</button>
+          <button id="downloadQR" class="ghost">PNG indir</button>
+          <button id="openQR" class="ghost">Büyüt</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="ghost" data-close>Kapat</button></div>
+</dialog>
+
+<!-- QR Big -->
 <dialog id="qrDlg">
   <div class="dlg-head">QR — Seçili Oda</div>
   <div class="dlg-body" style="display:flex;gap:12px;align-items:center">
-    <canvas id="qrBig" width="320" height="320" style="border:1px solid var(--edge);border-radius:12px;background:#fff"></canvas>
+    <canvas id="qrBig" width="320" height="320" class="qr"></canvas>
     <div style="word-break:break-all"><div class="muted">Bağlantı:</div><div id="qrLinkTxt"></div></div>
   </div>
   <div class="dlg-foot">
@@ -324,14 +401,13 @@
   </div>
 </dialog>
 
+<!-- Photo preview for feedback (admin) -->
 <dialog id="photoDlg">
   <div class="dlg-head">Fotoğraf Önizleme</div>
   <div class="dlg-body">
-    <img id="photoFull" class="photo-full" alt="Fotoğraf">
+    <img id="photoFull" alt="Fotoğraf" style="max-width:100%;border-radius:12px;border:1px solid var(--edge)">
   </div>
-  <div class="dlg-foot">
-    <button id="photoClose" class="ghost">Kapat</button>
-  </div>
+  <div class="dlg-foot"><button id="photoClose" class="ghost">Kapat</button></div>
 </dialog>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -369,7 +445,7 @@ auth.onAuthStateChanged(async u=>{
   $('mePill').textContent = u.email || u.uid;
   const isAdmin = await db.ref('admins/'+u.uid).get().then(s=>s.exists()&&s.val()===true).catch(()=>false);
   if(!isAdmin){ alert('Admin değilsiniz.'); return; }
-  initTabs(); initDatePreset(); await loadRooms();
+  initDatePreset(); await loadRooms();
   db.ref('fundTotals').on('value', s=>{
     const v=s.val()||{}; const collected=+(v.collected||0), spent=+(v.spent||0);
     const cash=+(collected-spent).toFixed(2);
@@ -377,6 +453,11 @@ auth.onAuthStateChanged(async u=>{
   });
 });
 $('logout').onclick=()=>auth.signOut().then(()=>location.replace('login.html'));
+
+/* ==== open/close dialogs ==== */
+document.querySelectorAll('[data-open]').forEach(b=> b.addEventListener('click', ()=> $(b.dataset.open)?.showModal()));
+document.querySelectorAll('dialog [data-close]').forEach(b=> b.addEventListener('click', ()=> b.closest('dialog')?.close()));
+$('openQRmgr').onclick=()=> $('dlg-qr').showModal();
 
 /* ==== rooms / filters ==== */
 async function loadRooms(){
@@ -588,7 +669,7 @@ function renderReservations(rows){
   });
 }
 
-/* ==== occupancy ==== */
+/* ==== occupancy (mini bar) ==== */
 async function calcOccupancy(){
   const room=$('roomSelect').value; if(!room) return;
   const since=Date.now()-24*3600*1000;
@@ -597,6 +678,7 @@ async function calcOccupancy(){
   rows.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)).forEach(r=>{ if(r.action==='enter') state.set(r.userId,true); if(r.action==='exit') state.set(r.userId,false); });
   const inside=[...state.values()].filter(Boolean).length;
   $('occupy').textContent=`Doluluk (son 24s): ~${inside}`;
+  document.querySelector('.bar > i').style.width=Math.max(6, Math.min(100, inside*12))+'%';
 }
 
 /* ==== CSV ==== */
@@ -631,7 +713,7 @@ $('openQR').onclick=async()=>{ const link=makeLink(); $('qrLinkTxt').textContent
 $('qrClose').onclick=()=>$('qrDlg').close();
 $('qrDownload').onclick=()=>{ const a=document.createElement('a'); a.href=$('qrBig').toDataURL('image/png'); a.download=`QR-${$('roomSelect').value}@2x.png`; a.click(); };
 
-/* ==== admin ops ==== */
+/* ==== room ops ==== */
 $('addRoom').onclick=async()=>{
   const r=$('newRoomId').value.trim(), k=$('newRoomKey').value.trim();
   if(!r||!k) return alert('Oda ve anahtar gerekli');
@@ -649,6 +731,7 @@ $('delRoom').onclick=async()=>{
   await db.ref('roomKeys/'+r).remove(); setStatus('Oda silindi',true); await loadRooms(); await applyFilters();
 };
 
+/* ==== admin ops ==== */
 async function findUserByEmail(mail){
   const q=await db.ref('users').orderByChild('email').equalTo(mail.toLowerCase()).limitToFirst(1).get();
   if(!q.exists()) return null; const [uid,rec]=Object.entries(q.val())[0]; return {uid,...rec};
@@ -745,16 +828,11 @@ async function deleteInvoice(invId){
   setStatus('Fatura silindi',true); await loadInvoices();
 }
 
-/* ==== tabs (sidebar) ==== */
-function initTabs(){
-  const tabs=document.querySelectorAll('.tabs button');
-  const secs={att:$('tab-att'), fb:$('tab-fb'), inv:$('tab-inv'), res:$('tab-res'), admin:$('tab-admin'), fin:$('tab-fin')};
-  tabs.forEach(btn=> btn.onclick=()=>{
-    tabs.forEach(b=>b.classList.remove('active')); btn.classList.add('active');
-    Object.values(secs).forEach(s=> s.style.display='none'); secs[btn.dataset.tab].style.display='';
-    if(btn.dataset.tab==='fin'){ loadInvoices(); loadDuesPayments(); }
-  });
-}
+/* ==== tiles içeriği açıldığında listeleri tazele ==== */
+document.getElementById('dlg-fin')?.addEventListener('close', ()=>{});
+document.querySelector('[data-open="dlg-fin"]')?.addEventListener('click', ()=>{ loadInvoices(); loadDuesPayments(); });
+
+/* ==== done ==== */
 </script>
 </body>
 </html>
