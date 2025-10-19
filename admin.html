@@ -1,216 +1,133 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<link rel="icon" href="assets/techops.ico" type="image/x-icon" />
 <meta charset="UTF-8" />
-<title>Admin Paneli</title>
+<link rel="icon" href="assets/techops.ico" type="image/x-icon" />
+<title>Panel — TechOps</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   :root{
-    --ink:#11243b; --muted:#6d7a90; --bg:#f6f9ff; --card:#fff;
-    --pri:#0a7cc1; --pri-2:#0b5fa3; --ok:#1a7f37; --err:#b00020; --edge:#eef2f9;
+    --ink:#11243b; --muted:#6d7a90; --bg:#f6f9ff; --card:#fff; --edge:#e6ebf4;
+    --pri:#0a7cc1; --pri-2:#0b5fa3; --ok:#1a7f37; --err:#b00020; --warn:#8a5a00;
   }
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#0f141b; --ink:#e9eef5; --muted:#9fb0c8; --card:#0f1a27; --edge:#223244; }
+    :root{
+      --bg:#0b1118; --ink:#e8eef6; --muted:#a9b7c8; --card:#0f1a27; --edge:#253449;
+      --pri:#2aa3ff; --pri-2:#58bfff; --ok:#6ee7a5; --err:#ff8585; --warn:#ffd27a;
+    }
     input,select,textarea,button{color-scheme:dark}
   }
+
   *{box-sizing:border-box}
-  body{font-family:system-ui,-apple-system,Segoe UI,Roboto; background:var(--bg); margin:0; color:var(--ink)}
-  .wrap{max-width:1240px; margin:22px auto; padding:16px}
-  .card{background:var(--card); border-radius:14px; box-shadow:0 8px 22px #002b5c14; padding:16px; margin-top:14px; border:1px solid var(--edge)}
-  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
-  input,select,button,textarea{padding:10px 12px; border-radius:10px; border:1px solid #d8e0ee; background:#fbfdff; font-size:14px}
-  button{background:var(--pri); color:#fff; border:none; cursor:pointer; font-weight:800}
-  button.ghost{background:#eef4fb; color:#0b3a6f}
-  button.red{background:#cf2d39}
-  button:disabled{opacity:.6; cursor:not-allowed}
+  body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial; background:var(--bg); color:var(--ink)}
+
+  /* ===== APP LAYOUT (panel.html stili) ===== */
+  .topbar{
+    position:sticky; top:0; z-index:20; background:var(--card); border-bottom:1px solid var(--edge);
+    display:flex; align-items:center; gap:12px; padding:12px 16px;
+  }
+  .brand{font-weight:800; letter-spacing:.2px}
+  .topbar .right{margin-left:auto; display:flex; gap:10px; align-items:center}
   .pill{display:inline-block; padding:6px 10px; background:#e6f3ff; color:#0a5aa6; border-radius:999px; font-size:12px}
-  table{width:100%; border-collapse:collapse}
+  @media (prefers-color-scheme: dark){ .pill{ background:#132235; color:#9bd0ff; border:1px solid #2a3a52 } }
+
+  .app{
+    display:grid; grid-template-columns:260px 1fr; gap:16px; max-width:1400px; margin:16px auto; padding:0 12px 32px;
+  }
+  @media (max-width:1000px){ .app{ grid-template-columns:1fr } }
+
+  .sidebar{
+    position:sticky; top:66px; align-self:start; background:var(--card);
+    border:1px solid var(--edge); border-radius:14px; padding:12px;
+  }
+  .content{ min-width:0 }
+
+  .card{background:var(--card); border-radius:14px; border:1px solid var(--edge); box-shadow:0 8px 22px #002b5c14; padding:16px}
+  @media (prefers-color-scheme: dark){ .card{ box-shadow:0 10px 24px rgba(0,0,0,.35) } }
+
+  /* vertical tabs */
+  .tabs{ display:flex; flex-direction:column; gap:8px }
+  .tabs button{
+    width:100%; text-align:left; padding:10px 12px; border-radius:10px;
+    background:#eef4fb; color:#0b3a6f; border:1px solid transparent; cursor:pointer; font-weight:700;
+  }
+  .tabs button.active{ background:linear-gradient(90deg,var(--pri),var(--pri-2)); color:#031424 }
+  @media (prefers-color-scheme: dark){
+    .tabs button{ background:#132235; color:#cfe3ff; border:1px solid #2a3a52 }
+    .tabs button.active{ background:var(--pri); color:#031424; border-color:transparent }
+  }
+
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)} .warn{color:var(--warn)}
+  input,select,button,textarea{padding:10px 12px; border-radius:10px; border:1px solid #d8e0ee; background:#fbfdff; font-size:14px}
+  textarea{resize:vertical}
+  @media (prefers-color-scheme: dark){
+    input,select,textarea{ background:#0e1622; border:1px solid #2a3a52; color:var(--ink) }
+    input:focus,select:focus,textarea:focus{ border-color:#4aa3ff; box-shadow:0 0 0 3px rgba(74,163,255,.18); outline:none }
+  }
+  button{background:linear-gradient(90deg,var(--pri),var(--pri-2)); color:#031424; border:none; cursor:pointer; font-weight:800}
+  button.ghost{background:#eef4fb; color:#0b3a6f}
+  button.red{background:#cf2d39; color:#fff}
+  @media (prefers-color-scheme: dark){ button.ghost{ background:#132235; color:#d7e7ff; border:1px solid #2a3a52 } }
+  button:disabled{opacity:.6; cursor:not-allowed}
+
+  /* tablolar */
+  .table-wrap{ overflow:auto; border:1px solid var(--edge); border-radius:12px }
+  table{width:100%; border-collapse:collapse; min-width:720px}
   th,td{padding:10px 12px; border-bottom:1px solid var(--edge); font-size:14px; text-align:left; vertical-align:top}
   th{background:#f2f6fc}
-  .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)}
-  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
-  .right{margin-left:auto}
-  .tabs{display:flex; gap:8px; margin:0 0 6px}
-  .tabs button{background:#eef4fb; color:#0b3a6f}
-  .tabs button.active{background:var(--pri); color:#fff}
-  .qrbox{display:flex; align-items:center; gap:12px}
-  canvas.qr{border:1px solid #dfe6f3; border-radius:12px; background:#fff}
-  .empty{padding:16px; text-align:center; color:var(--muted)}
-  .tag{display:inline-block; margin:2px 6px 0 0; padding:4px 8px; border:1px solid #d8e0ee; border-radius:999px; font-size:12px; background:#f8fbff}
-  .stars{color:#f1b301}
+  @media (prefers-color-scheme: dark){
+    th{ background:#18283b; color:var(--ink) }
+    td,th{ border-bottom-color:#2a3a52 }
+  }
+
+  /* durum rozetleri */
   .chip{display:inline-block; padding:4px 8px; border:1px solid var(--edge); border-radius:999px; font-size:12px}
-  .chip.open{background:#fff7e6; color:#8a5a00}
-  .chip.resolved{background:#e9f8ee; color:#136e3a}
+  .chip.pending{background:#fff7e6; color:#8a5a00}
+  .chip.approved{background:#e9f8ee; color:#126b3a}
+  .chip.declined{background:#ffe9e9; color:#9a1b1b}
+  @media (prefers-color-scheme: dark){
+    .chip{ border-color:#2a3a52 }
+    .chip.pending{ background:#2e240f; color:#ffd27a }
+    .chip.approved{ background:#103323; color:#8fe7b3 }
+    .chip.declined{ background:#3a1414; color:#ff9c9c }
+  }
+
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media (max-width:900px){ .grid-2{ grid-template-columns:1fr } }
+  .qrbox{display:flex; align-items:center; gap:12px}
+  canvas.qr{border:1px solid var(--edge); border-radius:12px; background:#fff}
+  @media (prefers-color-scheme: dark){ canvas.qr{ background:#0b1118 } }
+  .empty{padding:16px; text-align:center; color:var(--muted)}
   .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0}
-  /* ==== ADMIN • DARK MODE KONTRAST FİXLERİ ==== */
-  /* light theme chips for reservations */
-.chip.pending  { background:#fff7e6; color:#8a5a00; }
-.chip.approved { background:#e9f8ee; color:#126b3a; }
-.chip.declined { background:#ffe9e9; color:#9a1b1b; }
 
-/* dark theme variants */
-@media (prefers-color-scheme: dark){
-  .chip.pending  { background:#2e240f; color:#ffd27a; }
-  .chip.approved { background:#103323; color:#8fe7b3; }
-  .chip.declined { background:#3a1414; color:#ff9c9c; }
-}
-@media (prefers-color-scheme: dark){
-  :root{
-    /* daha kontrastlı ama sakin tema */
-    --bg:#0b1118; --ink:#e8eef6; --muted:#a9b7c8;
-    --card:#0f1a27; --edge:#253449;
-    --pri:#2aa3ff; --pri-2:#58bfff;
-    --ok:#6ee7a5; --err:#ff8585;
-  }
-  body{ background:var(--bg); color:var(--ink); }
-
-  .card{
-    background:var(--card);
-    border:1px solid var(--edge);
-    box-shadow:0 10px 24px rgba(0,0,0,.35);
-  }
-
-  /* tablo görünürlüğü */
-  th{
-    background:#18283b;
-    color:var(--ink);
-  }
-  td, th{ border-bottom-color:#2a3a52; }
-  td{ color:var(--ink); }
-
-  /* form elemanları */
-  input, select, textarea{
-    background:#0e1622 !important;
-    color:var(--ink) !important;
-    border:1px solid #2a3a52 !important;
-  }
-  input:focus, select:focus, textarea:focus{
-    border-color:#4aa3ff !important;
-    box-shadow:0 0 0 3px rgba(74,163,255,.18) !important;
-    outline:none;
-  }
-  input::placeholder, textarea::placeholder{ color:#90a4bf; opacity:1; }
-  select option{ background:#0e1622; color:var(--ink); }
-
-  /* butonlar */
-  button{ background:linear-gradient(90deg,var(--pri),var(--pri-2)); color:#031424; }
-  button.ghost{
-    background:#132235 !important;
-    color:#d7e7ff !important;
-    border:1px solid #2a3a52 !important;
-  }
-  button.red{ background:#d6424e; }
-
-  /* tabs */
-  .tabs button{
-    background:#132235;
-    color:#cfe3ff;
-    border:1px solid #2a3a52;
-  }
-  .tabs button.active{
-    background:var(--pri);
-    color:#031424;
-    border-color:transparent;
-  }
-
-  /* küçük etiketler ve rozetler */
-  .pill{ background:#132235; color:#9bd0ff; border:1px solid #2a3a52; }
-  .tag{ background:#0e1622; color:var(--ink); border:1px solid #2a3a52; }
-  .chip{ border:1px solid #2a3a52; }
-  .chip.open{ background:#2e240f; color:#ffd27a; }
-  .chip.resolved{ background:#103323; color:#8fe7b3; }
-
-  /* QR kutusu/çizgiler/boş durum */
-  canvas.qr{ background:#0b1118; border:1px solid #2a3a52; }
-  .empty{ color:var(--muted); }
-}
-
+  /* toast + modals */
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px #0006;font-weight:700;opacity:0;pointer-events:none;transition:.25s}
+  .toast.show{opacity:1;pointer-events:auto}
+  dialog{border:none;border-radius:16px;padding:0;width:min(760px,calc(100% - 24px));background:var(--card);border:1px solid var(--edge)}
+  .dlg-head{padding:14px 16px; border-bottom:1px solid var(--edge); font-weight:800}
+  .dlg-body{padding:16px}
+  .dlg-foot{padding:14px 16px; border-top:1px solid var(--edge); display:flex; gap:8px; justify-content:flex-end}
+  .photo-full{max-width:100%; border-radius:12px; border:1px solid var(--edge)}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <!-- Header -->
-  <div class="card">
-    <div class="row">
-      <div><strong style="font-size:18px">Admin Paneli</strong> <span id="mePill" class="pill"></span></div>
-      <div class="right row">
-        <span id="occupy" class="muted">Doluluk: —</span>
-        <span id="cash" class="muted" style="margin-left:12px">Kasa: —</span>
-        <button id="logout" class="ghost">Çıkış</button>
-      </div>
-    </div>
+<!-- ===== Topbar ===== -->
+<header class="topbar">
+  <div class="brand">TechOps • Panel</div>
+  <span id="mePill" class="pill"></span>
+  <div class="right">
+    <span id="occupy" class="muted">Doluluk: —</span>
+    <span id="cash" class="muted">Kasa: —</span>
+    <button id="logout" class="ghost">Çıkış</button>
   </div>
+</header>
 
-  <!-- Oda / Filtre / QR -->
-  <div class="card">
-    <div class="row" style="align-items:flex-end">
-      <div class="row">
-        <label>Oda</label>
-        <select id="roomSelect"></select>
-        <button id="refresh">Yenile</button>
-        <label class="row" style="gap:6px"><input type="checkbox" id="live"> Canlı izle</label>
-      </div>
+<div class="app">
 
-      <div class="row">
-        <label>Tarih</label>
-        <select id="datePreset">
-          <option value="today">Bugün</option>
-          <option value="yesterday">Dün</option>
-          <option value="7d" selected>Son 7 gün</option>
-          <option value="30d">Son 30 gün</option>
-          <option value="custom">Özel</option>
-        </select>
-        <input type="datetime-local" id="startAt" />
-        <input type="datetime-local" id="endAt" />
-      </div>
-
-      <div class="row right">
-        <button id="csvAttend">Attendance CSV</button>
-        <button id="csvFeedback">Feedback CSV</button>
-        <button id="csvInv">Inventory CSV</button>
-        <button id="csvRes">Reservations CSV</button>
-        <span id="status" class="muted"></span>
-      </div>
-    </div>
-
-    <hr style="border:none;border-top:1px solid var(--edge); margin:12px 0">
-
-    <div class="grid-2">
-      <div>
-        <h4>Oda / Anahtar</h4>
-        <div class="row">
-          <input id="newRoomId" placeholder="Oda kodu (örn. LAB-101)" />
-          <input id="newRoomKey" placeholder="Anahtar (örn. ABCD12)" />
-          <button id="addRoom">Ekle/Güncelle</button>
-          <button id="delRoom" class="red">Odayı Sil</button>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <button id="rotateKey">Seçili Odanın Anahtarını Yenile</button>
-          <input id="gateBase" style="flex:1" placeholder="QR gate linki tabanı (örn. https://ieeeoda.netlify.app/gate.html)">
-        </div>
-      </div>
-
-      <div>
-        <h4>QR üret (seçili oda)</h4>
-        <div class="qrbox">
-          <canvas id="qrCanvas" class="qr" width="160" height="160"></canvas>
-          <div>
-            <div class="muted" id="qrText" style="max-width:420px; overflow-wrap:anywhere"></div>
-            <div class="row" style="margin-top:8px">
-              <button id="makeQR">QR Oluştur</button>
-              <button id="downloadQR" class="ghost">PNG indir</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Tabs -->
-  <div class="card">
+  <!-- ===== Sidebar (dikey tablar) ===== -->
+  <aside class="sidebar">
     <div class="tabs">
       <button data-tab="att" class="active">Giriş/Çıkış</button>
       <button data-tab="fb">Çıkış Yorumları</button>
@@ -219,17 +136,89 @@
       <button data-tab="admin">Admin Yönetimi</button>
       <button data-tab="fin">Finans</button>
     </div>
+  </aside>
 
-    <!-- Attendance -->
-    <section id="tab-att">
-      <table>
-        <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Aksiyon</th><th>Oda</th><th>Kaynak</th></tr></thead>
-        <tbody id="attBody"><tr><td colspan="5" class="empty">Veri yok</td></tr></tbody>
-      </table>
+  <!-- ===== Main content ===== -->
+  <main class="content">
+
+    <!-- Filtre / QR -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="row" style="align-items:flex-end; gap:14px">
+        <div class="row">
+          <label>Oda</label>
+          <select id="roomSelect"></select>
+          <button id="refresh">Yenile</button>
+          <label class="row" style="gap:6px"><input type="checkbox" id="live"> Canlı izle</label>
+        </div>
+
+        <div class="row">
+          <label>Tarih</label>
+          <select id="datePreset">
+            <option value="today">Bugün</option>
+            <option value="yesterday">Dün</option>
+            <option value="7d" selected>Son 7 gün</option>
+            <option value="30d">Son 30 gün</option>
+            <option value="custom">Özel</option>
+          </select>
+          <input type="datetime-local" id="startAt" />
+          <input type="datetime-local" id="endAt" />
+        </div>
+
+        <div class="row" style="margin-left:auto">
+          <button id="csvAttend">Attendance CSV</button>
+          <button id="csvFeedback">Feedback CSV</button>
+          <button id="csvInv">Inventory CSV</button>
+          <button id="csvRes">Reservations CSV</button>
+          <span id="status" class="muted"></span>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--edge); margin:12px 0">
+
+      <div class="grid-2">
+        <div>
+          <h4>Oda / Anahtar</h4>
+          <div class="row">
+            <input id="newRoomId" placeholder="Oda kodu (örn. LAB-101)" />
+            <input id="newRoomKey" placeholder="Anahtar (örn. ABCD12)" />
+            <button id="addRoom">Ekle/Güncelle</button>
+            <button id="delRoom" class="red">Odayı Sil</button>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <button id="rotateKey">Seçili Odanın Anahtarını Yenile</button>
+            <input id="gateBase" style="flex:1" placeholder="QR gate tabanı (örn. https://site.com/gate.html)">
+          </div>
+        </div>
+
+        <div>
+          <h4>QR üret (seçili oda)</h4>
+          <div class="qrbox">
+            <canvas id="qrCanvas" class="qr" width="160" height="160"></canvas>
+            <div>
+              <div class="muted" id="qrText" style="max-width:420px; overflow-wrap:anywhere"></div>
+              <div class="row" style="margin-top:8px">
+                <button id="makeQR">QR Oluştur</button>
+                <button id="downloadQR" class="ghost">PNG indir</button>
+                <button id="openQR" class="ghost">Büyüt</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sekme içerikleri -->
+    <section id="tab-att" class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Aksiyon</th><th>Oda</th><th>Kaynak</th></tr></thead>
+          <tbody id="attBody"><tr><td colspan="5" class="empty">Veri yok</td></tr></tbody>
+        </table>
+      </div>
     </section>
 
-    <!-- Feedback -->
-    <section id="tab-fb" style="display:none">
+    <section id="tab-fb" class="card" style="display:none">
       <div class="toolbar">
         <input id="fbQuery" placeholder="Ara (kullanıcı / yorum / etiket)" style="min-width:260px">
         <select id="fbState">
@@ -239,30 +228,33 @@
         </select>
         <button class="ghost" id="fbClear">Filtreyi Temizle</button>
       </div>
-      <table>
-        <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Durum</th><th>Puan</th><th>Yorum</th><th>Etiketler</th><th>Yönet</th></tr></thead>
-        <tbody id="fbBody"><tr><td colspan="7" class="empty">Veri yok</td></tr></tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Durum</th><th>Puan</th><th>Yorum</th><th>Etiketler</th><th>Yönet</th></tr></thead>
+          <tbody id="fbBody"><tr><td colspan="7" class="empty">Veri yok</td></tr></tbody>
+        </table>
+      </div>
     </section>
 
-    <!-- Inventory -->
-    <section id="tab-inv" style="display:none">
-      <table>
-        <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Adet</th><th>Ürün</th><th>Not</th><th>Durum</th><th>İşlem</th></tr></thead>
-        <tbody id="invBody"><tr><td colspan="7" class="empty">Veri yok</td></tr></tbody>
-      </table>
+    <section id="tab-inv" class="card" style="display:none">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Adet</th><th>Ürün</th><th>Not</th><th>Durum</th><th>İşlem</th></tr></thead>
+          <tbody id="invBody"><tr><td colspan="7" class="empty">Veri yok</td></tr></tbody>
+        </table>
+      </div>
     </section>
 
-    <!-- Reservations -->
-    <section id="tab-res" style="display:none">
-      <table>
-        <thead><tr><th>Başlangıç</th><th>Bitiş</th><th>Kullanıcı</th><th>Başlık</th><th>Not</th><th>Durum</th><th>İşlem</th></tr></thead>
-        <tbody id="resBody"><tr><td colspan="7" class="empty">Veri yok</td></tr></tbody>
-      </table>
+    <section id="tab-res" class="card" style="display:none">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Başlangıç</th><th>Bitiş</th><th>Kullanıcı</th><th>Başlık</th><th>Not</th><th>Durum</th><th>İşlem</th></tr></thead>
+          <tbody id="resBody"><tr><td colspan="7" class="empty">Veri yok</td></tr></tbody>
+        </table>
+      </div>
     </section>
 
-    <!-- Admin manage -->
-    <section id="tab-admin" style="display:none">
+    <section id="tab-admin" class="card" style="display:none">
       <div class="row">
         <input id="emailFind" placeholder="Kullanıcı e-postası" style="min-width:260px">
         <button id="findUser">Bul</button>
@@ -277,53 +269,72 @@
       </div>
     </section>
 
-    <!-- FINANS -->
-    <section id="tab-fin" style="display:none">
-      <div class="card" style="margin:0; border:none; box-shadow:none; padding:0">
-        <div class="row" style="gap:12px; align-items:flex-end; margin-bottom:10px">
-          <div>
-            <h4 style="margin:0 0 6px">Aylık Aidat Oluştur</h4>
-            <div class="row" style="gap:8px">
-              <input id="finMonth" placeholder="YYYY-MM (örn. 2025-02)" style="max-width:160px">
-              <input id="finDueAmount" type="number" min="0" step="0.01" placeholder="Tutar (₺)" style="max-width:140px">
-              <input id="finEmails" placeholder="E-posta(lar), virgülle" style="min-width:280px" />
-              <button id="makeDues">Aidat Kes</button>
-            </div>
-            <div class="muted" style="font-size:12px; margin-top:6px">
-              Not: E-posta'ları <code>/users</code> içinde bulunanlara karşılık UID ile eşleştirir. Her kişi için “Aidat {YYYY-MM}” faturası oluşturur.
-            </div>
-            <!-- Aidat Bildirimleri -->
-            <h4 style="margin:0 0 6px">Aidat Bildirimleri</h4>
-            <div class="row" style="gap:8px; margin-bottom:6px">
-              <button id="reloadDues" class="ghost">Yenile</button>
-              <span class="muted">Kullanıcıların “Aidat Bildir” ile ilettiği talepler. Onayla → kasa artar.</span>
-            </div>
-            <table style="margin-bottom:14px">
-              <thead>
-                <tr><th>Zaman</th><th>Kullanıcı</th><th>Dönem</th><th>Tutar</th><th>Durum</th><th>İşlem</th></tr>
-              </thead>
+    <section id="tab-fin" class="card" style="display:none">
+      <div class="row" style="gap:12px; align-items:flex-end; margin-bottom:10px">
+        <div>
+          <h4 style="margin:0 0 6px">Aylık Aidat Oluştur</h4>
+          <div class="row" style="gap:8px">
+            <input id="finMonth" placeholder="YYYY-MM (örn. 2025-02)" style="max-width:160px">
+            <input id="finDueAmount" type="number" min="0" step="0.01" placeholder="Tutar (₺)" style="max-width:140px">
+            <input id="finEmails" placeholder="E-posta(lar), virgülle" style="min-width:280px" />
+            <button id="makeDues">Aidat Kes</button>
+          </div>
+          <div class="muted" style="font-size:12px; margin-top:6px">
+            E-postalar <code>/users</code> ile eşleştirilir; her kişi için “Aidat {YYYY-MM}” faturası açılır.
+          </div>
+
+          <h4 style="margin:10px 0 6px">Aidat Bildirimleri</h4>
+          <div class="row" style="gap:8px; margin-bottom:6px">
+            <button id="reloadDues" class="ghost">Yenile</button>
+            <span class="muted">Kullanıcıların “Aidat Bildir” talepleri. Onay → kasa artar.</span>
+          </div>
+          <div class="table-wrap" style="margin-bottom:14px">
+            <table>
+              <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Dönem</th><th>Tutar</th><th>Durum</th><th>İşlem</th></tr></thead>
               <tbody id="duesTable"><tr><td colspan="6" class="empty">Veri yok</td></tr></tbody>
             </table>
-
           </div>
-          
         </div>
+      </div>
 
-        <hr style="border:none;border-top:1px solid var(--edge); margin:12px 0">
+      <hr style="border:none;border-top:1px solid var(--edge); margin:12px 0">
 
-        <h4 style="margin:0 0 6px">En Son Faturalar</h4>
+      <h4 style="margin:0 0 6px">En Son Faturalar</h4>
+      <div class="table-wrap">
         <table>
-          <thead>
-            <tr><th>Zaman</th><th>Kullanıcı</th><th>Başlık</th><th>Tutar</th><th>Durum</th><th>İşlem</th></tr>
-          </thead>
+          <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Başlık</th><th>Tutar</th><th>Durum</th><th>İşlem</th></tr></thead>
           <tbody id="invTable"><tr><td colspan="6" class="empty">Veri yok</td></tr></tbody>
         </table>
       </div>
     </section>
 
-
-  </div>
+  </main>
 </div>
+
+<!-- Modals -->
+<dialog id="qrDlg">
+  <div class="dlg-head">QR — Seçili Oda</div>
+  <div class="dlg-body" style="display:flex;gap:12px;align-items:center">
+    <canvas id="qrBig" width="320" height="320" style="border:1px solid var(--edge);border-radius:12px;background:#fff"></canvas>
+    <div style="word-break:break-all"><div class="muted">Bağlantı:</div><div id="qrLinkTxt"></div></div>
+  </div>
+  <div class="dlg-foot">
+    <button class="ghost" id="qrClose">Kapat</button>
+    <button id="qrDownload">PNG indir</button>
+  </div>
+</dialog>
+
+<dialog id="photoDlg">
+  <div class="dlg-head">Fotoğraf Önizleme</div>
+  <div class="dlg-body">
+    <img id="photoFull" class="photo-full" alt="Fotoğraf">
+  </div>
+  <div class="dlg-foot">
+    <button id="photoClose" class="ghost">Kapat</button>
+  </div>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <!-- libs -->
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -332,388 +343,335 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
 <script>
-  // ==== FIREBASE ====
-  const firebaseConfig = {
-    apiKey: "AIzaSyDJtcrJ6Eh4BfZnn0M-4z9QYi_2AS-ikHw",
-    authDomain: "ieee-oda.firebaseapp.com",
-    databaseURL: "https://ieee-oda-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "ieee-oda",
-    storageBucket: "ieee-oda.firebasestorage.app",
-    messagingSenderId: "788998880363",
-    appId: "1:788998880363:web:5eacc71c326cffe7b3452e"
+/* ==== FIREBASE ==== */
+const firebaseConfig = {
+  apiKey:"AIzaSyDJtcrJ6Eh4BfZnn0M-4z9QYi_2AS-ikHw",
+  authDomain:"ieee-oda.firebaseapp.com",
+  databaseURL:"https://ieee-oda-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"ieee-oda",
+  storageBucket:"ieee-oda.firebasestorage.app",
+  messagingSenderId:"788998880363",
+  appId:"1:788998880363:web:5eacc71c326cffe7b3452e"
+};
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth(), db=firebase.database();
+
+/* ==== helpers ==== */
+const $=id=>document.getElementById(id);
+const fmt=ts=>new Date(ts||0).toLocaleString();
+const esc=s=>String(s||'').replace(/[<>&]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]));
+const toast=m=>{const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1600);};
+const setStatus=(msg,ok=false)=>{const el=$('status'); el.className=ok?'ok':'muted'; el.textContent=msg||'';};
+
+/* ==== auth ==== */
+auth.onAuthStateChanged(async u=>{
+  if(!u){ location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
+  $('mePill').textContent = u.email || u.uid;
+  const isAdmin = await db.ref('admins/'+u.uid).get().then(s=>s.exists()&&s.val()===true).catch(()=>false);
+  if(!isAdmin){ alert('Admin değilsiniz.'); return; }
+  initTabs(); initDatePreset(); await loadRooms();
+  db.ref('fundTotals').on('value', s=>{
+    const v=s.val()||{}; const collected=+(v.collected||0), spent=+(v.spent||0);
+    const cash=+(collected-spent).toFixed(2);
+    $('cash').textContent=`Kasa: ₺${cash.toFixed(2)} (Toplanan ₺${collected.toFixed(2)} / Harcanan ₺${spent.toFixed(2)})`;
+  });
+});
+$('logout').onclick=()=>auth.signOut().then(()=>location.replace('login.html'));
+
+/* ==== rooms / filters ==== */
+async function loadRooms(){
+  const snap=await db.ref('roomKeys').get();
+  const sel=$('roomSelect'); sel.innerHTML='';
+  const rooms=Object.keys(snap.val()||{}).sort();
+  rooms.forEach(r=>{const o=document.createElement('option'); o.value=r; o.textContent=r; sel.appendChild(o);});
+  if(rooms.length){ sel.value=rooms[0]; await applyFilters(); }
+}
+$('roomSelect').onchange=()=>applyFilters();
+$('refresh').onclick=()=>applyFilters();
+$('live').onchange=()=>applyFilters();
+
+function initDatePreset(){
+  const preset=$('datePreset');
+  const change=()=>{
+    const now=Date.now();
+    const setCustom=(s,e)=>{ $('startAt').value=new Date(s).toISOString().slice(0,16); $('endAt').value=new Date(e).toISOString().slice(0,16); };
+    if(preset.value==='today'){ const d=new Date(); d.setHours(0,0,0,0); setCustom(+d,now); }
+    else if(preset.value==='yesterday'){ const d=new Date(); d.setDate(d.getDate()-1); d.setHours(0,0,0,0); setCustom(+d,+d+86399999); }
+    else if(preset.value==='7d'){ const d=new Date(now-6*86400000); d.setHours(0,0,0,0); setCustom(+d,now); }
+    else if(preset.value==='30d'){ const d=new Date(now-29*86400000); d.setHours(0,0,0,0); setCustom(+d,now); }
   };
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth(), db = firebase.database();
+  preset.onchange=()=>{ if(preset.value!=='custom'){ change(); applyFilters(); } };
+  $('startAt').onchange=()=>{ preset.value='custom'; applyFilters(); };
+  $('endAt').onchange=()=>{ preset.value='custom'; applyFilters(); };
+  change();
+}
+function getRange(){
+  const s=$('startAt').value?new Date($('startAt').value).getTime():Date.now()-7*86400000;
+  const e=$('endAt').value?new Date($('endAt').value).getTime():Date.now();
+  return {start:s,end:e};
+}
 
-  const $ = id => document.getElementById(id);
-  const fmt = ts => new Date(ts||0).toLocaleString();
-  const esc = s => String(s||'').replace(/[<>&]/g, m => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]));
-  const setStatus = (msg, ok=false)=>{ const el=$('status'); el.className=ok?'ok':'muted'; el.textContent=msg||''; };
+/* ==== data ==== */
+let liveOffFns=[];
+async function applyFilters(){
+  const room=$('roomSelect').value; if(!room) return;
+  const {start,end}=getRange();
+  setStatus('Yükleniyor…');
+  liveOffFns.forEach(fn=>fn&&fn()); liveOffFns=[];
 
-  auth.onAuthStateChanged(async u=>{
-    if(!u){ location.replace('login.html?next='+encodeURIComponent('admin.html')); return; }
-    $('mePill').textContent = u.email || u.uid;
-    const isAdmin = await db.ref('admins/'+u.uid).get().then(s=>s.exists() && s.val()===true).catch(()=>false);
-    if(!isAdmin){ alert('Admin değilsiniz.'); return; }
-    initTabs(); initDatePreset(); await loadRooms();
-    // Kasa göstergesi: fundTotals dinle
-    db.ref('fundTotals').on('value', s=>{
-      const v = s.val() || {};
-      const collected = +(v.collected||0);
-      const spent = +(v.spent||0);
-      const cash = +(collected - spent).toFixed(2);
-      const el = $('cash');
-      if(el) el.textContent = `Kasa: ₺${cash.toFixed(2)} (Toplanan ₺${collected.toFixed(2)} / Harcanan ₺${spent.toFixed(2)})`;
-    });
+  const resRef=db.ref('roomReservations/'+room).orderByChild('startAt').startAt(start-30*24*3600e3).endAt(end+30*24*3600e3);
+  const attRef=db.ref('attendanceByRoom/'+room).orderByChild('createdAt').startAt(start).endAt(end);
+  const fbRef =db.ref('roomFeedback/'+room).orderByChild('createdAt').startAt(start).endAt(end);
+  const invRef=db.ref('inventoryRequests/'+room).orderByChild('createdAt').startAt(start).endAt(end);
+  const overlap=rows=>(rows||[]).filter(r=>(r.endAt||0)>=start && (r.startAt||0)<=end);
 
+  if($('live').checked){
+    const aCb=attRef.on('value',s=>renderAttendance(Object.values(s.val()||{})));
+    const fCb=fbRef.on('value',s=>renderFeedback(entriesWithId(s.val())));
+    const iCb=invRef.on('value',s=>renderInventory(entriesWithId(s.val())));
+    const rCb=resRef.on('value',s=>renderReservations(overlap(entriesWithId(s.val()))));
+    liveOffFns.push(()=>attRef.off('value',aCb),()=>fbRef.off('value',fCb),()=>invRef.off('value',iCb),()=>resRef.off('value',rCb));
+    setStatus('Canlı dinleniyor',true);
+  }else{
+    const [a,f,i,r]=await Promise.all([attRef.get(),fbRef.get(),invRef.get(),resRef.get()]);
+    renderAttendance(Object.values(a.val()||{}));
+    renderFeedback(entriesWithId(f.val()));
+    renderInventory(entriesWithId(i.val()));
+    renderReservations(overlap(entriesWithId(r.val())));
+    setStatus('');
+  }
+  calcOccupancy();
+  if(!$('gateBase').value) $('gateBase').value = location.origin + '/gate.html';
+  makeQR();
+}
+const entriesWithId=o=>Object.entries(o||{}).map(([id,v])=>({id,...v}));
+
+/* ==== renderers ==== */
+function renderAttendance(rows){
+  const tb=$('attBody'); tb.innerHTML=''; rows.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="5" class="empty">Veri yok</td></tr>`; return; }
+  window.__attRows=rows;
+  tb.innerHTML=rows.map(r=>`<tr>
+    <td>${fmt(r.createdAt)}</td><td>${esc(r.userName||r.userId)}</td><td>${esc(r.action)}</td><td>${esc(r.roomId)}</td><td>${esc(r.method||'')}</td>
+  </tr>`).join('');
+}
+
+function renderFeedback(rows){
+  const tb=$('fbBody'); tb.innerHTML=''; rows.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="7" class="empty">Veri yok</td></tr>`; return; }
+  window.__fbRows=rows;
+  const q=($('fbQuery').value||'').toLowerCase();
+  const state=$('fbState').value||'all';
+  const filtered=rows.filter(r=>{
+    const blob=[r.userName,r.comment,(r.tags||[]).join(' ')].join(' ').toLowerCase();
+    const stateOk=state==='all'||(String(r.adminState||'open')===state);
+    return (!q||blob.includes(q)) && stateOk;
   });
-  $('logout').onclick = ()=> auth.signOut().then(()=>location.replace('login.html'));
+  tb.innerHTML = filtered.map(r=>`<tr>
+    <td>${fmt(r.createdAt)}</td>
+    <td>${esc(r.userName||r.userId)}</td>
+    <td><span class="chip ${esc(r.adminState||'open')}">${esc(r.adminState||'open')}</span></td>
+    <td>${'★★★★★'.slice(0,r.rating||0)}${'☆☆☆☆☆'.slice(0,5-(r.rating||0))}</td>
+    <td>
+      ${esc(r.comment||'')}
+      ${r.photoB64?`<div style="margin-top:6px"><button class="ghost btn-view" data-src="${r.photoB64}">Fotoğrafı Aç</button></div>`:''}
+    </td>
+    <td>${esc((r.tags||[]).join(', '))}</td>
+    <td>
+      <select data-fb="${r.id}" class="fbStateSel">
+        <option value="open" ${(r.adminState||'open')==='open'?'selected':''}>Açık</option>
+        <option value="resolved" ${(r.adminState||'open')==='resolved'?'selected':''}>Çözüldü</option>
+      </select>
+    </td>
+  </tr>`).join('');
+  document.querySelectorAll('.fbStateSel').forEach(sel=>{
+    sel.onchange=async e=>{ const id=e.target.dataset.fb, room=$('roomSelect').value; await db.ref(`roomFeedback/${room}/${id}/adminState`).set(e.target.value); setStatus('Feedback güncellendi',true); };
+  });
+  document.querySelectorAll('.btn-view').forEach(b=> b.onclick=()=>{ $('photoFull').src=b.dataset.src; $('photoDlg').showModal(); });
+}
+$('photoClose').onclick=()=>$('photoDlg').close();
+$('fbQuery').oninput=()=>renderFeedback(window.__fbRows||[]);
+$('fbState').onchange=()=>renderFeedback(window.__fbRows||[]);
+$('fbClear').onclick=()=>{ $('fbQuery').value=''; $('fbState').value='all'; renderFeedback(window.__fbRows||[]); };
 
-  async function loadRooms(){
-    const snap = await db.ref('roomKeys').get();
-    const sel = $('roomSelect'); sel.innerHTML='';
-    const rooms = Object.keys(snap.val()||{}).sort();
-    rooms.forEach(r=>{ const o=document.createElement('option'); o.value=r; o.textContent=r; sel.appendChild(o); });
-    if(rooms.length){ sel.value = rooms[0]; await applyFilters(); }
-  }
-  $('roomSelect').onchange = ()=> applyFilters();
-  $('refresh').onclick = ()=> applyFilters();
-  $('live').onchange = ()=> applyFilters();
-
-  function initDatePreset(){
-    const preset = $('datePreset');
-    const change = ()=>{
-      const now = Date.now();
-      function setCustom(s,e){ $('startAt').value=new Date(s).toISOString().slice(0,16); $('endAt').value=new Date(e).toISOString().slice(0,16); }
-      if(preset.value==='today'){ const d=new Date(); d.setHours(0,0,0,0); setCustom(+d, now); }
-      else if(preset.value==='yesterday'){ const d=new Date(); d.setDate(d.getDate()-1); d.setHours(0,0,0,0); setCustom(+d, +d+86399999); }
-      else if(preset.value==='7d'){ const d=new Date(now-6*86400000); d.setHours(0,0,0,0); setCustom(+d, now); }
-      else if(preset.value==='30d'){ const d=new Date(now-29*86400000); d.setHours(0,0,0,0); setCustom(+d, now); }
-    };
-    preset.onchange = ()=>{ if(preset.value!=='custom'){ change(); applyFilters(); } };
-    $('startAt').onchange = ()=>{ preset.value='custom'; applyFilters(); };
-    $('endAt').onchange   = ()=>{ preset.value='custom'; applyFilters(); };
-    change();
-  }
-  function getRange(){
-    const s = $('startAt').value ? new Date($('startAt').value).getTime() : Date.now()-7*86400000;
-    const e = $('endAt').value   ? new Date($('endAt').value).getTime()   : Date.now();
-    return {start:s, end:e};
-  }
-
-  let liveOffFns = [];
-  async function applyFilters(){
-    const room = $('roomSelect').value; if(!room) return;
-    const {start,end} = getRange();
-    setStatus('Yükleniyor…');
-
-    // eski listener’ları kapat
-    liveOffFns.forEach(fn=>fn&&fn()); liveOffFns = [];
-
-    // geniş aralık (overlap için pay bırakıyoruz)
-    const resRef = db.ref('roomReservations/'+room)
-                    .orderByChild('startAt')
-                    .startAt(start - 30*24*3600e3)   // 30 gün önceye pay
-                    .endAt(end + 30*24*3600e3);     // 30 gün ileriye pay
-
-    const attRef = db.ref('attendanceByRoom/'+room).orderByChild('createdAt').startAt(start).endAt(end);
-    const fbRef  = db.ref('roomFeedback/'+room).orderByChild('createdAt').startAt(start).endAt(end);
-    const invRef = db.ref('inventoryRequests/'+room).orderByChild('createdAt').startAt(start).endAt(end);
-
-    const filterOverlap = (rows)=> (rows||[]).filter(r => (r.endAt||0) >= start && (r.startAt||0) <= end);
-
-    if($('live').checked){
-      const aCb = attRef.on('value', s=> renderAttendance(Object.values(s.val()||{})));
-      const fCb = fbRef .on('value', s=> renderFeedback(entriesWithId(s.val())));
-      const iCb = invRef.on('value', s=> renderInventory(entriesWithId(s.val())));
-      const rCb = resRef.on('value', s=>{
-        const all = entriesWithId(s.val());
-        renderReservations(filterOverlap(all));
-      });
-      liveOffFns.push(()=>attRef.off('value',aCb), ()=>fbRef.off('value',fCb), ()=>invRef.off('value',iCb), ()=>resRef.off('value',rCb));
-      setStatus('Canlı dinleniyor', true);
-    }else{
-      const [a,f,i,r] = await Promise.all([attRef.get(), fbRef.get(), invRef.get(), resRef.get()]);
-      renderAttendance(Object.values(a.val()||{}));
-      renderFeedback(entriesWithId(f.val()));
-      renderInventory(entriesWithId(i.val()));
-      const all = entriesWithId(r.val());
-      renderReservations(filterOverlap(all));
-      setStatus('');
-    }
-
-    calcOccupancy();
-    if(!$('gateBase').value) $('gateBase').value = location.origin + '/gate.html';
-    makeQR();
-  }
-
-  const entriesWithId = obj => Object.entries(obj||{}).map(([id,v])=>({id,...v}));
-
-  function renderAttendance(rows){
-    const tb = $('attBody'); tb.innerHTML=''; rows.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    if(!rows.length){ tb.innerHTML = `<tr><td colspan="5" class="empty">Veri yok</td></tr>`; return; }
-    window.__attRows = rows;
-    tb.innerHTML = rows.map(r=>`<tr>
-      <td>${fmt(r.createdAt)}</td><td>${esc(r.userName||r.userId)}</td><td>${esc(r.action)}</td><td>${esc(r.roomId)}</td><td>${esc(r.method||'')}</td>
-    </tr>`).join('');
-  }
-  function renderFeedback(rows){
-    const tb = $('fbBody'); tb.innerHTML=''; rows.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    if(!rows.length){ tb.innerHTML = `<tr><td colspan="7" class="empty">Veri yok</td></tr>`; return; }
-    window.__fbRows = rows;
-    tb.innerHTML = rows.map(r=>`<tr>
-      <td>${fmt(r.createdAt)}</td><td>${esc(r.userName||r.userId)}</td>
-      <td>${esc(r.adminState||'open')}</td>
-      <td>${'★★★★★'.slice(0,r.rating||0)}${'☆☆☆☆☆'.slice(0,5-(r.rating||0))}</td>
-      <td>
-        ${esc(r.comment||'')}
-        ${
-          r.photoB64
-            ? `<div style="margin-top:6px">
-                <img src="${r.photoB64}" alt="foto" style="max-height:90px;border:1px solid var(--edge);border-radius:6px">
-              </div>`
-            : ''
-        }
-      </td>
-
-      <td>${esc((r.tags||[]).join(', '))}</td>
-      <td>
-        <select data-fb="${r.id}" class="fbStateSel">
-          <option value="open" ${(r.adminState||'open')==='open'?'selected':''}>Açık</option>
-          <option value="resolved" ${(r.adminState||'open')==='resolved'?'selected':''}>Çözüldü</option>
+function renderInventory(rows){
+  const tb=$('invBody'); tb.innerHTML=''; rows.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="7" class="empty">Veri yok</td></tr>`; return; }
+  window.__invRows=rows;
+  tb.innerHTML=rows.map(r=>`<tr>
+    <td>${fmt(r.createdAt)}</td><td>${esc(r.userName||r.userId)}</td><td>${esc(r.qty)}</td>
+    <td>${esc(r.name)}</td><td>${esc(r.note||'')}</td><td>${esc(r.status||'pending')}</td>
+    <td>
+      <div class="row" style="gap:6px">
+        <select data-inv="${r.id}" class="invStatus">
+          <option value="pending" ${r.status==='pending'?'selected':''}>Beklemede</option>
+          <option value="ordered" ${r.status==='ordered'?'selected':''}>Sipariş verildi</option>
+          <option value="done" ${r.status==='done'?'selected':''}>Tamamlandı</option>
         </select>
-      </td>
-    </tr>`).join('');
-    document.querySelectorAll('.fbStateSel').forEach(sel=>{
-      sel.onchange = async (e)=>{ const id=e.target.dataset.fb, room=$('roomSelect').value; await db.ref(`roomFeedback/${room}/${id}/adminState`).set(e.target.value); setStatus('Feedback güncellendi', true); };
-    });
-  }
-  function renderInventory(rows){
-    const tb = $('invBody'); tb.innerHTML=''; rows.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    if(!rows.length){ tb.innerHTML = `<tr><td colspan="7" class="empty">Veri yok</td></tr>`; return; }
-    window.__invRows = rows;
-    tb.innerHTML = rows.map(r=>`<tr>
-      <td>${fmt(r.createdAt)}</td>
-      <td>${esc(r.userName||r.userId)}</td>
-      <td>${esc(r.qty)}</td>
-      <td>${esc(r.name)}</td>
-      <td>${esc(r.note||'')}</td>
-      <td>${esc(r.status||'pending')}</td>
-      <td>
-        <div class="row" style="gap:6px">
-          <select data-inv="${r.id}" class="invStatus">
-            <option value="pending" ${r.status==='pending'?'selected':''}>Beklemede</option>
-            <option value="ordered" ${r.status==='ordered'?'selected':''}>Sipariş verildi</option>
-            <option value="done" ${r.status==='done'?'selected':''}>Tamamlandı</option>
-          </select>
-          <input type="number" min="0" step="0.01" placeholder="Birim ₺" value="${r.unitPrice||''}" style="max-width:110px" class="invPrice" data-inv="${r.id}">
-          <button class="ghost invBill" data-inv="${r.id}">Fatura Kes</button>
-        </div>
-      </td>
-    </tr>`).join('');
-
-// === BINDLER (status, price, fatura kes) ===
-    document.querySelectorAll('.invStatus').forEach(sel=>{
-      sel.onchange = async (e)=>{
-        const id = e.target.dataset.inv, room=$('roomSelect').value, val=e.target.value;
-        const ref  = db.ref(`inventoryRequests/${room}/${id}`);
-        const snap = await ref.get(); if(!snap.exists()) return;
-        const rec  = snap.val();
-        rec.status = val;
-        await ref.set(rec);
-        setStatus('Inventory güncellendi', true);
-
-        // Otomatik fatura: Tamamlandı + fiyat > 0 ise
-        if(val==='done'){
-          const price = parseFloat(rec.unitPrice||'0')||0;
-          const qty   = rec.qty||1;
-          if(price>0){
-            const total = +(price*qty).toFixed(2);
-            const invRef = db.ref('invoices').push();
-            const inv = {
-              id: invRef.key,
-              userId: rec.userId,
-              userName: rec.userName || rec.userId,
-              roomId: room,
-              title: `Ekipman: ${rec.name}`,
-              lines: [{desc: rec.name, qty, unitPrice: price}],
-              total,
-              status: 'unpaid',
-              createdAt: Date.now(),
-              source: 'inventory',
-              sourceId: rec.id
-            };
-            await invRef.set(inv);
-            await db.ref(`userInvoices/${rec.userId}/${invRef.key}`).set(inv);
-            setStatus('Tamamlandı → Fatura otomatik oluşturuldu', true);
-          }
+        <input type="number" min="0" step="0.01" placeholder="Birim ₺" value="${r.unitPrice||''}" style="max-width:110px" class="invPrice" data-inv="${r.id}">
+        <button class="ghost invBill" data-inv="${r.id}">Fatura Kes</button>
+      </div>
+    </td>
+  </tr>`).join('');
+  document.querySelectorAll('.invStatus').forEach(sel=>{
+    sel.onchange=async e=>{
+      const id=e.target.dataset.inv, room=$('roomSelect').value, val=e.target.value;
+      const ref=db.ref(`inventoryRequests/${room}/${id}`), s=await ref.get(); if(!s.exists()) return;
+      const rec=s.val(); rec.status=val; await ref.set(rec); setStatus('Inventory güncellendi',true);
+      if(val==='done'){
+        const price=parseFloat(rec.unitPrice||'0')||0, qty=rec.qty||1;
+        if(price>0){
+          const total=+(price*qty).toFixed(2);
+          const invRef=db.ref('invoices').push();
+          const inv={id:invRef.key,userId:rec.userId,userName:rec.userName||rec.userId,roomId:room,title:`Ekipman: ${rec.name}`,lines:[{desc:rec.name,qty,unitPrice:price}],total,status:'unpaid',createdAt:Date.now(),source:'inventory',sourceId:rec.id};
+          await invRef.set(inv); await db.ref(`userInvoices/${rec.userId}/${invRef.key}`).set(inv);
+          setStatus('Tamamlandı → Fatura oluşturuldu',true);
         }
-      };
-    });
-
-    document.querySelectorAll('.invPrice').forEach(inp=>{
-      inp.onchange = async (e)=>{
-        const id = e.target.dataset.inv, room=$('roomSelect').value;
-        const v = parseFloat(e.target.value||'0') || 0;
-        await db.ref(`inventoryRequests/${room}/${id}/unitPrice`).set(v);
-        setStatus('Birim fiyat kaydedildi', true);
-      };
-    });
-
-    // Manuel "Fatura Kes" (buton)
-// "Fatura Kes" -> ilgili kullanıcıya invoice + PAID + gider
-    document.querySelectorAll('.invBill').forEach(btn=>{
-    btn.onclick = async ()=>{
-      const room = $('roomSelect').value;
-      const id = btn.dataset.inv;
-      const snap = await db.ref(`inventoryRequests/${room}/${id}`).get();
-      if(!snap.exists()) return alert('Kayıt bulunamadı.');
-      const rec = snap.val();
-      const price = parseFloat(rec.unitPrice||'0') || 0;
-      if(rec.status!=='done') return alert('Önce durumu "Tamamlandı" yap.');
+      }
+    };
+  });
+  document.querySelectorAll('.invPrice').forEach(inp=>{
+    inp.onchange=async e=>{ const id=e.target.dataset.inv, room=$('roomSelect').value; const v=parseFloat(e.target.value||'0')||0; await db.ref(`inventoryRequests/${room}/${id}/unitPrice`).set(v); setStatus('Birim fiyat kaydedildi',true); };
+  });
+  document.querySelectorAll('.invBill').forEach(btn=>{
+    btn.onclick=async()=>{
+      const room=$('roomSelect').value, id=btn.dataset.inv;
+      const s=await db.ref(`inventoryRequests/${room}/${id}`).get(); if(!s.exists()) return alert('Kayıt bulunamadı.');
+      const rec=s.val(); const price=parseFloat(rec.unitPrice||'0')||0; if(rec.status!=='done') return alert('Önce "Tamamlandı" yap.');
       if(price<=0) return alert('Birim fiyat girin.');
-
-      const total = +(price * (rec.qty||1)).toFixed(2);
-
-      // 1) Fatura -> PAID
-      const invRef = db.ref('invoices').push();
-      const inv = {
-        id: invRef.key,
-        userId: rec.userId,
-        userName: rec.userName || rec.userId,
-        roomId: room,
-        title: `Ekipman: ${rec.name}`,
-        lines: [{ desc: rec.name, qty: rec.qty||1, unitPrice: price }],
-        total: total,
-        status: 'paid',             // <-- burası artık PAID
-        createdAt: Date.now(),
-        paidAt: Date.now(),
-        source: 'inventory',
-        sourceId: rec.id
-      };
-      await invRef.set(inv);
-      await db.ref(`userInvoices/${rec.userId}/${invRef.key}`).set(inv);
-
-      // 2) Muhasebe: gider kaydı + kasayı düş
-      await addLedger('debit', total, `Ekipman alımı: ${rec.name}`, { roomId: room, invId: invRef.key });
-      await incTotal('spent', total);
-
-      setStatus('Fatura oluşturuldu ve ödendi olarak işaretlendi. Kasa güncellendi.', true);
+      const total=+(price*(rec.qty||1)).toFixed(2);
+      const invRef=db.ref('invoices').push();
+      const inv={id:invRef.key,userId:rec.userId,userName:rec.userName||rec.userId,roomId:room,title:`Ekipman: ${rec.name}`,lines:[{desc:rec.name,qty:rec.qty||1,unitPrice:price}],total,status:'paid',createdAt:Date.now(),paidAt:Date.now(),source:'inventory',sourceId:rec.id};
+      await invRef.set(inv); await db.ref(`userInvoices/${rec.userId}/${invRef.key}`).set(inv);
+      await addLedger('debit', total, `Ekipman alımı: ${rec.name}`, {roomId:room,invId:invRef.key}); await incTotal('spent', total);
+      setStatus('Fatura ödendi olarak işaretlendi. Kasa güncellendi.',true);
     };
   });
+}
 
+function renderReservations(rows){
+  const tb=$('resBody'); tb.innerHTML=''; rows.sort((a,b)=>(a.startAt||0)-(b.startAt||0));
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="7" class="empty">Veri yok</td></tr>`; return; }
+  window.__resRows=rows;
+  tb.innerHTML=rows.map(r=>`<tr>
+    <td>${fmt(r.startAt)}</td><td>${fmt(r.endAt)}</td><td>${esc(r.userName||r.userId)}</td>
+    <td>${esc(r.title||'')}</td><td>${esc(r.note||'')}</td>
+    <td><span class="chip ${r.status||'pending'}">${esc(r.status||'pending')}</span></td>
+    <td>
+      <select data-res="${r.id}" class="resState">
+        <option value="pending" ${(r.status||'pending')==='pending'?'selected':''}>Beklemede</option>
+        <option value="approved" ${(r.status||'pending')==='approved'?'selected':''}>Onayla</option>
+        <option value="declined" ${(r.status||'pending')==='declined'?'selected':''}>Reddet</option>
+      </select>
+      <button class="ghost resDel" data-res="${r.id}">Sil</button>
+    </td>
+  </tr>`).join('');
+  document.querySelectorAll('.resState').forEach(sel=>{
+    sel.onchange=async e=>{
+      const id=e.target.dataset.res, room=$('roomSelect').value, val=e.target.value;
+      const s=await db.ref(`roomReservations/${room}/${id}`).get(); if(!s.exists()) return;
+      const rec=s.val(); rec.status=val;
+      await db.ref(`roomReservations/${room}/${id}`).set(rec);
+      await db.ref(`userReservations/${rec.userId}/${id}`).set(rec);
+      setStatus('Rezervasyon güncellendi',true);
+    };
+  });
+  document.querySelectorAll('.resDel').forEach(btn=>{
+    btn.onclick=async()=>{
+      if(!confirm('Bu rezervasyonu silmek istiyor musun?')) return;
+      const id=btn.dataset.res, room=$('roomSelect').value;
+      const s=await db.ref(`roomReservations/${room}/${id}`).get(); const rec=s.val()||{};
+      await db.ref(`roomReservations/${room}/${id}`).remove();
+      if(rec.userId) await db.ref(`userReservations/${rec.userId}/${id}`).remove();
+      setStatus('Rezervasyon silindi',true);
+    };
+  });
+}
 
-  }
+/* ==== occupancy ==== */
+async function calcOccupancy(){
+  const room=$('roomSelect').value; if(!room) return;
+  const since=Date.now()-24*3600*1000;
+  const s=await db.ref('attendanceByRoom/'+room).orderByChild('createdAt').startAt(since).get();
+  const rows=Object.values(s.val()||{}); const state=new Map();
+  rows.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)).forEach(r=>{ if(r.action==='enter') state.set(r.userId,true); if(r.action==='exit') state.set(r.userId,false); });
+  const inside=[...state.values()].filter(Boolean).length;
+  $('occupy').textContent=`Doluluk (son 24s): ~${inside}`;
+}
 
-  // === Reservations render & actions ===
-  function renderReservations(rows){
-    const tb = $('resBody'); tb.innerHTML='';
-    rows.sort((a,b)=>(a.startAt||0)-(b.startAt||0));
-    if(!rows.length){ tb.innerHTML = `<tr><td colspan="7" class="empty">Veri yok</td></tr>`; return; }
-    window.__resRows = rows;
-    tb.innerHTML = rows.map(r=>`<tr>
-      <td>${fmt(r.startAt)}</td>
-      <td>${fmt(r.endAt)}</td>
-      <td>${esc(r.userName||r.userId)}</td>
-      <td>${esc(r.title||'')}</td>
-      <td>${esc(r.note||'')}</td>
-      <td><span class="chip ${r.status||'pending'}">${esc(r.status||'pending')}</span></td>
-      <td>
-        <select data-res="${r.id}" class="resState">
-          <option value="pending" ${ (r.status||'pending')==='pending'?'selected':'' }>Beklemede</option>
-          <option value="approved" ${ (r.status||'pending')==='approved'?'selected':'' }>Onayla</option>
-          <option value="declined" ${ (r.status||'pending')==='declined'?'selected':'' }>Reddet</option>
-        </select>
-        <button class="ghost resDel" data-res="${r.id}">Sil</button>
-      </td>
-    </tr>`).join('');
+/* ==== CSV ==== */
+function downloadCSV(filename, rows){
+  if(!rows || !rows.length) return alert('Veri yok');
+  const headers=Array.from(new Set(rows.flatMap(r=>Object.keys(r))));
+  const J=v=>JSON.stringify(v===undefined?'':v);
+  const lines=[headers.join(',')].concat(rows.map(r=>headers.map(h=>J(r[h])).join(',')));
+  const blob=new Blob([lines.join('\n')],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+}
+$('csvAttend').onclick=()=>downloadCSV('attendance.csv',window.__attRows||[]);
+$('csvFeedback').onclick=()=>downloadCSV('feedback.csv',window.__fbRows||[]);
+$('csvInv').onclick=()=>downloadCSV('inventory.csv',window.__invRows||[]);
+$('csvRes').onclick=()=>downloadCSV('reservations.csv',window.__resRows||[]);
 
-    // Bind: state change + delete
-    document.querySelectorAll('.resState').forEach(sel=>{
-      sel.onchange = async (e)=>{
-        const id = e.target.dataset.res, room=$('roomSelect').value, val=e.target.value;
-        const snap = await db.ref(`roomReservations/${room}/${id}`).get(); if(!snap.exists()) return;
-        const rec = snap.val(); rec.status = val;
-        await db.ref(`roomReservations/${room}/${id}`).set(rec);
-        await db.ref(`userReservations/${rec.userId}/${id}`).set(rec);
-        setStatus('Rezervasyon güncellendi', true);
-      };
-    });
-    document.querySelectorAll('.resDel').forEach(btn=>{
-      btn.onclick = async ()=>{
-        if(!confirm('Bu rezervasyonu silmek istiyor musun?')) return;
-        const id = btn.dataset.res, room=$('roomSelect').value;
-        const snap = await db.ref(`roomReservations/${room}/${id}`).get(); const rec=snap.val()||{};
-        await db.ref(`roomReservations/${room}/${id}`).remove();
-        if(rec.userId) await db.ref(`userReservations/${rec.userId}/${id}`).remove();
-        setStatus('Rezervasyon silindi', true);
-      };
-    });
-  }
+/* ==== QR ==== */
+function makeLink(){
+  const room=$('roomSelect').value;
+  return `${$('gateBase').value || (location.origin+'/gate.html')}?room=${encodeURIComponent(room)}&key=${encodeURIComponent(window.__roomKey||'')}`;
+}
+async function makeQR(){
+  const room=$('roomSelect').value; if(!room) return;
+  const keySnap=await db.ref('roomKeys/'+room).get();
+  window.__roomKey=keySnap.val()||'';
+  const link=makeLink();
+  $('qrText').textContent=link;
+  await QRCode.toCanvas($('qrCanvas'), link, {width:160, margin:1});
+}
+$('makeQR').onclick=makeQR;
+$('downloadQR').onclick=()=>{ const a=document.createElement('a'); a.href=$('qrCanvas').toDataURL('image/png'); a.download=`QR-${$('roomSelect').value}.png`; a.click(); };
+$('openQR').onclick=async()=>{ const link=makeLink(); $('qrLinkTxt').textContent=link; await QRCode.toCanvas($('qrBig'), link, {width:320, margin:1}); $('qrDlg').showModal(); };
+$('qrClose').onclick=()=>$('qrDlg').close();
+$('qrDownload').onclick=()=>{ const a=document.createElement('a'); a.href=$('qrBig').toDataURL('image/png'); a.download=`QR-${$('roomSelect').value}@2x.png`; a.click(); };
 
-  async function calcOccupancy(){
-    const room = $('roomSelect').value; if(!room) return;
-    const since = Date.now()-24*3600*1000;
-    const s = await db.ref('attendanceByRoom/'+room).orderByChild('createdAt').startAt(since).get();
-    const rows = Object.values(s.val()||{});
-    const state = new Map();
-    rows.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)).forEach(r=>{ if(r.action==='enter') state.set(r.userId, true); if(r.action==='exit') state.set(r.userId, false); });
-    const inside = [...state.values()].filter(Boolean).length;
-    $('occupy').textContent = `Doluluk (son 24s): ~${inside}`;
-  }
+/* ==== admin ops ==== */
+$('addRoom').onclick=async()=>{
+  const r=$('newRoomId').value.trim(), k=$('newRoomKey').value.trim();
+  if(!r||!k) return alert('Oda ve anahtar gerekli');
+  await db.ref('roomKeys/'+r).set(k); setStatus('Oda/anahtar kaydedildi',true); await loadRooms(); $('roomSelect').value=r; await applyFilters();
+};
+$('rotateKey').onclick=async()=>{
+  const r=$('roomSelect').value; if(!r) return;
+  if(!confirm(r+' için anahtar yenilensin mi?')) return;
+  const k=Math.random().toString(36).slice(2,8).toUpperCase();
+  await db.ref('roomKeys/'+r).set(k); setStatus('Anahtar yenilendi',true); await makeQR();
+};
+$('delRoom').onclick=async()=>{
+  const r=$('roomSelect').value; if(!r) return;
+  if(!confirm(`${r} odasını sil? Bu işlem geri alınamaz.`)) return;
+  await db.ref('roomKeys/'+r).remove(); setStatus('Oda silindi',true); await loadRooms(); await applyFilters();
+};
 
-  function downloadCSV(filename, rows){
-    if(!rows || !rows.length) return alert('Veri yok');
-    const headers = Array.from(new Set(rows.flatMap(r=>Object.keys(r))));
-    const J = v => JSON.stringify(v===undefined?'':v);
-    const lines = [headers.join(',')].concat(rows.map(r=> headers.map(h=>J(r[h])).join(',')));
-    const blob = new Blob([lines.join('\n')],{type:'text/csv'}); const a=document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = filename; a.click();
-  }
-  $('csvAttend').onclick = ()=> downloadCSV('attendance.csv', window.__attRows||[]);
-  $('csvFeedback').onclick = ()=> downloadCSV('feedback.csv', window.__fbRows||[]);
-  $('csvInv').onclick = ()=> downloadCSV('inventory.csv', window.__invRows||[]);
-  $('csvRes').onclick = ()=> downloadCSV('reservations.csv', window.__resRows||[]);
+async function findUserByEmail(mail){
+  const q=await db.ref('users').orderByChild('email').equalTo(mail.toLowerCase()).limitToFirst(1).get();
+  if(!q.exists()) return null; const [uid,rec]=Object.entries(q.val())[0]; return {uid,...rec};
+}
+$('findUser').onclick=async()=>{
+  const mail=$('emailFind').value.trim(); if(!mail) return;
+  const u=await findUserByEmail(mail);
+  $('findRes').textContent = u ? `Bulundu → UID: ${u.uid} • Ad: ${u.displayName||'-'}` : 'Bulunamadı';
+  window.__foundUser=u;
+};
+$('makeAdmin').onclick=async()=>{ if(!window.__foundUser) return alert('Önce kullanıcıyı bul.'); await db.ref('admins/'+window.__foundUser.uid).set(true); toast('Admin verildi'); };
+$('removeAdmin').onclick=async()=>{ if(!window.__foundUser) return alert('Önce kullanıcıyı bul.'); await db.ref('admins/'+window.__foundUser.uid).remove(); toast('Admin kaldırıldı'); };
 
-  function makeLink(){
-    const room = $('roomSelect').value;
-    return `${$('gateBase').value || (location.origin+'/gate.html')}?room=${encodeURIComponent(room)}&key=${encodeURIComponent(window.__roomKey||'')}`;
-  }
-  async function makeQR(){
-    const room = $('roomSelect').value; if(!room) return;
-    const keySnap = await db.ref('roomKeys/'+room).get();
-    window.__roomKey = keySnap.val() || '';
-    const link = makeLink();
-    $('qrText').textContent = link;
-    await QRCode.toCanvas($('qrCanvas'), link, {width:160, margin:1});
-  }
-  $('makeQR').onclick = makeQR;
-  $('downloadQR').onclick = ()=>{ const a=document.createElement('a'); a.href=$('qrCanvas').toDataURL('image/png'); a.download=`QR-${$('roomSelect').value}.png`; a.click(); };
+/* ==== finans helpers & listeler ==== */
+async function addLedger(type,amount,note,meta={}){ const ref=db.ref('fundLedger').push(); await ref.set({id:ref.key,type,amount:+(amount||0),note:note||'',meta,createdAt:Date.now()}); }
+async function incTotal(key,delta){ await db.ref(`fundTotals/${key}`).transaction(v=>(v||0)+(delta||0)); }
 
-  // room ops and admin ops (same as before, shortened)
-  $('addRoom').onclick = async ()=>{ const r=$('newRoomId').value.trim(), k=$('newRoomKey').value.trim(); if(!r||!k) return alert('Oda ve anahtar gerekli'); await db.ref('roomKeys/'+r).set(k); setStatus('Oda/anahtar kaydedildi', true); await loadRooms(); $('roomSelect').value=r; await applyFilters(); };
-  $('rotateKey').onclick = async ()=>{ const r=$('roomSelect').value; if(!r) return; const k=Math.random().toString(36).slice(2,8).toUpperCase(); await db.ref('roomKeys/'+r).set(k); setStatus('Anahtar yenilendi', true); await makeQR(); };
-  $('delRoom').onclick = async ()=>{ const r=$('roomSelect').value; if(!r) return; if(!confirm(`${r} odasını sil?`)) return; await db.ref('roomKeys/'+r).remove(); setStatus('Oda silindi', true); await loadRooms(); await applyFilters(); };
-
-  async function findUserByEmail(mail){ const q=await db.ref('users').orderByChild('email').equalTo(mail.toLowerCase()).limitToFirst(1).get(); if(!q.exists()) return null; const [uid,rec]=Object.entries(q.val())[0]; return {uid,...rec}; }
-  $('findUser').onclick = async ()=>{ const mail=$('emailFind').value.trim(); if(!mail) return; const u=await findUserByEmail(mail); $('findRes').textContent = u ? `Bulundu → UID: ${u.uid} • Ad: ${u.displayName||'-'}` : 'Bulunamadı'; window.__foundUser=u; };
-  $('makeAdmin').onclick = async ()=>{ if(!window.__foundUser) return alert('Önce kullanıcıyı bul.'); await db.ref('admins/'+window.__foundUser.uid).set(true); setStatus('Admin verildi', true); };
-  $('removeAdmin').onclick = async ()=>{ if(!window.__foundUser) return alert('Önce kullanıcıyı bul.'); await db.ref('admins/'+window.__foundUser.uid).remove(); setStatus('Admin kaldırıldı', true); };
-
-// ===== FINANS: Aidat Kes + Faturalar listesi =====
-
-// ===== Aidat Bildirimleri (duesPaymentsIndex) – Yükle & Yönet =====
-
-// Admin listesi: son 200 kayıt (status: pending/approved/rejected)
 async function loadDuesPayments(){
-  const snap = await db.ref('duesPaymentsIndex').orderByChild('createdAt').limitToLast(200).get();
-  const rows = Object.values(snap.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  const tb = $('duesTable'); tb.innerHTML='';
-  if(!rows.length){
-    tb.innerHTML = `<tr><td colspan="6" class="empty">Veri yok</td></tr>`;
-    return;
-  }
-  tb.innerHTML = rows.map(r=>`
+  const snap=await db.ref('duesPaymentsIndex').orderByChild('createdAt').limitToLast(200).get();
+  const rows=Object.values(snap.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const tb=$('duesTable'); tb.innerHTML='';
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="6" class="empty">Veri yok</td></tr>`; return; }
+  tb.innerHTML=rows.map(r=>`
     <tr>
       <td>${fmt(r.createdAt)}</td>
       <td>${esc(r.userName||r.userId)}</td>
@@ -721,211 +679,82 @@ async function loadDuesPayments(){
       <td>₺${(+r.amount||0).toFixed(2)}</td>
       <td><span class="chip ${r.status||'pending'}">${esc(r.status||'pending')}</span></td>
       <td class="row" style="gap:6px">
-        ${r.status!=='approved' ? `<button class="ghost" data-approve="${r.id}">Onayla</button>` : ''}
-        ${r.status!=='rejected' ? `<button class="ghost" data-reject="${r.id}">Reddet</button>` : ''}
+        ${r.status!=='approved'?`<button class="ghost" data-approve="${r.id}">Onayla</button>`:''}
+        ${r.status!=='rejected'?`<button class="ghost" data-reject="${r.id}">Reddet</button>`:''}
       </td>
-    </tr>
-  `).join('');
-
-  // buton bağla
-  tb.querySelectorAll('button[data-approve]').forEach(b=> b.onclick = ()=> approveDues(b.dataset.approve));
-  tb.querySelectorAll('button[data-reject]').forEach(b=> b.onclick   = ()=> rejectDues(b.dataset.reject));
+    </tr>`).join('');
+  tb.querySelectorAll('button[data-approve]').forEach(b=> b.onclick=()=>approveDues(b.dataset.approve));
+  tb.querySelectorAll('button[data-reject]').forEach(b=> b.onclick=()=>rejectDues(b.dataset.reject));
 }
+$('reloadDues').onclick=()=>loadDuesPayments();
 
-$('reloadDues')?.addEventListener('click', ()=> loadDuesPayments());
-
-// Onay akışı:
-// - index kaydını çek (duesPaymentsIndex/{id})
-// - ZATEN approved ise tekrar kasa yazma (idempotent koruması)
-// - user mirror: duesPayments/{uid}/{id}/status = 'approved'
-// - index status = 'approved'
-// - muhasebe: ledger credit + fundTotals.collected += amount
 async function approveDues(payId){
-  const idxRef = db.ref('duesPaymentsIndex/'+payId);
-  const s = await idxRef.get();
-  if(!s.exists()) return alert('Kayıt bulunamadı.');
-  const rec = s.val();
-  if(rec.status === 'approved'){ setStatus('Zaten onaylanmış', true); return; }
-
-  // 1) mirror: kullanıcının dalını güncelle
+  const idxRef=db.ref('duesPaymentsIndex/'+payId); const s=await idxRef.get(); if(!s.exists()) return alert('Kayıt bulunamadı.');
+  const rec=s.val(); if(rec.status==='approved'){ setStatus('Zaten onaylı',true); return; }
   await db.ref(`duesPayments/${rec.userId}/${payId}/status`).set('approved');
-
-  // 2) index’i güncelle
-  rec.status = 'approved';
-  await idxRef.set(rec);
-
-  // 3) kasa: gelir yaz (tek seferlik)
-  const amt = +(rec.amount||0);
-  if(amt > 0){
-    await addLedger('credit', amt, `Aidat ${rec.month||''}`, { userId: rec.userId, payId });
-    await incTotal('collected', amt);
-  }
-
-  setStatus('Aidat onaylandı ve kasa güncellendi', true);
-  await loadDuesPayments();
+  rec.status='approved'; await idxRef.set(rec);
+  const amt=+(rec.amount||0); if(amt>0){ await addLedger('credit', amt, `Aidat ${rec.month||''}`, {userId:rec.userId, payId}); await incTotal('collected', amt); }
+  setStatus('Aidat onaylandı ve kasa güncellendi',true); await loadDuesPayments();
 }
-
-// Ret akışı:
-// - user mirror + index status = 'rejected'
-// - kasa DEĞİŞMEZ (sadece pending→rejected)
 async function rejectDues(payId){
-  const idxRef = db.ref('duesPaymentsIndex/'+payId);
-  const s = await idxRef.get();
-  if(!s.exists()) return alert('Kayıt bulunamadı.');
-  const rec = s.val();
-
-  // mirror + index
-  await db.ref(`duesPayments/${rec.userId}/${payId}/status`).set('rejected');
-  rec.status = 'rejected';
-  await idxRef.set(rec);
-
-  setStatus('Aidat reddedildi', true);
-  await loadDuesPayments();
+  const idxRef=db.ref('duesPaymentsIndex/'+payId); const s=await idxRef.get(); if(!s.exists()) return alert('Kayıt bulunamadı.');
+  const rec=s.val(); await db.ref(`duesPayments/${rec.userId}/${payId}/status`).set('rejected'); rec.status='rejected'; await idxRef.set(rec);
+  setStatus('Aidat reddedildi',true); await loadDuesPayments();
 }
 
-
-async function addLedger(type, amount, note, meta={}){
-  const lgRef = db.ref('fundLedger').push();
-  await lgRef.set({
-    id: lgRef.key,
-    type,            // 'credit' (gelir) | 'debit' (gider)
-    amount: +(amount||0),
-    note: note||'',
-    meta,
-    createdAt: Date.now()
-  });
-}
-
-async function incTotal(key, delta){
-  // key: 'collected' | 'spent'
-  await db.ref(`fundTotals/${key}`).transaction(v => (v||0) + (delta||0));
-}
-
-
-// e-posta -> kullanıcı bul yardımcı (varsa mevcut findUserByEmail'i kullanıyoruz)
-async function findManyByEmails(emailCsv){
-  const emails = (emailCsv||'')
-    .split(',').map(s=>s.trim().toLowerCase())
-    .filter(s=>s.includes('@'));
-  const found = [];
-  for(const mail of emails){
-    const q = await db.ref('users').orderByChild('email').equalTo(mail).limitToFirst(1).get();
-    if(q.exists()){
-      const [uid, rec] = Object.entries(q.val())[0];
-      found.push({ uid, userName: rec.displayName || rec.email || uid });
-    }
-  }
-  return found;
-}
-
-// “Aidat Kes” → seçili kişilere invoice
-$('makeDues').onclick = async ()=>{
-  const month = $('finMonth').value.trim();             // YYYY-MM
-  const amount = Math.max(0, parseFloat(($('finDueAmount').value||'0'))||0);
-  const emails = $('finEmails').value.trim();
-  if(!month || !/^\d{4}-\d{2}$/.test(month)) return alert('Dönem geçerli formatta olmalı: YYYY-MM');
-  if(!amount) return alert('Tutar girin.');
-  if(!emails) return alert('E-posta(lar) girin.');
-
-  const users = await findManyByEmails(emails);
-  if(!users.length) return alert('Eşleşen kullanıcı bulunamadı.');
-
-  const created = [];
-  for(const u of users){
-    const invRef = db.ref('invoices').push();
-    const inv = {
-      id: invRef.key,
-      userId: u.uid,
-      userName: u.userName,
-      title: `Aidat ${month}`,
-      lines: [{ desc:`Aidat ${month}`, qty:1, unitPrice: amount }],
-      total: amount,
-      status: 'unpaid',
-      createdAt: Date.now(),
-      source: 'dues',
-      month
-    };
-    await invRef.set(inv);
-    await db.ref(`userInvoices/${u.uid}/${invRef.key}`).set(inv);
-    created.push(invRef.key);
-  }
-  setStatus(`Aidat kesildi: ${created.length} fatura`, true);
-  await loadInvoices();
-};
-
-// Faturaları yükle (son 200)
 async function loadInvoices(){
-  const snap = await db.ref('invoices').orderByChild('createdAt').limitToLast(200).get();
-  const rows = Object.values(snap.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  const tb = $('invTable'); tb.innerHTML='';
-  if(!rows.length){
-    tb.innerHTML = `<tr><td colspan="6" class="empty">Veri yok</td></tr>`;
-    return;
-  }
-  tb.innerHTML = rows.map(r=>`
+  const snap=await db.ref('invoices').orderByChild('createdAt').limitToLast(200).get();
+  const rows=Object.values(snap.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const tb=$('invTable'); tb.innerHTML='';
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="6" class="empty">Veri yok</td></tr>`; return; }
+  tb.innerHTML=rows.map(r=>`
     <tr>
       <td>${fmt(r.createdAt)}</td>
       <td>${esc(r.userName||r.userId)}</td>
       <td>${esc(r.title||'')}</td>
-      <td>${(r.total||0)} ₺</td>
+      <td>${(+r.total||0).toFixed(2)} ₺</td>
       <td><span class="chip ${r.status||'unpaid'}">${esc(r.status||'unpaid')}</span></td>
       <td class="row" style="gap:6px">
-        ${r.status!=='paid' ? `<button class="ghost" data-paid="${r.id}">Ödendi</button>` : `<button class="ghost" data-unpaid="${r.id}">Geri Al</button>`}
+        ${r.status!=='paid'?`<button class="ghost" data-paid="${r.id}">Ödendi</button>`:`<button class="ghost" data-unpaid="${r.id}">Geri Al</button>`}
         <button class="red" data-del="${r.id}">Sil</button>
       </td>
-    </tr>
-  `).join('');
-
-  // butonlar
-  tb.querySelectorAll('button[data-paid]').forEach(b=> b.onclick = ()=> markInvPaid(b.dataset.paid));
-  tb.querySelectorAll('button[data-unpaid]').forEach(b=> b.onclick = ()=> markInvUnpaid(b.dataset.unpaid));
-  tb.querySelectorAll('button[data-del]').forEach(b=> b.onclick = ()=> deleteInvoice(b.dataset.del));
+    </tr>`).join('');
+  tb.querySelectorAll('button[data-paid]').forEach(b=> b.onclick=()=>markInvPaid(b.dataset.paid));
+  tb.querySelectorAll('button[data-unpaid]').forEach(b=> b.onclick=()=>markInvUnpaid(b.dataset.unpaid));
+  tb.querySelectorAll('button[data-del]').forEach(b=> b.onclick=()=>deleteInvoice(b.dataset.del));
 }
-
 async function markInvPaid(invId){
-  const s = await db.ref('invoices/'+invId).get(); if(!s.exists()) return;
-  const inv = s.val();
-  inv.status='paid';
+  const s=await db.ref('invoices/'+invId).get(); if(!s.exists()) return;
+  const inv=s.val(); inv.status='paid'; inv.paidAt=Date.now();
   await db.ref('invoices/'+invId).set(inv);
   await db.ref(`userInvoices/${inv.userId}/${invId}`).set(inv);
-  setStatus('Fatura ödendi olarak işaretlendi', true);
-  await loadInvoices();
+  setStatus('Fatura ödendi olarak işaretlendi',true); await loadInvoices();
 }
 async function markInvUnpaid(invId){
-  const s = await db.ref('invoices/'+invId).get(); if(!s.exists()) return;
-  const inv = s.val();
-  inv.status='unpaid';
+  const s=await db.ref('invoices/'+invId).get(); if(!s.exists()) return;
+  const inv=s.val(); inv.status='unpaid'; delete inv.paidAt;
   await db.ref('invoices/'+invId).set(inv);
   await db.ref(`userInvoices/${inv.userId}/${invId}`).set(inv);
-  setStatus('Fatura tekrar unpaid yapıldı', true);
-  await loadInvoices();
+  setStatus('Fatura tekrar unpaid yapıldı',true); await loadInvoices();
 }
 async function deleteInvoice(invId){
   if(!confirm('Faturayı silmek istiyor musun?')) return;
-  const s = await db.ref('invoices/'+invId).get(); const inv=s.val()||{};
+  const s=await db.ref('invoices/'+invId).get(); const inv=s.val()||{};
   await db.ref('invoices/'+invId).remove();
   if(inv.userId) await db.ref(`userInvoices/${inv.userId}/${invId}`).remove();
-  setStatus('Fatura silindi', true);
-  await loadInvoices();
+  setStatus('Fatura silindi',true); await loadInvoices();
 }
 
-
+/* ==== tabs (sidebar) ==== */
 function initTabs(){
-  const tabs = document.querySelectorAll('.tabs button');
-  const secs = { att:$('tab-att'), fb:$('tab-fb'), inv:$('tab-inv'), res:$('tab-res'), admin:$('tab-admin'), fin:$('tab-fin') };
-  tabs.forEach(btn=> btn.onclick = ()=>{
-    tabs.forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    Object.values(secs).forEach(s=> s.style.display='none');
-    secs[btn.dataset.tab].style.display='';
-    if(btn.dataset.tab==='fin') 
-      loadInvoices();
-      loadDuesPayments();
+  const tabs=document.querySelectorAll('.tabs button');
+  const secs={att:$('tab-att'), fb:$('tab-fb'), inv:$('tab-inv'), res:$('tab-res'), admin:$('tab-admin'), fin:$('tab-fin')};
+  tabs.forEach(btn=> btn.onclick=()=>{
+    tabs.forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+    Object.values(secs).forEach(s=> s.style.display='none'); secs[btn.dataset.tab].style.display='';
+    if(btn.dataset.tab==='fin'){ loadInvoices(); loadDuesPayments(); }
   });
 }
-
 </script>
 </body>
 </html>
-
-

@@ -7,78 +7,83 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   :root{
-    --bg:#f6f9ff; --ink:#10243b; --muted:#6d7a90; --edge:#e9eff8;
-    --pri:#0a7cc1; --pri-2:#095f97; --ok:#1a7f37; --warn:#b06b00; --err:#c62828; --card:#fff;
+    --bg:#f6f9ff; --ink:#10243b; --muted:#6d7a90; --edge:#e9eff8; --card:#fff;
+    --pri:#0a7cc1; --pri-2:#095f97; --ok:#1a7f37; --warn:#b06b00; --err:#c62828;
   }
   @media (prefers-color-scheme: dark){
     :root{
       --bg:#0f141b; --ink:#e9eef5; --muted:#9fb0c8; --edge:#223244; --card:#0f1a27;
       --pri:#2aa3ff; --pri-2:#63b7ff; --ok:#2ecc71; --warn:#ffd27a; --err:#ff6b6b;
     }
-    .card{ background:var(--card); border:1px solid var(--edge); box-shadow:0 8px 22px #0006; }
-    th{ background:#122030; color:var(--ink); }
-    td{ color:var(--ink); border-bottom-color:#203043; }
-    input, select, textarea{ background:#111a24; color:var(--ink); border:1px solid #2b3b50; }
-    input:focus, select:focus, textarea:focus{ border-color:#4aa3ff; box-shadow:0 0 0 3px #4aa3ff26; outline:none; }
-    input::placeholder, textarea::placeholder{ color:#9fb0c8; }
-    select, select option{ background:#111a24; color:var(--ink); }
-    .btn.light{ background:#172436; color:#d7e7ff; border:1px solid #2b3b50; }
-    .pill{ background:#152233; color:#9bd0ff; border:1px solid #223244; }
-    .presence{ border-color:#223244; }
-    .presence.in{ background:#0f2a1b; color:#7ee2a8; }
-    .presence.out{ background:#2a1d00; color:#ffb86b; }
-    .fabbar{ background:#0f1a27; border-top:1px solid #223244; }
   }
 
   *{box-sizing:border-box}
   body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial; background:var(--bg); color:var(--ink); margin:0}
   .wrap{max-width:1100px; margin:20px auto; padding:16px}
+
+  /* header */
   .top{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
   .title{display:flex; align-items:center; gap:10px}
-  .pill{display:inline-flex; align-items:center; gap:6px; padding:6px 10px; background:#e6f3ff; color:#0a5aa6; border-radius:999px; font-size:12px}
+  h2{margin:0; font-size:20px}
+  .pill{display:inline-flex; align-items:center; gap:6px; padding:6px 10px; background:#e6f3ff; color:#0a5aa6; border-radius:999px; font-size:12px; border:1px solid var(--edge)}
   .presence{display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid var(--edge)}
   .presence.in{background:#e8f6ee; color:#126b3a}
   .presence.out{background:#fff2e0; color:#9a5a00}
-  .card{background:var(--card); border-radius:16px; box-shadow:0 10px 24px #001a3b16; padding:16px; margin-top:14px; border:1px solid var(--edge)}
   .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)} .warn{color:var(--warn)}
-  h2{margin:0; font-size:20px}
-  h3{margin:0 0 10px; font-size:16px}
-  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
-  .btn{padding:12px 12px; border-radius:12px; border:none; font-weight:800; cursor:pointer; background:var(--pri); color:#fff; display:flex; align-items:center; justify-content:center; gap:8px}
-  .btn.secondary{background:#6b7a90}
-  .btn.light{background:#eaf2fd; color:#0b3a6f}
-  .btn:disabled{opacity:.55; cursor:not-allowed}
-  .stat .big{font-size:22px; font-weight:900}
-  table{width:100%; border-collapse:collapse}
-  th,td{padding:10px 12px; border-bottom:1px solid var(--edge); font-size:14px; text-align:left; vertical-align:top}
-  th{background:#f2f6fc}
-  input,select,textarea{width:100%; padding:12px; border:1px solid var(--edge); border-radius:12px; background:#fbfdff}
-  textarea{resize:vertical}
-  .statusline{min-height:22px; font-weight:700}
   .right{margin-left:auto}
+  .statusline{min-height:22px; font-weight:700; margin-top:6px}
 
-  .chip{display:inline-block; padding:4px 8px; border:1px solid var(--edge); border-radius:999px; font-size:12px}
-  .chip.open{background:#fff7e6; color:#8a5a00}
-  .chip.approved{background:#e9f8ee; color:#126b3a}
-  .chip.declined{background:#ffe9e9; color:#9a1b1b}
+  /* tiles */
+  .tiles{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-top:14px}
+  @media (max-width:900px){ .tiles{grid-template-columns:repeat(2,minmax(0,1fr));} }
+  @media (max-width:520px){ .tiles{grid-template-columns:1fr;} }
+  .tile{background:var(--card); border:1px solid var(--edge); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px; box-shadow:0 10px 24px #001a3b16}
+  .tile h3{margin:0; font-size:16px}
+  .tile p{margin:0; font-size:12px; color:var(--muted)}
+  .btn{padding:12px 12px; border-radius:12px; border:none; font-weight:800; cursor:pointer; background:var(--pri); color:#fff; display:inline-flex; align-items:center; justify-content:center; gap:8px}
+  .btn.light{background:#eaf2fd; color:#0b3a6f}
+  .btn.secondary{background:#6b7a90}
+  .btn:disabled{opacity:.55; cursor:not-allowed}
 
-  @media (max-width:640px){
-    .fabbar{position:sticky; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--edge); padding:10px; display:grid; grid-template-columns:repeat(5,1fr); gap:8px}
-    .fabbar .btn{padding:12px 6px; font-size:12px}
-  }
-
-  dialog{border:none; border-radius:16px; padding:0; width:min(560px,calc(100% - 24px)); background:var(--card); border:1px solid var(--edge)}
+  /* cards/dialog */
+  .card{background:var(--card); border-radius:16px; box-shadow:0 10px 24px #001a3b16; padding:16px; border:1px solid var(--edge)}
+  dialog{border:none; border-radius:16px; padding:0; width:min(720px,calc(100% - 24px)); background:var(--card); border:1px solid var(--edge)}
   .dlg-head{padding:14px 16px; border-bottom:1px solid var(--edge); font-weight:800}
   .dlg-body{padding:16px}
   .dlg-foot{padding:14px 16px; border-top:1px solid var(--edge); display:flex; gap:8px; justify-content:flex-end}
+  input,select,textarea{width:100%; padding:12px; border:1px solid var(--edge); border-radius:12px; background:#fbfdff}
+  textarea{resize:vertical}
+  table{width:100%; border-collapse:collapse}
+  th,td{padding:10px 12px; border-bottom:1px solid var(--edge); font-size:14px; text-align:left; vertical-align:top}
+  th{background:#f2f6fc}
+  @media (prefers-color-scheme: dark){
+    .card{ background:var(--card); border:1px solid var(--edge); box-shadow:0 8px 22px rgba(0,0,0,.35); }
+    th{ background:#18283b; color:var(--ink); }
+    td, th{ border-bottom-color:#27384f; }
+    input, select, textarea{ background:#0e1622; color:var(--ink); border:1px solid #2d3e55; }
+    input:focus, select:focus, textarea:focus{ border-color:#4aa3ff; box-shadow:0 0 0 3px rgba(74,163,255,.18); outline:none; }
+    .btn{ background:linear-gradient(90deg, var(--pri) 0%, var(--pri-2) 100%); color:#031424; }
+    .btn.light{ background:#132235; color:#d7e7ff; border:1px solid #2d3e55; }
+    .btn.secondary{ background:#394b63; color:#e8eef6; }
+    .pill{ background:#132235; color:#9bd0ff; border:1px solid #2d3e55; }
+    .presence{ border-color:#2d3e55; }
+    .presence.in{ background:#103022; color:#9ff0c0; }
+    .presence.out{ background:#2e200f; color:#ffca85; }
+  }
 
+  /* toast & spinner */
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px #0006;font-weight:700;opacity:0;pointer-events:none;transition:.25s}
+  .toast.show{opacity:1;pointer-events:auto}
+  .spinner{width:16px;height:16px;border:2px solid #fff;border-right-color:transparent;border-radius:50%;display:inline-block;vertical-align:middle;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* rating + chips */
   .seg{display:flex; gap:8px; flex-wrap:wrap}
   .seg .chip{padding:8px 12px; border:1px solid var(--edge); border-radius:999px; cursor:pointer; background:#f7fbff}
   .seg .chip.active{background:var(--pri); color:#fff; border-color:var(--pri)}
   .stars{display:flex; gap:6px; font-size:20px; cursor:pointer; user-select:none}
   .stars span{filter:grayscale(1); opacity:.5}
   .stars span.on{filter:none; opacity:1}
-
   .chips{display:flex; flex-wrap:wrap; gap:8px; align-items:center; border:1px solid var(--edge); border-radius:12px; padding:8px; background:#fbfdff}
   .chips .chip{background:#eef6ff; border:1px solid var(--edge); border-radius:999px; padding:6px 10px; cursor:pointer}
   .chips input{border:none; outline:none; min-width:160px; flex:1; background:transparent; padding:6px 4px}
@@ -87,46 +92,83 @@
     .chips .chip{background:#132235; border-color:#2b3b50; color:#d7e7ff}
   }
 
-  .spinner{width:16px;height:16px;border:2px solid #fff;border-right-color:transparent;border-radius:50%;display:inline-block;vertical-align:middle;animation:spin .7s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
+  /* Takvim Tablosu */
+  .schedule-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  #schedDate{padding:10px;border:1px solid var(--edge);border-radius:10px;background:#fbfdff;min-width:200px}
+  .table-note{font-size:12px;color:var(--muted)}
+  .table-slim{width:100%;border-collapse:collapse}
+  .table-slim th,.table-slim td{padding:8px 10px;border-bottom:1px solid var(--edge);font-size:14px;text-align:left}
+  .slot-free{background:#f2fbf6;color:#166b3a;border:1px solid #cfeedd;border-radius:8px;padding:2px 8px;display:inline-block}
+  .slot-pending{background:#fff7e8;color:#8a5a00;border:1px solid #ffe2b8;border-radius:8px;padding:2px 8px;display:inline-block}
+  .slot-approved{background:#e9f8ee;color:#126b3a;border:1px solid #ccecd8;border-radius:8px;padding:2px 8px;display:inline-block}
+  .slot-declined{background:#ffe9e9;color:#9a1b1b;border:1px solid #ffd0d0;border-radius:8px;padding:2px 8px;display:inline-block}
+  .slot-cell{white-space:nowrap}
+  .slot-click{cursor:pointer;text-decoration:underline}
+  /* === Oda Takvimi — Dark mode kontrast fix === */
+@media (prefers-color-scheme: dark){
+  /* Modal genel metin */
+  #schedDlg .dlg-body { color: var(--ink); }
 
-  /* ==== DARK MODE FİXLER ==== */
-  @media (prefers-color-scheme: dark){
-    :root{
-      --bg:#0b1118; --ink:#e8eef6; --muted:#a9b7c8;
-      --edge:#253449; --card:#0f1a27;
-      --pri:#2aa3ff; --pri-2:#58bfff;
-      --ok:#6ee7a5; --warn:#ffd27a; --err:#ff8585;
-    }
-    body{ background:var(--bg); color:var(--ink); }
-    .card{ background:var(--card); border:1px solid var(--edge); box-shadow:0 8px 22px rgba(0,0,0,.35); }
-    th{ background:#18283b; color:var(--ink); }
-    td, th{ border-bottom-color:#27384f; }
-    input, select, textarea{ background:#0e1622; color:var(--ink); border:1px solid #2d3e55; }
-    input:focus, select:focus, textarea:focus{ border-color:#4aa3ff; box-shadow:0 0 0 3px rgba(74,163,255,.18); outline:none; }
-    input::placeholder, textarea::placeholder{ color:#90a4bf; opacity:1; }
-    select option{ background:#0e1622; color:var(--ink); }
-    .btn{ background:linear-gradient(90deg, var(--pri) 0%, var(--pri-2) 100%); color:#031424; }
-    .btn.light{ background:#132235; color:#d7e7ff; border:1px solid #2d3e55; }
-    .btn.secondary{ background:#394b63; color:#e8eef6; }
-    .btn:disabled{ opacity:.6; }
-    .pill{ background:#132235; color:#9bd0ff; border:1px solid #2d3e55; }
-    .presence{ border-color:#2d3e55; }
-    .presence.in{ background:#103022; color:#9ff0c0; }
-    .presence.out{ background:#2e200f; color:#ffca85; }
-    .fabbar{ background:#0f1a27; border-top:1px solid var(--edge); }
-    .statusline.muted{ color:var(--muted); }
-    .statusline.ok{ color:var(--ok); }
-    .statusline.warn{ color:var(--warn); }
-    .statusline.err{ color:var(--err); }
+  /* Tarih inputu: arka plan, yazı, border ve ikon görünürlüğü */
+  #schedDate{
+    background:#0e1622 !important;
+    color:var(--ink) !important;
+    border:1px solid #2d3e55 !important;
   }
-  /* toast */
-  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px #0006;font-weight:700;opacity:0;pointer-events:none;transition:.25s}
-  .toast.show{opacity:1;pointer-events:auto}
+  /* Chrome/Safari tarih seçici ikonu */
+  #schedDate::-webkit-calendar-picker-indicator{
+    filter: invert(1) contrast(1.2);
+    opacity: 0.9;
+  }
+
+  /* Tablo başlık ve hücre renkleri */
+  .table-slim th{
+    background:#1a2a3f !important;   /* daha açık başlık */
+    color:var(--ink) !important;
+    border-bottom:1px solid #27384f !important;
+  }
+  .table-slim td{
+    color:var(--ink) !important;
+    border-bottom:1px solid #27384f !important;
+  }
+
+  /* "Bu slota rezervasyon iste" linki görünürlüğü */
+  .slot-click{
+    color:#9bd0ff !important;
+    text-decoration: underline;
+  }
+
+  /* Slot rozetleri: koyu mod paleti */
+  .slot-free{
+    background:#103022 !important;
+    color:#9ff0c0 !important;
+    border:1px solid #1e3a2f !important;
+  }
+  .slot-pending{
+    background:#2e240f !important;
+    color:#ffd27a !important;
+    border:1px solid #5a471e !important;
+  }
+  .slot-approved{
+    background:#103022 !important;
+    color:#9ff0c0 !important;
+    border:1px solid #1e3a2f !important;
+  }
+  .slot-declined{
+    background:#3a1414 !important;
+    color:#ff9b9b !important;
+    border:1px solid #5a2020 !important;
+  }
+
+  /* Küçük not yazısı */
+  .table-note{ color:#a9b7c8 !important; }
+}
+
 </style>
+
+<!-- PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
 </head>
 <body>
 <div class="wrap">
@@ -137,126 +179,76 @@
       <h2>Oda Paneli</h2>
       <span id="roomPill" class="pill"></span>
       <span id="presence" class="presence" aria-live="polite">Durum yükleniyor…</span>
+      <span class="pill" title="Bugün toplam"><strong id="sumToday">00:00:00</strong></span>
+      <span class="pill" title="Son hareket" id="lastAction">—</span>
     </div>
-    <div class="right row">
+    <div class="right" style="display:flex;align-items:center;gap:10px">
       <div class="muted" id="hello"></div>
       <button id="logout" class="btn secondary">Çıkış</button>
     </div>
   </div>
+  <div id="opStatus" class="statusline muted"></div>
 
-  <!-- Quick stats & actions -->
-  <div class="card">
-    <div class="row" style="align-items:center">
-      <div class="row" style="gap:24px">
-        <div>
-          <div class="muted">Bugün toplam süre</div>
-          <div id="sumToday" class="big">—</div>
-        </div>
-        <div>
-          <div class="muted">Son hareket</div>
-          <div id="lastAction">—</div>
-        </div>
-      </div>
-      <div class="right row">
-        <button id="enterBtn" class="btn" disabled>⤴️ Giriş</button>
-        <button id="exitBtn" class="btn light" disabled>⤵️ Çıkış (Yorum)</button>
-        <button id="breakStartBtn" class="btn" disabled>☕ Mola</button>
-        <button id="breakEndBtn" class="btn" disabled>🔙 Mola Bitir</button>
-      </div>
+  <!-- Tiles -->
+  <div class="tiles">
+    <div class="tile">
+      <h3>Aksiyonlar</h3>
+      <p>Giriş / Çıkış (+yorum) / Mola</p>
+      <button id="openAct" class="btn">⚡ Aç</button>
     </div>
-    <div id="opStatus" class="statusline muted" style="margin-top:8px"></div>
-  </div>
-  
-  <div class="card">
-    <h3>Bugün Zaman Çizelgesi</h3>
-    <div id="timeline" style="height:18px;background:#e6eefb;border-radius:999px;position:relative"></div>
-    <div id="timelineLegend" class="muted" style="margin-top:6px;font-size:12px"></div>
-  </div>
-
-
-  <!-- Reservation -->
-  <div class="card">
-    <h3>Oda Rezervasyonu</h3>
-    <div class="row">
-      <input id="resTitle" placeholder="Başlık (örn. Proje toplantısı)" />
-      <input id="resStart" type="datetime-local" />
-      <input id="resEnd" type="datetime-local" />
+    <div class="tile">
+      <h3>Oda Takvimi</h3>
+      <p>30 dk slot — dolu/boş & kullanıcı</p>
+      <button id="openSched" class="btn light">📅 Aç</button>
     </div>
-    <textarea id="resNote" rows="2" placeholder="Not (ihtiyaçlar, katılımcılar, vb.)"></textarea>
-    <div class="row" style="margin-top:8px">
-      <button id="resSend" class="btn" disabled>📅 Rezervasyon Talep Et</button>
-      <div id="resStatus" class="statusline muted"></div>
+    <div class="tile">
+      <h3>Rezervasyon</h3>
+      <p>Talep oluştur, yaklaşanları gör</p>
+      <button id="openRes" class="btn light">📝 Aç</button>
     </div>
-    <div style="margin-top:10px">
-      <div class="muted" style="margin:6px 0 4px">Yaklaşan rezervasyonlar</div>
-      <table>
-        <thead><tr><th>Zaman</th><th>Başlık</th><th>Durum</th></tr></thead>
-        <tbody id="resRows"></tbody>
-      </table>
+    <div class="tile">
+      <h3>Eksik/Ekipman</h3>
+      <p>Marker, kablo, donanım vs. talep et</p>
+      <button id="openInv" class="btn light">📦 Aç</button>
     </div>
-  </div>
-
-  <!-- Inventory -->
-  <div class="card">
-    <h3>Eksik / Ekipman Talebi</h3>
-    <div class="row">
-      <select id="invCat" style="max-width:200px">
-        <option value="genel">Kategori</option>
-        <option>Temizlik</option>
-        <option>Elektrik</option>
-        <option>Donanım</option>
-        <option>Kırtasiye</option>
-        <option>Diğer</option>
-      </select>
-      <input id="invName" placeholder="Ürün / Ekipman adı (örn. Marker kalem)" />
-      <input id="invQty" type="number" min="1" value="1" style="max-width:140px" placeholder="Adet" />
+    <div class="tile">
+      <h3>Kayıtlarım</h3>
+      <p>Son giriş/çıkış/mola kayıtları</p>
+      <button id="openLogs" class="btn light">📜 Aç</button>
     </div>
-    <textarea id="invNote" rows="3" placeholder="Detay/Not (marka, renk, ölçü, vs.)"></textarea>
-    <div class="row" style="margin-top:8px">
-      <button id="invSend" class="btn" disabled>🚀 Talep Gönder</button>
-      <div id="invStatus" class="statusline muted"></div>
-    </div>
-  </div>
-
-  <!-- My logs -->
-  <div class="card">
-    <h3>Son Kayıtlarım</h3>
-    <table>
-      <thead><tr><th>Zaman</th><th>Aksiyon</th><th>Oda</th><th>Kaynak</th></tr></thead>
-      <tbody id="myRows"></tbody>
-    </table>
-  </div>
-
-  <!-- My invoices -->
-  <div class="card">
+    <div class="tile">
       <h3>Faturalarım</h3>
-      <table>
-        <thead><tr><th>Zaman</th><th>Başlık</th><th>Tutar</th><th>Durum</th><th></th></tr></thead>
-        <tbody id="myInvRows"><tr><td colspan="5" class="muted">Yükleniyor…</td></tr></tbody>
-      </table>
+      <p>Aidat onaylıysa PDF kes</p>
+      <button id="openInvcs" class="btn light">🧾 Aç</button>
     </div>
-
-    <div class="card">
-    <h3>Aidat Bildir</h3>
-    <div class="row" style="align-items:flex-end; gap:8px">
-      <input id="duesMonth" placeholder="YYYY-MM (örn. 2025-10)" style="max-width:180px">
-      <input id="duesAmount" type="number" min="0" step="0.01" placeholder="Tutar (₺)" style="max-width:160px">
-      <button id="duesSend" class="btn" disabled>🧾 Aidat Bildir</button>
+    <div class="tile">
+      <h3>Aidat Bildir</h3>
+      <p>Dönem ve tutar gir, gönder</p>
+      <button id="openDues" class="btn light">💳 Aç</button>
     </div>
-    <div id="duesStatus" class="statusline muted" style="margin-top:6px"></div>
-  </div>
-
-  <!-- Mobile sticky action bar -->
-  <div class="fabbar">
-    <button id="m_enter"  class="btn" disabled>⤴️</button>
-    <button id="m_exit"   class="btn light" disabled>⤵️</button>
-    <button id="m_bstart" class="btn" disabled>☕</button>
-    <button id="m_bend"   class="btn" disabled>🔙</button>
-    <button id="undoBtn" class="btn light" style="margin-left:8px">↩️ Geri Al</button>
+    <div class="tile">
+      <h3>Günlük Çizelge</h3>
+      <p>Bugün giriş-çıkış blokları</p>
+      <button id="openTime" class="btn light">📈 Aç</button>
+    </div>
   </div>
 </div>
 
-<!-- ÇIKIŞ YORUM MODALI (kameralı + people chips) -->
+<!-- ====== MODALLAR ====== -->
+
+<!-- Aksiyonlar -->
+<dialog id="actDlg">
+  <div class="dlg-head">Oda Aksiyonları</div>
+  <div class="dlg-body" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+    <button id="enterBtn"      class="btn" disabled>⤴️ Giriş</button>
+    <button id="exitBtn"       class="btn light" disabled>⤵️ Çıkış (+Yorum)</button>
+    <button id="breakStartBtn" class="btn" disabled>☕ Mola</button>
+    <button id="breakEndBtn"   class="btn light" disabled>🔙 Mola Bitir</button>
+  </div>
+  <div class="dlg-foot"><button id="actClose" class="btn light" type="button">Kapat</button></div>
+</dialog>
+
+<!-- Çıkış Yorumu (+kamera) -->
 <dialog id="exitDlg">
   <div class="dlg-head">Oda Çıkış — Son Durum</div>
   <div class="dlg-body">
@@ -271,13 +263,12 @@
     <label style="margin-top:12px">Kısa Yorum</label>
     <textarea id="fbComment" rows="3" placeholder="Örn. projeksiyon bulanık, çöpler dolu, klima gürültülü..."></textarea>
 
-    <!-- FOTOĞRAF (sadece kameradan) -->
     <label style="margin-top:12px">Oda fotoğrafı</label>
-    <div class="row" style="gap:8px; align-items:flex-start">
+    <div class="seg" style="align-items:flex-start">
       <button id="openCam" class="btn light" type="button">📷 Kameradan Çek</button>
       <img id="exitPreview" alt="Önizleme" style="display:none;max-height:120px;border:1px solid var(--edge);border-radius:8px">
+      <div id="photoStatus" class="statusline muted" style="margin:0"></div>
     </div>
-    <div id="photoStatus" class="statusline muted" style="margin-top:6px"></div>
 
     <label style="margin-top:12px">Kimlerle beraberdin? (Enter)</label>
     <div class="chips" id="withBox"><input id="withInput" placeholder="Örn. Ali Y., Ayşe K." /></div>
@@ -294,19 +285,135 @@
   </div>
 </dialog>
 
-<!-- Kamera Diyaloğu -->
+<!-- Kamera -->
 <dialog id="camDlg" style="border:none;border-radius:16px;padding:0;width:min(520px,calc(100% - 24px));background:var(--card);border:1px solid var(--edge)">
   <div class="dlg-head">Kameradan Fotoğraf</div>
   <div class="dlg-body" style="display:flex;flex-direction:column;gap:8px">
     <video id="camVideo" playsinline autoplay style="width:100%;max-height:320px;background:#000;border-radius:12px"></video>
     <canvas id="camCanvas" style="display:none"></canvas>
-    <div class="muted" style="font-size:12px">İpucu: Arka kamera için “environment” tercih edilir; iOS Safari’de sessiz modda çekimler sessiz olur.</div>
+    <div class="muted" style="font-size:12px">İpucu: Arka kamera için “environment” iyidir.</div>
   </div>
   <div class="dlg-foot">
     <button id="camCancel" class="btn light" type="button">Vazgeç</button>
     <button id="camShoot" class="btn" type="button">📸 Çek</button>
   </div>
 </dialog>
+
+<!-- Rezervasyon -->
+<dialog id="resDlg">
+  <div class="dlg-head">Oda Rezervasyonu</div>
+  <div class="dlg-body">
+    <div class="seg" style="gap:10px;flex-wrap:wrap">
+      <input id="resTitle" placeholder="Başlık (örn. Proje toplantısı)" />
+      <input id="resStart" type="datetime-local" />
+      <input id="resEnd" type="datetime-local" />
+    </div>
+    <textarea id="resNote" rows="2" placeholder="Not (ihtiyaçlar, katılımcılar, vb.)" style="margin-top:8px"></textarea>
+    <div class="seg" style="margin-top:8px;justify-content:space-between">
+      <button id="resSend" class="btn" disabled>📅 Rezervasyon Talep Et</button>
+      <div id="resStatus" class="statusline muted" style="margin:0"></div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="muted" style="margin:6px 0 4px">Yaklaşan rezervasyonlar</div>
+      <table>
+        <thead><tr><th>Zaman</th><th>Başlık</th><th>Durum</th></tr></thead>
+        <tbody id="resRows"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="resDlg">Kapat</button></div>
+</dialog>
+
+<!-- Takvim (30 dk slot) -->
+<dialog id="schedDlg">
+  <div class="dlg-head">Oda Takvimi</div>
+  <div class="dlg-body">
+    <div class="schedule-head">
+      <input id="schedDate" type="date">
+      <div class="table-note">30 dk slot; dolu/boş + kullanıcı gösterimi</div>
+    </div>
+    <table class="table-slim">
+      <thead><tr><th>Saat</th><th>Durum</th><th>Başlık / Kullanıcı</th></tr></thead>
+      <tbody id="schedRows"><tr><td colspan="3" class="muted">Yükleniyor…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="schedDlg">Kapat</button></div>
+</dialog>
+
+<!-- Envanter -->
+<dialog id="invDlg">
+  <div class="dlg-head">Eksik / Ekipman Talebi</div>
+  <div class="dlg-body">
+    <div class="seg">
+      <select id="invCat" style="max-width:200px">
+        <option value="genel">Kategori</option>
+        <option>Temizlik</option>
+        <option>Elektrik</option>
+        <option>Donanım</option>
+        <option>Kırtasiye</option>
+        <option>Diğer</option>
+      </select>
+      <input id="invName" placeholder="Ürün / Ekipman adı (örn. Marker kalem)" />
+      <input id="invQty" type="number" min="1" value="1" style="max-width:140px" placeholder="Adet" />
+    </div>
+    <textarea id="invNote" rows="3" placeholder="Detay/Not (marka, renk, ölçü, vs.)" style="margin-top:8px"></textarea>
+    <div class="seg" style="margin-top:8px;justify-content:space-between">
+      <button id="invSend" class="btn" disabled>🚀 Talep Gönder</button>
+      <div id="invStatus" class="statusline muted" style="margin:0"></div>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="invDlg">Kapat</button></div>
+</dialog>
+
+<!-- Kayıtlarım -->
+<dialog id="logsDlg">
+  <div class="dlg-head">Son Kayıtlarım</div>
+  <div class="dlg-body">
+    <table>
+      <thead><tr><th>Zaman</th><th>Aksiyon</th><th>Oda</th><th>Kaynak</th></tr></thead>
+      <tbody id="myRows"></tbody>
+    </table>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="logsDlg">Kapat</button></div>
+</dialog>
+
+<!-- Faturalarım -->
+<dialog id="invcsDlg">
+  <div class="dlg-head">Faturalarım</div>
+  <div class="dlg-body">
+    <table>
+      <thead><tr><th>Zaman</th><th>Başlık</th><th>Tutar</th><th>Durum</th><th></th></tr></thead>
+      <tbody id="myInvRows"><tr><td colspan="5" class="muted">Yükleniyor…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="invcsDlg">Kapat</button></div>
+</dialog>
+
+<!-- Aidat -->
+<dialog id="duesDlg">
+  <div class="dlg-head">Aidat Bildir</div>
+  <div class="dlg-body">
+    <div class="seg" style="align-items:flex-end; gap:8px">
+      <input id="duesMonth" placeholder="YYYY-MM (örn. 2025-10)" style="max-width:180px">
+      <input id="duesAmount" type="number" min="0" step="0.01" placeholder="Tutar (₺)" style="max-width:160px">
+      <button id="duesSend" class="btn" disabled>🧾 Aidat Bildir</button>
+    </div>
+    <div id="duesStatus" class="statusline muted" style="margin-top:6px"></div>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="duesDlg">Kapat</button></div>
+</dialog>
+
+<!-- Günlük Çizelge -->
+<dialog id="timeDlg">
+  <div class="dlg-head">Bugün Zaman Çizelgesi</div>
+  <div class="dlg-body">
+    <div id="timeline" style="height:18px;background:#e6eefb;border-radius:999px;position:relative"></div>
+    <div id="timelineLegend" class="muted" style="margin-top:6px;font-size:12px"></div>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="timeDlg">Kapat</button></div>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -334,50 +441,36 @@
   const presenceEl = $('presence');
   const opMsg = (msg, type='muted')=>{ const el=$('opStatus'); el.className='statusline '+type; el.textContent=msg||''; };
   const fmt = ts => new Date(ts||0).toLocaleString();
+  const fmtTRY = v => new Intl.NumberFormat('tr-TR', { style:'currency', currency:'TRY' }).format(+v||0);
 
-  const actIds = ['enterBtn','exitBtn','breakStartBtn','breakEndBtn','invSend','m_enter','m_exit','m_bstart','m_bend','fbSend','resSend'];
-  const setActionsEnabled = on => actIds.forEach(id => { const b=$(id); if(b) b.disabled=!on; });
-
+  function toast(msg){ const t=$('toast'); if(!t) return; t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 1800); }
   function waitAuth(){ return new Promise(res => { const u = auth.currentUser; if(u) return res(u); const unsub=auth.onAuthStateChanged(x=>{unsub();res(x)}); }); }
   async function requireLogin(){ const u = await waitAuth(); if(!u){ location.replace('login.html?next='+encodeURIComponent('panel.html')); throw new Error('Oturum yok.'); } return u; }
 
-  opMsg('');
+  const actIds = ['enterBtn','exitBtn','breakStartBtn','breakEndBtn','invSend','fbSend','resSend','duesSend'];
+  const setActionsEnabled = on => actIds.forEach(id => { const b=$(id); if(b) b.disabled=!on; });
 
-  function toast(msg){ const t=$('toast'); if(!t) return; t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 1800); }
+  // ==== header open buttons & dialog closers ====
+  const openers = {
+    openAct:'actDlg', openRes:'resDlg', openSched:'schedDlg', openInv:'invDlg',
+    openLogs:'logsDlg', openInvcs:'invcsDlg', openDues:'duesDlg', openTime:'timeDlg'
+  };
+  Object.entries(openers).forEach(([btnId, dlgId])=>{
+    const btn=$(btnId), dlg=$(dlgId);
+    if(btn&&dlg){ btn.addEventListener('click', ()=> dlg.showModal()); }
+  });
+  document.querySelectorAll('[data-close]').forEach(x=>{
+    x.addEventListener('click', ()=>{ const id=x.getAttribute('data-close'); $(id)?.close(); });
+  });
+  $('actClose')?.addEventListener('click', ()=> $('actDlg')?.close());
 
-  async function ensureNotifyPerm(){
-    try{ if(!('Notification' in window)) return;
-      if(Notification.permission==='default') await Notification.requestPermission();
-    }catch{}
-  }
-  function notifyNow(title, body){
-    try{ if(('Notification' in window) && Notification.permission==='granted'){
-      new Notification(title, { body });
-    }}catch{}
-  }
-
-
-  (async () => {
-    const u = await waitAuth();
-    if (!u) { location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
-    if (!verified || !room) { location.replace('gate.html'); return; }
-    $('hello').textContent = `Merhaba, ${u.displayName || u.email || u.uid}`;
-    attachMyLog(u.uid);
-    attachReservations(room, u.uid);
-    await hydratePresenceAndStats(u.uid);
-    attachMyInvoices(u.uid);
-    setActionsEnabled(true);
-  })();
-
-  $('logout')?.addEventListener('click', ()=> auth.signOut().then(()=>location.replace('login.html')));
-
+  // ==== presence & stats ====
   function setPresence(inRoom){
     presenceEl.className = 'presence '+(inRoom?'in':'out');
     presenceEl.textContent = inRoom ? 'İçeridesin' : 'Dışarıdasın';
-    ['enterBtn','m_enter'].forEach(id=>{ const b=$(id); if(b) b.disabled=inRoom; });
-    ['exitBtn','m_exit'].forEach(id=>{ const b=$(id); if(b) b.disabled=!inRoom; });
+    ['enterBtn'].forEach(id=>{ const b=$(id); if(b) b.disabled=inRoom; });
+    ['exitBtn'].forEach(id=>{ const b=$(id); if(b) b.disabled=!inRoom; });
   }
-
   async function fetchRows(uid, since){
     try{
       const s = await db.ref(`attendanceByUser/${uid}`).orderByChild('createdAt').startAt(since).get();
@@ -387,7 +480,6 @@
       return Object.values(s2.val()||{}).filter(r => (r.createdAt||0) >= since);
     }
   }
-
   let liveTimer=null;
   async function hydratePresenceAndStats(uid){
     const since = Date.now() - 30*86400000;
@@ -404,7 +496,6 @@
     renderTodaySum(rows, inside, lastEnter);
     renderTimeline(rows);
   }
-
   function renderTodaySum(allRows, insideNow, lastEnter){
     const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
     const today = (allRows||[]).filter(r=>r.roomId===room && (r.createdAt||0)>=startOfDay.getTime()).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
@@ -448,9 +539,8 @@
     const h = Math.floor(totalMs/3600000), m = Math.floor((totalMs%3600000)/60000);
     $('timelineLegend').textContent = segs.length ? `Toplam: ${h} sa ${m} dk (blok: ${segs.length})` : 'Bugün kayıt yok';
   }
-  // çağır: hydratePresenceAndStats() sonunda:
 
-
+  // ==== My log ====
   let myLogUnsub = null;
   function attachMyLog(uid){
     const ref = db.ref(`attendanceByUser/${uid}`).limitToLast(40);
@@ -461,7 +551,6 @@
       tbody.innerHTML = rows.map(r=>`<tr><td>${fmt(r.createdAt||0)}</td><td>${r.action}</td><td>${r.roomId}</td><td>${r.method||''}</td></tr>`).join('');
     });
   }
-
   async function refreshMyLog(uid){
     const s = await db.ref(`attendanceByUser/${uid}`).limitToLast(40).get();
     const tbody = $('myRows'); if(!tbody) return;
@@ -469,6 +558,7 @@
     tbody.innerHTML = rows.map(r=>`<tr><td>${fmt(r.createdAt||0)}</td><td>${r.action}</td><td>${r.roomId}</td><td>${r.method||''}</td></tr>`).join('');
   }
 
+  // ==== attendance write + undo ====
   let writing = false;
   async function writeAttendance(action, extra={}){
     if (writing) return;
@@ -485,34 +575,25 @@
       await hydratePresenceAndStats(u.uid); await refreshMyLog(u.uid);
     } finally { writing = false; }
   }
-
-  // son işlem için "geri al" bilgisi
-function setUndo(payload){
-    localStorage.setItem('lastOp', JSON.stringify({ at: Date.now(), ...payload }));
-  }
+  function setUndo(payload){ localStorage.setItem('lastOp', JSON.stringify({ at: Date.now(), ...payload })); }
   async function tryUndo(){
     const d = JSON.parse(localStorage.getItem('lastOp')||'null'); if(!d) return toast('Geri alınacak işlem yok');
     if(Date.now() - d.at > 10000) return toast('Süre doldu (10 sn).');
     try{
-      // iki dalı da sil: attendanceByUser & attendanceByRoom
       await db.ref(`/attendanceByUser/${d.uid}/${d.pushId}`).remove();
       await db.ref(`/attendanceByRoom/${d.room}/${d.pushId}`).remove();
       localStorage.removeItem('lastOp');
-      toast('İşlem geri alındı'); notifyNow('Oda','Son işlem geri alındı');
+      toast('İşlem geri alındı');
       await hydratePresenceAndStats(d.uid); await refreshMyLog(d.uid);
     }catch(e){ toast('Geri alınamadı'); console.error(e); }
   }
 
+  // ==== Aksiyon düğmeleri ====
   const withLoading = (btn, fn) => async ()=>{ if(!btn) return; const old=btn.innerHTML; btn.disabled=true; btn.innerHTML=old+' <span class="spinner"></span>'; try{ await fn(); } finally{ btn.disabled=false; btn.innerHTML=old; } };
-
   const enterBtn=$('enterBtn'), exitBtn=$('exitBtn'), bStart=$('breakStartBtn'), bEnd=$('breakEndBtn');
   enterBtn?.addEventListener('click', withLoading(enterBtn, async ()=>{ await writeAttendance('enter'); opMsg('Giriş kaydedildi.', 'ok'); setPresence(true); }));
   bStart?.addEventListener('click', withLoading(bStart, async ()=>{ await writeAttendance('break_start'); opMsg('Mola başlatıldı.', 'ok'); }));
   bEnd?.addEventListener('click', withLoading(bEnd, async ()=>{ await writeAttendance('break_end'); opMsg('Mola bitti.', 'ok'); }));
-  $('m_enter')?.addEventListener('click', ()=> enterBtn?.click());
-  $('m_exit')?.addEventListener('click', ()=> exitBtn?.click());
-  $('m_bstart')?.addEventListener('click', ()=> bStart?.click());
-  $('m_bend')?.addEventListener('click', ()=> bEnd?.click());
 
   // ==== Exit dialog (tags + stars + people) ====
   const statusSeg = $('statusSeg'); let fbStatusVal='clean';
@@ -523,120 +604,51 @@ function setUndo(payload){
   function addPerson(raw){ const name=(raw||'').replace(/,/g,' ').trim(); if(!name) return; const exists=[...withBox.querySelectorAll('.person')].some(n=>n.textContent.toLowerCase()===name.toLowerCase()); if(exists){ withInput.value=''; return; } const chip=document.createElement('span'); chip.className='chip person'; chip.textContent=name; chip.title='Kaldır'; chip.onclick=()=>chip.remove(); withBox.insertBefore(chip, withInput); withInput.value=''; }
   withInput.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===','){ e.preventDefault(); addPerson(withInput.value); } if(e.key==='Backspace'&&!withInput.value){ const last=withBox.querySelector('.person:last-of-type'); last&&last.remove(); }});
   withInput.addEventListener('blur', ()=> addPerson(withInput.value));
-
   const exitDlg=$('exitDlg'); exitBtn?.addEventListener('click', ()=> exitDlg.showModal()); $('fbCancel')?.addEventListener('click', ()=> exitDlg.close());
 
-  // ==== KAMERA: aç/kapa/çek ====
-  let __camStream = null;
-  let photoDataUrl = ''; // kameradan çekilen son foto (DataURL)
-
-  const exitPreview = document.getElementById('exitPreview');
-  const photoStatus = document.getElementById('photoStatus');
-  const openCam     = document.getElementById('openCam');
-  const camDlg      = document.getElementById('camDlg');
-  const camVideo    = document.getElementById('camVideo');
-  const camCanvas   = document.getElementById('camCanvas');
-  const camShootBtn = document.getElementById('camShoot');
-  const camCancelBtn= document.getElementById('camCancel');
-
+  // ==== Kamera ====
+  let __camStream = null, photoDataUrl = '';
+  const exitPreview = $('exitPreview'), photoStatus = $('photoStatus');
+  const camDlg=$('camDlg'), camVideo=$('camVideo'), camCanvas=$('camCanvas');
   async function startCamera(){
     try{
-      __camStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false
-      });
-      camVideo.srcObject = __camStream;
-      await camVideo.play();
-    }catch(e){
-      console.error('Kamera açılamadı:', e);
-      alert('Kamera açılamadı. Tarayıcı izinlerini kontrol et.');
-      stopCamera();
-      camDlg?.close();
-    }
+      __camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal:'environment' }, width:{ideal:1280}, height:{ideal:720} }, audio:false });
+      camVideo.srcObject = __camStream; await camVideo.play();
+    }catch(e){ alert('Kamera açılamadı. Tarayıcı izinlerini kontrol et.'); stopCamera(); camDlg?.close(); }
   }
-  function stopCamera(){
-    if(__camStream){
-      __camStream.getTracks().forEach(t=>t.stop());
-      __camStream = null;
-    }
-    camVideo.srcObject = null;
-  }
+  function stopCamera(){ if(__camStream){ __camStream.getTracks().forEach(t=>t.stop()); __camStream=null; } camVideo.srcObject=null; }
+  $('openCam')?.addEventListener('click', ()=>{ photoDataUrl=''; camDlg.showModal(); startCamera(); });
+  $('camCancel')?.addEventListener('click', ()=>{ stopCamera(); camDlg.close(); });
+  $('camShoot')?.addEventListener('click', ()=>{ try{ const vw=camVideo.videoWidth, vh=camVideo.videoHeight; if(!vw||!vh) return; const maxW=1024, maxH=768; const ratio=Math.min(maxW/vw,maxH/vh,1); const w=Math.round(vw*ratio), h=Math.round(vh*ratio); camCanvas.width=w; camCanvas.height=h; const ctx=camCanvas.getContext('2d'); ctx.drawImage(camVideo,0,0,w,h); photoDataUrl=camCanvas.toDataURL('image/jpeg',0.72); exitPreview.src=photoDataUrl; exitPreview.style.display='inline-block'; photoStatus.textContent='Kameradan fotoğraf çekildi.'; }catch{ alert('Fotoğraf çekilemedi.'); }finally{ stopCamera(); camDlg.close(); } });
 
-  openCam?.addEventListener('click', ()=>{
-    photoDataUrl = ''; // yeni çekim için sıfırla
-    camDlg.showModal();
-    startCamera();
-  });
-  camCancelBtn?.addEventListener('click', ()=>{
-    stopCamera();
-    camDlg.close();
-  });
-  camShootBtn?.addEventListener('click', ()=>{
-    try{
-      const vw = camVideo.videoWidth, vh = camVideo.videoHeight;
-      if(!vw || !vh) return;
-      const maxW=1024, maxH=768;
-      const ratio = Math.min(maxW/vw, maxH/vh, 1);
-      const w = Math.round(vw*ratio), h = Math.round(vh*ratio);
-      camCanvas.width = w; camCanvas.height = h;
-      const ctx = camCanvas.getContext('2d');
-      ctx.drawImage(camVideo, 0, 0, w, h);
-      photoDataUrl = camCanvas.toDataURL('image/jpeg', 0.72);
-      exitPreview.src = photoDataUrl;
-      exitPreview.style.display = 'inline-block';
-      if(photoStatus) photoStatus.textContent = 'Kameradan fotoğraf çekildi.';
-    }catch(e){
-      console.error(e);
-      alert('Fotoğraf çekilemedi.');
-    }finally{
-      stopCamera();
-      camDlg.close();
-    }
-  });
-
-  // ==== ÇIKIŞ GÖNDERME: foto sadece kamera ile ====
+  // ==== Çıkış Gönder ====
   $('fbSend')?.addEventListener('click', withLoading($('fbSend'), async ()=>{
     const u = await requireLogin();
     const comment = $('fbComment').value.trim();
     const tags = Array.from(activeTags);
     const people = [...withBox.querySelectorAll('.person')].map(x=>x.textContent);
-
-    // sadece kameradan gelen dataURL (yoksa boş)
     const photoB64 = photoDataUrl || '';
-
     const fbRef = db.ref(`roomFeedback/${room}`).push();
-    await fbRef.set({
-      userId:u.uid, userName:u.displayName||u.email||'unknown',
-      status:fbStatusVal, rating, comment, tags, withPeople:people,
-      photoB64, createdAt: Date.now()
-    });
-
+    await fbRef.set({ userId:u.uid, userName:u.displayName||u.email||'unknown', status:fbStatusVal, rating, comment, tags, withPeople:people, photoB64, createdAt: Date.now() });
     await writeAttendance('exit', { feedbackId: fbRef.key });
     setPresence(false); opMsg('Çıkış + yorum kaydedildi.', 'ok');
-
-    // temizlik
-    $('fbComment').value='';
-    activeTags.clear(); document.querySelectorAll('.tag').forEach(t=>t.classList.remove('active'));
-    statusSeg.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
-    statusSeg.querySelector('[data-val="clean"]').classList.add('active'); fbStatusVal='clean';
-    rating=0; [...starEl.children].forEach(x=>x.classList.remove('on'));
-    [...withBox.querySelectorAll('.person')].forEach(x=>x.remove()); withInput.value='';
-    if(exitPreview){ exitPreview.style.display='none'; }
-    if(photoStatus){ photoStatus.textContent=''; }
-    photoDataUrl = '';
-    exitDlg.close();
+    $('fbComment').value=''; activeTags.clear(); document.querySelectorAll('.tag').forEach(t=>t.classList.remove('active'));
+    statusSeg.querySelectorAll('.chip').forEach(x=>x.classList.remove('active')); statusSeg.querySelector('[data-val="clean"]').classList.add('active'); fbStatusVal='clean';
+    rating=0; [...starEl.children].forEach(x=>x.classList.remove('on')); [...withBox.querySelectorAll('.person')].forEach(x=>x.remove()); withInput.value='';
+    if(exitPreview){ exitPreview.style.display='none'; } if(photoStatus){ photoStatus.textContent=''; } photoDataUrl=''; exitDlg.close();
   }));
 
-  // ==== Reservations ====
+  // ==== Rezervasyonlar ====
   function attachReservations(roomId, uid){
     const now = Date.now(), soon = now + 30*86400000;
     db.ref(`roomReservations/${roomId}`).orderByChild('startAt').startAt(now).endAt(soon).on('value', s=>{
       const rows = Object.values(s.val()||{}).sort((a,b)=>(a.startAt||0)-(b.startAt||0));
-      const tb = $('resRows'); tb.innerHTML = rows.length? rows.map(r=>`
+      const tb = $('resRows'); if(!tb) return;
+      tb.innerHTML = rows.length? rows.map(r=>`
         <tr>
           <td>${new Date(r.startAt).toLocaleString()} – ${new Date(r.endAt).toLocaleTimeString()}</td>
           <td>${(r.title||'')}</td>
-          <td><span class="chip ${r.status||'pending'}">${r.status||'pending'}</span></td>
+          <td><span class="pill">${(r.status||'pending')}</span></td>
         </tr>`).join('') : `<tr><td colspan="3" class="muted">Yaklaşan rezervasyon yok</td></tr>`;
     });
 
@@ -646,313 +658,187 @@ function setUndo(payload){
       const end   = $('resEnd').value ? new Date($('resEnd').value).getTime()   : 0;
       const note  = $('resNote').value.trim();
       if(!title || !start || !end || end<=start){ $('resStatus').className='statusline err'; $('resStatus').textContent='Başlık ve geçerli zaman aralığı girin.'; return; }
-
       const snap = await db.ref(`roomReservations/${roomId}`).orderByChild('startAt').startAt(start-6*3600e3).endAt(end+6*3600e3).get();
       const clash = Object.values(snap.val()||{}).some(r => (r.status!=='declined') && !(r.endAt<=start || r.startAt>=end));
       if(clash) { $('resStatus').className='statusline warn'; $('resStatus').textContent='Bu aralık başka rezervasyonla çakışıyor (admin onayına düşecek).'; }
-
       const ref = db.ref(`roomReservations/${roomId}`).push();
       const u = await requireLogin();
       const rec = { id:ref.key, roomId:roomId, userId:u.uid, userName:u.displayName||u.email||'unknown', title, note, startAt:start, endAt:end, status:'pending', createdAt:Date.now() };
       await ref.set(rec);
       await db.ref(`userReservations/${u.uid}/${ref.key}`).set(rec);
-
       $('resStatus').className='statusline ok'; $('resStatus').textContent='Rezervasyon isteği iletildi (onay bekliyor).';
       $('resTitle').value=''; $('resStart').value=''; $('resEnd').value=''; $('resNote').value='';
     }));
   }
 
-  // Inventory
-  $('invSend')?.addEventListener('click', withLoading($('invSend'), async ()=>{
-    const u = await requireLogin();
-    const name = $('invName').value.trim();
-    const qty  = Math.max(1, parseInt(($('invQty').value||'1'),10));
-    const note = $('invNote').value.trim();
-    const cat  = $('invCat').value || 'genel';
-    if(!name){ $('invStatus').className='statusline err'; $('invStatus').textContent='Ürün adı gerekli.'; return; }
-    const ref = db.ref(`inventoryRequests/${room}`).push();
-    await ref.set({ id: ref.key, userId:u.uid, userName:u.displayName||u.email||'unknown', roomId: room, name, qty, note, cat, status:'pending', createdAt: Date.now() });
-    $('invStatus').className='statusline ok'; $('invStatus').textContent='Talep kaydedildi.'; $('invName').value=''; $('invQty').value='1'; $('invNote').value=''; $('invCat').value='genel';
-  }));
-  $('undoBtn')?.addEventListener('click', tryUndo);
+  // ==== Günlük Takvim (30 dk slot) ====
+  let _schedUnsub = null;
+  function dayRange(ts){ const d=new Date(ts); d.setHours(0,0,0,0); const start=d.getTime(); return {start, end:start+86400000}; }
+  function buildSlots(dayStart){ const out=[]; let t=dayStart; for(let i=0;i<48;i++){ const hh=String(new Date(t).getHours()).padStart(2,'0'); const mm=String(new Date(t).getMinutes()).padStart(2,'0'); out.push({t,label:`${hh}:${mm}`}); t+=1800000; } return out; }
+  function statusClass(s){ s=(s||'pending').toLowerCase(); if(['approved','ok','accepted'].includes(s)) return 'slot-approved'; if(['declined','rejected'].includes(s)) return 'slot-declined'; if(s==='pending') return 'slot-pending'; return 'slot-pending'; }
+  function human(name, fb='—'){ return String(name||'').trim() || fb; }
 
+  function attachSchedule(roomId){
+    const dateInp = $('schedDate'), tbody = $('schedRows');
+    if(!dateInp || !tbody) return;
+    const d = new Date(); dateInp.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    async function listenDay(){
+      if(_schedUnsub && typeof _schedUnsub==='function'){ _schedUnsub(); _schedUnsub=null; }
+      const day = new Date(dateInp.value+'T00:00:00'); if(isNaN(day.getTime())) return;
+      const { start, end } = dayRange(day.getTime());
+      const ref = db.ref(`roomReservations/${roomId}`).orderByChild('startAt').startAt(start).endAt(end);
+      const cb = (snap)=>{ const list = Object.values(snap.val()||{}).sort((a,b)=>(a.startAt||0)-(b.startAt||0)); renderSchedule(list, start); };
+      ref.on('value', cb); _schedUnsub = ()=> ref.off('value', cb);
+    }
+    function renderSchedule(resList, dayStart){
+      const slots = buildSlots(dayStart); tbody.innerHTML='';
+      for(const s of slots){
+        const slotStart = s.t, slotEnd = s.t + 1800000;
+        const hit = resList.find(r => !( (r.endAt||0) <= slotStart || (r.startAt||0) >= slotEnd ));
+        const tr=document.createElement('tr');
+        const tdTime=document.createElement('td'); tdTime.textContent=s.label; tdTime.className='slot-cell';
+        const tdState=document.createElement('td'); const tdInfo=document.createElement('td');
+        if(hit){
+          const st = statusClass(hit.status);
+          tdState.innerHTML = `<span class="${st}">${(hit.status||'pending')}</span>`;
+          tdInfo.innerHTML  = `<strong>${human(hit.title,'Rezerve')}</strong> — ${human(hit.userName)}${hit.note? ` <span class="muted">(${hit.note.slice(0,60)})</span>`:''}`;
+        }else{
+          tdState.innerHTML = `<span class="slot-free">Boş</span>`;
+          tdInfo.innerHTML  = `<span class="slot-click" data-start="${slotStart}" data-end="${slotEnd}">Bu slota rezervasyon iste</span>`;
+        }
+        tr.appendChild(tdTime); tr.appendChild(tdState); tr.appendChild(tdInfo); tbody.appendChild(tr);
+      }
+      tbody.querySelectorAll('.slot-click').forEach(a=>{
+        a.addEventListener('click', ()=>{
+          const s = Number(a.getAttribute('data-start')), e = Number(a.getAttribute('data-end'));
+          const toIso = ms => new Date(ms - (new Date().getTimezoneOffset()*60000)).toISOString().slice(0,16);
+          const startInp = $('resStart'), endInp = $('resEnd');
+          if(startInp && endInp){ startInp.value = toIso(s); endInp.value = toIso(e); $('resDlg')?.showModal(); $('resTitle')?.focus(); toast('Slot seçildi: form dolduruldu'); }
+        });
+      });
+    }
+    dateInp.addEventListener('change', listenDay);
+    listenDay();
+  }
+
+  // ==== Aidat (config + send + table + invoice) ====
+  function ymNow(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+  async function loadDuesConfig(){
+    try{
+      const s = await db.ref('dues/config').get();
+      const cfg = s.val()||{};
+      if($('duesMonth'))  $('duesMonth').value  = $('duesMonth').value || ymNow();
+      if($('duesAmount') && (cfg.amount!=null)) $('duesAmount').value = cfg.amount;
+    }catch{}
+  }
+  $('duesSend')?.addEventListener('click', withLoading($('duesSend'), async ()=>{
+    try{
+      const u = await requireLogin();
+      const month = ($('duesMonth').value || '').trim() || ymNow();
+      const amt   = parseFloat(($('duesAmount').value||'').trim());
+      if(!(amt>=0)) { $('duesStatus').className='statusline err'; $('duesStatus').textContent='Geçerli tutar gir.'; return; }
+      const ref = db.ref(`duesPayments/${u.uid}`).push();
+      const rec = { id: ref.key, userId: u.uid, userName: u.displayName || u.email || 'unknown', amount:+(amt||0), month, status:'pending', createdAt: Date.now() };
+      await ref.set(rec);
+      await db.ref(`duesPaymentsIndex/${ref.key}`).set(rec);
+      $('duesStatus').className='statusline ok'; $('duesStatus').textContent='Aidat bildirimin gönderildi (onay bekliyor).';
+    }catch(e){ console.error(e); $('duesStatus').className='statusline err'; $('duesStatus').textContent='Gönderilemedi (yetki/bağlantı hatası).'; }
+  }));
+
+  // PDF helpers
+  function hasInvoiced(id){ try{ return JSON.parse(localStorage.getItem('invoices_done')||'{}')[id]; }catch{ return false; } }
+  function markInvoiced(id){ const m = JSON.parse(localStorage.getItem('invoices_done')||'{}'); m[id]=true; localStorage.setItem('invoices_done', JSON.stringify(m)); }
+  function makeInvoiceNo(rec){ const d=new Date(rec.createdAt||Date.now()); const y=d.getFullYear(); const short=(rec.id||'xxxxxx').slice(-6).toUpperCase(); return `IEEE-${y}-${short}`; }
+  async function generateInvoicePdf(rec, user){
+    const { jsPDF } = window.jspdf || {}; if(!jsPDF){ alert('PDF kütüphanesi yok'); return; }
+    const doc = new jsPDF({ unit:'pt', format:'a4' }), pageW = doc.internal.pageSize.getWidth(), margin=48;
+    doc.setFillColor(10,124,193); doc.rect(0,0,pageW,72,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.text('IEEE IKCU TechOps', margin, 42);
+    doc.setFont('helvetica','normal'); doc.setFontSize(12); doc.text('Aidat / Fatura Belgesi', margin, 60);
+    doc.setTextColor(16,36,59);
+    const invNo=makeInvoiceNo(rec), issueAt=new Date().toLocaleString('tr-TR'), month=rec.month||'—';
+    const boxX = pageW - margin - 220, boxY = 96, boxW = 220, boxH = 84;
+    doc.setDrawColor(233,239,248); doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8);
+    doc.setFont('helvetica','bold'); doc.text('MAKBUZ', boxX+14, boxY+22);
+    doc.setFont('helvetica','normal'); doc.text(`No: ${invNo}`, boxX+14, boxY+42); doc.text(`Tarih: ${issueAt}`, boxX+14, boxY+62);
+    const whoY=110; doc.setFont('helvetica','bold'); doc.text('ODEMEYI YAPAN', margin, whoY);
+    doc.setFont('helvetica','normal'); doc.text(`${user.displayName || user.email || user.uid}`, margin, whoY+18); if (user.email) doc.text(`${user.email}`, margin, whoY+36);
+    const orgY=whoY+64; doc.setFont('helvetica','bold'); doc.text('KURUM', margin, orgY);
+    doc.setFont('helvetica','normal'); doc.text('IEEE IKCU Ogrenci Kolu — TechOps', margin, orgY+18); doc.text('Amaç: Aidat tahsilati ve kulup faaliyetleri', margin, orgY+36);
+    doc.setDrawColor(233,239,248); doc.line(margin, orgY+56, pageW-margin, orgY+56);
+    const itemsY=orgY+84; doc.setFont('helvetica','bold'); doc.text('KALEM', margin, itemsY); doc.text('DONEM', margin+260, itemsY); doc.text('TUTAR', pageW-margin-100, itemsY, {align:'right'});
+    doc.setFont('helvetica','normal'); const rowY=itemsY+22; doc.text('Uye Aidati', margin, rowY); doc.text(`${month}`, margin+260, rowY); doc.text(fmtTRY(rec.amount), pageW-margin-100, rowY, {align:'right'});
+    const sumY=rowY+36; doc.setDrawColor(233,239,248); doc.line(margin, sumY, pageW-margin, sumY);
+    doc.setFont('helvetica','bold'); doc.text('TOPLAM', margin, sumY+22); doc.text(fmtTRY(rec.amount), pageW-margin-100, sumY+22, {align:'right'});
+    doc.setTextColor(109,122,144); doc.setFontSize(10); doc.text('© IEEE IKCU TechOps', margin, 820);
+    const fname=`ieee-techops-fatura_${month}_${invNo}.pdf`; doc.save(fname);
+    try{ await db.ref(`userInvoices/${user.uid}/${rec.id}`).set({ createdAt: Date.now(), title:`Aidat (${month})`, total:+(rec.amount||0), status:'paid', invoiceNo:invNo }); }catch(e){}
+  }
+  async function maybeInvoice(uid, rec){
+    try{
+      if(!rec || rec.userId !== uid) return;
+      const ok = (rec.status||'').toLowerCase();
+      if(!(ok==='approved' || ok==='received' || ok==='paid')) return;
+      if(hasInvoiced(rec.id)) return;
+      const u = await waitAuth(); if(!u) return;
+      await generateInvoicePdf(rec, u); markInvoiced(rec.id); toast('Fatura indirildi ✅');
+    }catch(e){ console.error('invoice fail:', e); }
+  }
+  function attachDuesApprovalListener(uid){
+    const ref = db.ref(`duesPayments/${uid}`);
+    ref.on('child_changed', s=>{ const rec = { id:s.key, ...s.val() }; maybeInvoice(uid, rec); });
+    ref.on('child_added',   s=>{ const rec = { id:s.key, ...s.val() }; maybeInvoice(uid, rec); });
+  }
+  function attachDuesTable(uid){
+    const ref = db.ref(`duesPayments/${uid}`).limitToLast(200);
+    ref.on('value', snap=>{
+      const tb = $('myInvRows'); if(!tb) return;
+      const rows = Object.values(snap.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      tb.innerHTML = rows.length ? rows.map(r=>{
+        const canInvoice = ['approved','paid','received'].includes(String(r.status||'').toLowerCase());
+        const btn = canInvoice ? `<button class="btn light btn-make-invoice">Fatura oluştur</button>` : `<span class="muted">—</span>`;
+        return `<tr data-id="${r.id}"><td>${fmt(r.createdAt)}</td><td>Aidat (${r.month || '—'})</td><td>${fmtTRY(r.amount)}</td><td>${(r.status || 'pending')}</td><td>${btn}</td></tr>`;
+      }).join('') : `<tr><td colspan="5" class="muted">Fatura yok</td></tr>`;
+    });
+    $('myInvRows').addEventListener('click', async (e)=>{
+      const btn = e.target.closest('.btn-make-invoice'); if(!btn) return;
+      const tr = btn.closest('tr'); const id = tr?.dataset?.id; if(!id) return;
+      try{
+        const u = await waitAuth(); const s = await db.ref(`duesPayments/${uid}/${id}`).get(); const rec = { id, ...s.val() };
+        await generateInvoicePdf(rec, u); toast('Fatura indirildi ✅');
+      }catch(err){ console.error(err); toast('Fatura oluşturulamadı'); }
+    });
+  }
+
+  // ==== Günlük kısayollar ====
   window.addEventListener('keydown', e=>{
     if(e.target && /input|textarea|select/i.test(e.target.tagName)) return;
     const k = e.key.toLowerCase();
-    if(k==='e'){ $('enterBtn')?.click(); }
-    else if(k==='x'){ $('exitBtn')?.click(); }
-    else if(k==='b'){ $('breakStartBtn')?.click(); }
-    else if(k==='n'){ $('breakEndBtn')?.click(); }
-    else if(k==='r'){ $('resSend')?.click(); }
-    else if(k==='u'){ $('undoBtn')?.click(); }
+    if(k==='e'){ $('actDlg')?.showModal(); $('enterBtn')?.click(); }
+    else if(k==='x'){ $('actDlg')?.showModal(); $('exitBtn')?.click(); }
+    else if(k==='b'){ $('actDlg')?.showModal(); $('breakStartBtn')?.click(); }
+    else if(k==='n'){ $('actDlg')?.showModal(); $('breakEndBtn')?.click(); }
+    else if(k==='r'){ $('resDlg')?.showModal(); }
+    else if(k==='u'){ tryUndo(); }
   });
 
-
-  // ==== Aidat (dues) ====
-
-function ymNow(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
-
-async function loadDuesConfig(){
-  try{
-    const s = await db.ref('dues/config').get();
-    const cfg = s.val()||{};
-    if($('duesMonth'))  $('duesMonth').value  = $('duesMonth').value || ymNow();
-    if($('duesAmount') && (cfg.amount!=null)) $('duesAmount').value = cfg.amount;
-  }catch{}
-}
-
-// sayfa açılışında enable et
-(async()=>{
-  await loadDuesConfig();
-  const u = await waitAuth();
-  if(u && $('duesSend')) $('duesSend').disabled = false;
-})();
-
-$('duesSend')?.addEventListener('click', withLoading($('duesSend'), async ()=>{
-  try{
-    const u = await requireLogin();
-    const month = ($('duesMonth').value || '').trim() || ymNow();
-    const amt   = parseFloat(($('duesAmount').value||'').trim());
-    if(!(amt>=0)) { $('duesStatus').className='statusline err'; $('duesStatus').textContent='Geçerli tutar gir.'; return; }
-
-    const ref = db.ref(`duesPayments/${u.uid}`).push();
-    const rec = {
-      id: ref.key,
-      userId: u.uid,
-      userName: u.displayName || u.email || 'unknown',
-      amount: +(amt||0),
-      month,
-      status:'pending',
-      createdAt: Date.now()
-    };
-
-    // kullanıcı kendi dalına kaydeder
-    await ref.set(rec);
-    // admin listesi için index mirror
-    await db.ref(`duesPaymentsIndex/${ref.key}`).set(rec);
-
-    $('duesStatus').className='statusline ok';
-    $('duesStatus').textContent='Aidat bildirimin gönderildi (onay bekliyor).';
-  }catch(e){
-    console.error(e);
-    $('duesStatus').className='statusline err';
-    $('duesStatus').textContent='Gönderilemedi (yetki/bağlantı hatası).';
-  }
-}));
-
-// ====== AİDAT: Onay Gelince PDF Kes ve İndir (storage yok) ======
-
-// Tekrar indirmeyi engellemek için local flag
-function hasInvoiced(id){ try{ return JSON.parse(localStorage.getItem('invoices_done')||'{}')[id]; }catch{ return false; } }
-function markInvoiced(id){ const m = JSON.parse(localStorage.getItem('invoices_done')||'{}'); m[id]=true; localStorage.setItem('invoices_done', JSON.stringify(m)); }
-
-
-// Sıra numarası üretimi (yıl + kısa id)
-function makeInvoiceNo(rec){
-  const d = new Date(rec.createdAt||Date.now());
-  const y = d.getFullYear();
-  const short = (rec.id||'xxxxxx').slice(-6).toUpperCase();
-  return `IEEE-${y}-${short}`;
-}
-
-// PDF üretici (jsPDF)
-async function generateInvoicePdf(rec, user){
-  // jsPDF UMD
-  const { jsPDF } = window.jspdf || {};
-  if(!jsPDF){ alert('PDF kütüphanesi yüklenemedi.'); return; }
-  const doc = new jsPDF({ unit:'pt', format:'a4' }); // 595x842pt
-
-  const pageW = doc.internal.pageSize.getWidth();
-  const margin = 48;
-
-  // Başlık şeridi
-  doc.setFillColor(10,124,193); // #0a7cc1
-  doc.rect(0,0,pageW,72,'F');
-
-  // Başlık Yazıları
-  doc.setTextColor(255,255,255);
-  doc.setFont('helvetica','bold'); doc.setFontSize(18);
-  doc.text('IEEE IKCU TechOps', margin, 42);
-  doc.setFont('helvetica','normal'); doc.setFontSize(12);
-  doc.text('Aidat / Fatura Belgesi', margin, 60);
-
-  // İç metin rengine dön
-  doc.setTextColor(16,36,59);
-
-  // Fatura Üst Bilgiler
-  const invNo = makeInvoiceNo(rec);
-  const issueAt = new Date().toLocaleString('tr-TR');
-  const month = rec.month || '—';
-
-  // Sağ üst kutu
-  const boxX = pageW - margin - 220, boxY = 96, boxW = 220, boxH = 84;
-  doc.setDrawColor(233,239,248);
-  doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8);
-  doc.setFont('helvetica','bold'); doc.text('MAKBUZ', boxX+14, boxY+22);
-  doc.setFont('helvetica','normal');
-  doc.text(`No: ${invNo}`, boxX+14, boxY+42);
-  doc.text(`Tarih: ${issueAt}`, boxX+14, boxY+62);
-
-  // Alıcı Bilgileri
-  const whoY = 110;
-  doc.setFont('helvetica','bold'); doc.text('ODEMEYI YAPAN', margin, whoY);
-  doc.setFont('helvetica','normal');
-  doc.text(`${user.displayName || user.email || user.uid}`, margin, whoY+18);
-  if (user.email) doc.text(`${user.email}`, margin, whoY+36);
-
-  // Kulüp bilgisi
-  const orgY = whoY + 64;
-  doc.setFont('helvetica','bold'); doc.text('KURUM', margin, orgY);
-  doc.setFont('helvetica','normal');
-  doc.text('IEEE IKCU Ogrenci Kolu — TechOps', margin, orgY+18);
-  doc.text('Amaç: Aidat tahsilati ve kulup faaliyetleri', margin, orgY+36);
-
-  // Çizgi
-  doc.setDrawColor(233,239,248);
-  doc.line(margin, orgY+56, pageW-margin, orgY+56);
-
-  // Kalem (item) alanı
-  const itemsY = orgY + 84;
-  doc.setFont('helvetica','bold'); doc.text('KALEM', margin, itemsY);
-  doc.text('DONEM', margin+260, itemsY);
-  doc.text('TUTAR', pageW - margin - 100, itemsY, { align:'right' });
-
-  doc.setFont('helvetica','normal');
-  const rowY = itemsY + 22;
-  doc.text('Uye Aidati', margin, rowY);
-  doc.text(`${month}`, margin+260, rowY);
-  doc.text(fmtTRY(rec.amount), pageW - margin - 100, rowY, { align:'right' });
-
-  // Ara toplam / toplam
-  const sumY = rowY + 36;
-  doc.setDrawColor(233,239,248);
-  doc.line(margin, sumY, pageW-margin, sumY);
-
-  doc.setFont('helvetica','bold');
-  doc.text('TOPLAM', margin, sumY+22);
-  doc.text(fmtTRY(rec.amount), pageW - margin - 100, sumY+22, { align:'right' });
-
-  // Notlar
-  const notesY = sumY + 54;
-  doc.setFont('helvetica','bold'); doc.text('NOT', margin, notesY);
-  doc.setFont('helvetica','normal');
-  doc.text('Ödeme alindi. Bu belge elektronik olarak olusturulmustur.', margin, notesY+18);
-
-  // Alt kısım
-  doc.setTextColor(109,122,144);
-  doc.setFontSize(10);
-  doc.text('© IEEE IKCU TechOps', margin, 820);
-
-  // Dosya adı
-  const fname = `ieee-techops-fatura_${rec.month || 'ay'}_${invNo}.pdf`;
-
-  // Otomatik indir
-  doc.save(fname);
-
-  // (İsteğe bağlı) "Faturalarım" tablosuna yansıt (storage yok: sadece metadata)
-  try{
-    const meta = {
-      createdAt: Date.now(),
-      title: `Aidat (${month})`,
-      total: +(rec.amount||0),
-      status: 'paid',
-      invoiceNo: invNo
-    };
-    await db.ref(`userInvoices/${user.uid}/${rec.id}`).set(meta);
-  }catch(e){ console.warn('userInvoices yazılamadı:', e); }
-}
-async function maybeInvoice(uid, rec){
-  try{
-    if(!rec || rec.userId !== uid) return;
-    const ok = (rec.status||'').toLowerCase();
-    if(!(ok === 'approved' || ok === 'received' || ok === 'paid')) return;
-    if(hasInvoiced(rec.id)) return; // zaten kesildi
-    const u = await waitAuth(); if(!u) return;
-    await generateInvoicePdf(rec, u);
-    markInvoiced(rec.id);
-    toast('Fatura indirildi ✅');
-    notifyNow('Aidat', 'Ödeme onaylandı, fatura indirildi.');
-  }catch(e){
-    console.error('invoice fail:', e);
-  }
-}
-
-// Para formatı
-const fmtTRY = v => new Intl.NumberFormat('tr-TR', { style:'currency', currency:'TRY' }).format(+v||0);
-
-// PDF fonksiyonunu zaten eklemiştik: generateInvoicePdf(rec, user)  (aynı kalsın)
-
-// Faturalarım tablosunu doldur + butonla indir
-function attachDuesTable(uid){
-  const ref = db.ref(`duesPayments/${uid}`).limitToLast(200);
-  ref.on('value', snap=>{
-    const tb = $('myInvRows'); if(!tb) return;
-    const rows = Object.values(snap.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    tb.innerHTML = rows.length ? rows.map(r=> {
-      const canInvoice = ['approved','paid','received'].includes(String(r.status||'').toLowerCase());
-      const btn = canInvoice
-        ? `<button class="btn light btn-make-invoice">Fatura oluştur</button>`
-        : `<span class="muted">—</span>`;
-      return `
-        <tr data-id="${r.id}">
-          <td>${fmt(r.createdAt)}</td>
-          <td>Aidat (${r.month || '—'})</td>
-          <td>${fmtTRY(r.amount)}</td>
-          <td>${(r.status || 'pending')}</td>
-          <td>${btn}</td>
-        </tr>`;
-    }).join('') : `<tr><td colspan="5" class="muted">Fatura yok</td></tr>`;
-  });
-
-  // Event delegation: satırdaki butona basılınca PDF indir
-  $('myInvRows').addEventListener('click', async (e)=>{
-    const btn = e.target.closest('.btn-make-invoice');
-    if(!btn) return;
-    const tr = btn.closest('tr');
-    const id = tr?.dataset?.id; if(!id) return;
-    try{
-      const u = await waitAuth();
-      const s = await db.ref(`duesPayments/${uid}/${id}`).get();
-      const rec = { id, ...s.val() };
-      await generateInvoicePdf(rec, u);              // PDF oluştur & indir
-      toast('Fatura indirildi ✅');
-    }catch(err){
-      console.error(err); toast('Fatura oluşturulamadı');
-    }
-  });
-}
-
-// >>> sayfa açılışındaki IIFE’da, hydrate’lerden sonra çağır:
-(async () => {
-  const u = await waitAuth();
-  if (!u) { location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
-  if (!verified || !room) { location.replace('gate.html'); return; }
-  $('hello').textContent = `Merhaba, ${u.displayName || u.email || u.uid}`;
-  attachMyLog(u.uid);
-  attachReservations(room, u.uid);
-  await hydratePresenceAndStats(u.uid);
-  attachDuesTable(u.uid);       // <-- YENİ
-  setActionsEnabled(true);
-})();
-
-
-
-
-
-// Mevcut akışın sonunda auth sonrası çağır:
-(async ()=>{
-  try{
+  // ==== sayfa açılışı ====
+  (async () => {
     const u = await waitAuth();
-    if(u) attachDuesApprovalListener(u.uid);
-  }catch(_){}
-})();
-
-
-
-
-
+    if (!u) { location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
+    if (!verified || !room) { location.replace('gate.html'); return; }
+    $('hello').textContent = `Merhaba, ${u.displayName || u.email || u.uid}`;
+    attachMyLog(u.uid);
+    attachReservations(room, u.uid);
+    attachSchedule(room);
+    await hydratePresenceAndStats(u.uid);
+    attachDuesTable(u.uid);
+    attachDuesApprovalListener(u.uid);
+    setActionsEnabled(true);
+    // modal open hooks
+    $('openAct')?.addEventListener('click', ()=> $('actDlg').showModal());
+    $('logout')?.addEventListener('click', ()=> auth.signOut().then(()=>location.replace('login.html')));
+  })();
 </script>
-<div id="toast" class="toast" role="status" aria-live="polite"></div>
-
 </body>
 </html>
