@@ -60,7 +60,7 @@
     .card{ background:var(--card); border:1px solid var(--edge); box-shadow:0 8px 22px rgba(0,0,0,.35); }
     th{ background:#18283b; color:var(--ink); }
     td, th{ border-bottom-color:#27384f; }
-    input, select, textarea{ background:#0e1622; color:#e9eef5; border:1px solid #2d3e55; }
+    input, select, textarea{ background:#0e1622; color:var(--ink); border:1px solid #2d3e55; }
     input:focus, select:focus, textarea:focus{ border-color:#4aa3ff; box-shadow:0 0 0 3px rgba(74,163,255,.18); outline:none; }
     .btn{ background:linear-gradient(90deg, var(--pri) 0%, var(--pri-2) 100%); color:#031424; }
     .btn.light{ background:#132235; color:#d7e7ff; border:1px solid #2d3e55; }
@@ -71,11 +71,13 @@
     .presence.out{ background:#2e200f; color:#ffca85; }
   }
 
+  /* toast & spinner */
   .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px #0006;font-weight:700;opacity:0;pointer-events:none;transition:.25s}
   .toast.show{opacity:1;pointer-events:auto}
   .spinner{width:16px;height:16px;border:2px solid #fff;border-right-color:transparent;border-radius:50%;display:inline-block;vertical-align:middle;animation:spin .7s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
 
+  /* rating + chips */
   .seg{display:flex; gap:8px; flex-wrap:wrap}
   .seg .chip{padding:8px 12px; border:1px solid var(--edge); border-radius:999px; cursor:pointer; background:#f7fbff}
   .seg .chip.active{background:var(--pri); color:#fff; border-color:var(--pri)}
@@ -90,6 +92,7 @@
     .chips .chip{background:#132235; border-color:#2b3b50; color:#d7e7ff}
   }
 
+  /* Takvim Tablosu */
   .schedule-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
   #schedDate{padding:10px;border:1px solid var(--edge);border-radius:10px;background:#fbfdff;min-width:200px}
   .table-note{font-size:12px;color:var(--muted)}
@@ -101,25 +104,76 @@
   .slot-declined{background:#ffe9e9;color:#9a1b1b;border:1px solid #ffd0d0;border-radius:8px;padding:2px 8px;display:inline-block}
   .slot-cell{white-space:nowrap}
   .slot-click{cursor:pointer;text-decoration:underline}
-  @media (prefers-color-scheme: dark){
-    #schedDlg .dlg-body { color: var(--ink); }
-    #schedDate{ background:#0e1622 !important; color:var(--ink) !important; border:1px solid #2d3e55 !important; }
-    #schedDate::-webkit-calendar-picker-indicator{ filter: invert(1) contrast(1.2); opacity:.9; }
-    .table-slim th{ background:#1a2a3f !important; color:var(--ink) !important; border-bottom:1px solid #27384f !important; }
-    .table-slim td{ color:var(--ink) !important; border-bottom:1px solid #27384f !important; }
-    .slot-click{ color:#9bd0ff !important; text-decoration:underline; }
-    .slot-free{ background:#103022 !important; color:#9ff0c0 !important; border:1px solid #1e3a2f !important; }
-    .slot-pending{ background:#2e240f !important; color:#ffd27a !important; border:1px solid #5a471e !important; }
-    .slot-approved{ background:#103022 !important; color:#9ff0c0 !important; border:1px solid #1e3a2f !important; }
-    .slot-declined{ background:#3a1414 !important; color:#ff9b9b !important; border:1px solid #5a2020 !important; }
-    .table-note{ color:#a9b7c8 !important; }
+  /* === Oda Takvimi — Dark mode kontrast fix === */
+@media (prefers-color-scheme: dark){
+  /* Modal genel metin */
+  #schedDlg .dlg-body { color: var(--ink); }
+
+  /* Tarih inputu: arka plan, yazı, border ve ikon görünürlüğü */
+  #schedDate{
+    background:#0e1622 !important;
+    color:var(--ink) !important;
+    border:1px solid #2d3e55 !important;
   }
+  /* Chrome/Safari tarih seçici ikonu */
+  #schedDate::-webkit-calendar-picker-indicator{
+    filter: invert(1) contrast(1.2);
+    opacity: 0.9;
+  }
+
+  /* Tablo başlık ve hücre renkleri */
+  .table-slim th{
+    background:#1a2a3f !important;   /* daha açık başlık */
+    color:var(--ink) !important;
+    border-bottom:1px solid #27384f !important;
+  }
+  .table-slim td{
+    color:var(--ink) !important;
+    border-bottom:1px solid #27384f !important;
+  }
+
+  /* "Bu slota rezervasyon iste" linki görünürlüğü */
+  .slot-click{
+    color:#9bd0ff !important;
+    text-decoration: underline;
+  }
+
+  /* Slot rozetleri: koyu mod paleti */
+  .slot-free{
+    background:#103022 !important;
+    color:#9ff0c0 !important;
+    border:1px solid #1e3a2f !important;
+  }
+  .slot-pending{
+    background:#2e240f !important;
+    color:#ffd27a !important;
+    border:1px solid #5a471e !important;
+  }
+  .slot-approved{
+    background:#103022 !important;
+    color:#9ff0c0 !important;
+    border:1px solid #1e3a2f !important;
+  }
+  .slot-declined{
+    background:#3a1414 !important;
+    color:#ff9b9b !important;
+    border:1px solid #5a2020 !important;
+  }
+
+  /* Küçük not yazısı */
+  .table-note{ color:#a9b7c8 !important; }
+}
+
 </style>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
 <div class="wrap">
+
+  <!-- Header -->
   <div class="top">
     <div class="title">
       <h2>Oda Paneli</h2>
@@ -135,32 +189,233 @@
   </div>
   <div id="opStatus" class="statusline muted"></div>
 
+  <!-- Tiles -->
   <div class="tiles">
-    <div class="tile"><h3>Aksiyonlar</h3><p>Giriş / Çıkış (+yorum) / Mola</p><button id="openAct" class="btn">⚡ Aç</button></div>
-    <div class="tile"><h3>Oda Takvimi</h3><p>30 dk slot — dolu/boş & kullanıcı</p><button id="openSched" class="btn light">📅 Aç</button></div>
-    <div class="tile"><h3>Rezervasyon</h3><p>Talep oluştur, yaklaşanları gör</p><button id="openRes" class="btn light">📝 Aç</button></div>
-    <div class="tile"><h3>Eksik/Ekipman</h3><p>Marker, kablo, donanım vs. talep et</p><button id="openInv" class="btn light">📦 Aç</button></div>
-    <div class="tile"><h3>Kayıtlarım</h3><p>Son giriş/çıkış/mola kayıtları</p><button id="openLogs" class="btn light">📜 Aç</button></div>
-    <div class="tile"><h3>Faturalarım</h3><p>Aidat onaylıysa PDF kes</p><button id="openInvcs" class="btn light">🧾 Aç</button></div>
-    <div class="tile"><h3>Aidat Bildir</h3><p>Dönem ve tutar gir, gönder</p><button id="openDues" class="btn light">💳 Aç</button></div>
-    <div class="tile"><h3>Günlük Çizelge</h3><p>Bugün giriş-çıkış blokları</p><button id="openTime" class="btn light">📈 Aç</button></div>
+    <div class="tile">
+      <h3>Aksiyonlar</h3>
+      <p>Giriş / Çıkış (+yorum) / Mola</p>
+      <button id="openAct" class="btn">⚡ Aç</button>
+    </div>
+    <div class="tile">
+      <h3>Oda Takvimi</h3>
+      <p>30 dk slot — dolu/boş & kullanıcı</p>
+      <button id="openSched" class="btn light">📅 Aç</button>
+    </div>
+    <div class="tile">
+      <h3>Rezervasyon</h3>
+      <p>Talep oluştur, yaklaşanları gör</p>
+      <button id="openRes" class="btn light">📝 Aç</button>
+    </div>
+    <div class="tile">
+      <h3>Eksik/Ekipman</h3>
+      <p>Marker, kablo, donanım vs. talep et</p>
+      <button id="openInv" class="btn light">📦 Aç</button>
+    </div>
+    <div class="tile">
+      <h3>Kayıtlarım</h3>
+      <p>Son giriş/çıkış/mola kayıtları</p>
+      <button id="openLogs" class="btn light">📜 Aç</button>
+    </div>
+    <div class="tile">
+      <h3>Faturalarım</h3>
+      <p>Aidat onaylıysa PDF kes</p>
+      <button id="openInvcs" class="btn light">🧾 Aç</button>
+    </div>
+    <div class="tile">
+      <h3>Aidat Bildir</h3>
+      <p>Dönem ve tutar gir, gönder</p>
+      <button id="openDues" class="btn light">💳 Aç</button>
+    </div>
+    <div class="tile">
+      <h3>Günlük Çizelge</h3>
+      <p>Bugün giriş-çıkış blokları</p>
+      <button id="openTime" class="btn light">📈 Aç</button>
+    </div>
   </div>
 </div>
 
-<!-- Dialoglar (değişmedi) -->
-<dialog id="actDlg"> ... </dialog>
-<dialog id="exitDlg"> ... </dialog>
-<dialog id="camDlg"> ... </dialog>
-<dialog id="resDlg"> ... </dialog>
-<dialog id="schedDlg"> ... </dialog>
-<dialog id="invDlg"> ... </dialog>
-<dialog id="logsDlg"> ... </dialog>
-<dialog id="invcsDlg"> ... </dialog>
-<dialog id="duesDlg"> ... </dialog>
-<dialog id="timeDlg"> ... </dialog>
+<!-- ====== MODALLAR ====== -->
+
+<!-- Aksiyonlar -->
+<dialog id="actDlg">
+  <div class="dlg-head">Oda Aksiyonları</div>
+  <div class="dlg-body" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+    <button id="enterBtn"      class="btn" disabled>⤴️ Giriş</button>
+    <button id="exitBtn"       class="btn light" disabled>⤵️ Çıkış (+Yorum)</button>
+    <button id="breakStartBtn" class="btn" disabled>☕ Mola</button>
+    <button id="breakEndBtn"   class="btn light" disabled>🔙 Mola Bitir</button>
+  </div>
+  <div class="dlg-foot"><button id="actClose" class="btn light" type="button">Kapat</button></div>
+</dialog>
+
+<!-- Çıkış Yorumu (+kamera) -->
+<dialog id="exitDlg">
+  <div class="dlg-head">Oda Çıkış — Son Durum</div>
+  <div class="dlg-body">
+    <label>Durum</label>
+    <div class="seg" id="statusSeg">
+      <div class="chip" data-val="clean">🧽 Temiz / Düzenli</div>
+      <div class="chip" data-val="messy">🧹 Dağınık / Toplanmalı</div>
+      <div class="chip" data-val="issue">⚠️ Sorun / Arıza</div>
+    </div>
+    <label style="margin-top:12px">Genel Memnuniyet</label>
+    <div class="stars" id="stars" aria-label="Puan"><span>⭐</span><span>⭐</span><span>⭐</span><span>⭐</span><span>⭐</span></div>
+    <label style="margin-top:12px">Kısa Yorum</label>
+    <textarea id="fbComment" rows="3" placeholder="Örn. projeksiyon bulanık, çöpler dolu, klima gürültülü..."></textarea>
+
+    <label style="margin-top:12px">Oda fotoğrafı</label>
+    <div class="seg" style="align-items:flex-start">
+      <button id="openCam" class="btn light" type="button">📷 Kameradan Çek</button>
+      <img id="exitPreview" alt="Önizleme" style="display:none;max-height:120px;border:1px solid var(--edge);border-radius:8px">
+      <div id="photoStatus" class="statusline muted" style="margin:0"></div>
+    </div>
+
+    <label style="margin-top:12px">Kimlerle beraberdin? (Enter)</label>
+    <div class="chips" id="withBox"><input id="withInput" placeholder="Örn. Ali Y., Ayşe K." /></div>
+    <div class="seg" style="margin-top:10px">
+      <div class="chip tag" data-tag="temizlik">🧼 Temizlik</div>
+      <div class="chip tag" data-tag="donanım">🖥️ Donanım</div>
+      <div class="chip tag" data-tag="elektrik">🔌 Elektrik</div>
+      <div class="chip tag" data-tag="düzen">🗂️ Düzen</div>
+    </div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn light" id="fbCancel" type="button">Vazgeç</button>
+    <button id="fbSend" class="btn" type="button">Gönder & Çıkış Kaydet</button>
+  </div>
+</dialog>
+
+<!-- Kamera -->
+<dialog id="camDlg" style="border:none;border-radius:16px;padding:0;width:min(520px,calc(100% - 24px));background:var(--card);border:1px solid var(--edge)">
+  <div class="dlg-head">Kameradan Fotoğraf</div>
+  <div class="dlg-body" style="display:flex;flex-direction:column;gap:8px">
+    <video id="camVideo" playsinline autoplay style="width:100%;max-height:320px;background:#000;border-radius:12px"></video>
+    <canvas id="camCanvas" style="display:none"></canvas>
+    <div class="muted" style="font-size:12px">İpucu: Arka kamera için “environment” iyidir.</div>
+  </div>
+  <div class="dlg-foot">
+    <button id="camCancel" class="btn light" type="button">Vazgeç</button>
+    <button id="camShoot" class="btn" type="button">📸 Çek</button>
+  </div>
+</dialog>
+
+<!-- Rezervasyon -->
+<dialog id="resDlg">
+  <div class="dlg-head">Oda Rezervasyonu</div>
+  <div class="dlg-body">
+    <div class="seg" style="gap:10px;flex-wrap:wrap">
+      <input id="resTitle" placeholder="Başlık (örn. Proje toplantısı)" />
+      <input id="resStart" type="datetime-local" />
+      <input id="resEnd" type="datetime-local" />
+    </div>
+    <textarea id="resNote" rows="2" placeholder="Not (ihtiyaçlar, katılımcılar, vb.)" style="margin-top:8px"></textarea>
+    <div class="seg" style="margin-top:8px;justify-content:space-between">
+      <button id="resSend" class="btn" disabled>📅 Rezervasyon Talep Et</button>
+      <div id="resStatus" class="statusline muted" style="margin:0"></div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="muted" style="margin:6px 0 4px">Yaklaşan rezervasyonlar</div>
+      <table>
+        <thead><tr><th>Zaman</th><th>Başlık</th><th>Durum</th></tr></thead>
+        <tbody id="resRows"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="resDlg">Kapat</button></div>
+</dialog>
+
+<!-- Takvim (30 dk slot) -->
+<dialog id="schedDlg">
+  <div class="dlg-head">Oda Takvimi</div>
+  <div class="dlg-body">
+    <div class="schedule-head">
+      <input id="schedDate" type="date">
+      <div class="table-note">30 dk slot; dolu/boş + kullanıcı gösterimi</div>
+    </div>
+    <table class="table-slim">
+      <thead><tr><th>Saat</th><th>Durum</th><th>Başlık / Kullanıcı</th></tr></thead>
+      <tbody id="schedRows"><tr><td colspan="3" class="muted">Yükleniyor…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="schedDlg">Kapat</button></div>
+</dialog>
+
+<!-- Envanter -->
+<dialog id="invDlg">
+  <div class="dlg-head">Eksik / Ekipman Talebi</div>
+  <div class="dlg-body">
+    <div class="seg">
+      <select id="invCat" style="max-width:200px">
+        <option value="genel">Kategori</option>
+        <option>Temizlik</option>
+        <option>Elektrik</option>
+        <option>Donanım</option>
+        <option>Kırtasiye</option>
+        <option>Diğer</option>
+      </select>
+      <input id="invName" placeholder="Ürün / Ekipman adı (örn. Marker kalem)" />
+      <input id="invQty" type="number" min="1" value="1" style="max-width:140px" placeholder="Adet" />
+    </div>
+    <textarea id="invNote" rows="3" placeholder="Detay/Not (marka, renk, ölçü, vs.)" style="margin-top:8px"></textarea>
+    <div class="seg" style="margin-top:8px;justify-content:space-between">
+      <button id="invSend" class="btn" disabled>🚀 Talep Gönder</button>
+      <div id="invStatus" class="statusline muted" style="margin:0"></div>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="invDlg">Kapat</button></div>
+</dialog>
+
+<!-- Kayıtlarım -->
+<dialog id="logsDlg">
+  <div class="dlg-head">Son Kayıtlarım</div>
+  <div class="dlg-body">
+    <table>
+      <thead><tr><th>Zaman</th><th>Aksiyon</th><th>Oda</th><th>Kaynak</th></tr></thead>
+      <tbody id="myRows"></tbody>
+    </table>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="logsDlg">Kapat</button></div>
+</dialog>
+
+<!-- Faturalarım -->
+<dialog id="invcsDlg">
+  <div class="dlg-head">Faturalarım</div>
+  <div class="dlg-body">
+    <table>
+      <thead><tr><th>Zaman</th><th>Başlık</th><th>Tutar</th><th>Durum</th><th></th></tr></thead>
+      <tbody id="myInvRows"><tr><td colspan="5" class="muted">Yükleniyor…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="invcsDlg">Kapat</button></div>
+</dialog>
+
+<!-- Aidat -->
+<dialog id="duesDlg">
+  <div class="dlg-head">Aidat Bildir</div>
+  <div class="dlg-body">
+    <div class="seg" style="align-items:flex-end; gap:8px">
+      <input id="duesMonth" placeholder="YYYY-MM (örn. 2025-10)" style="max-width:180px">
+      <input id="duesAmount" type="number" min="0" step="0.01" placeholder="Tutar (₺)" style="max-width:160px">
+      <button id="duesSend" class="btn" disabled>🧾 Aidat Bildir</button>
+    </div>
+    <div id="duesStatus" class="statusline muted" style="margin-top:6px"></div>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="duesDlg">Kapat</button></div>
+</dialog>
+
+<!-- Günlük Çizelge -->
+<dialog id="timeDlg">
+  <div class="dlg-head">Bugün Zaman Çizelgesi</div>
+  <div class="dlg-body">
+    <div id="timeline" style="height:18px;background:#e6eefb;border-radius:999px;position:relative"></div>
+    <div id="timelineLegend" class="muted" style="margin-top:6px;font-size:12px"></div>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="timeDlg">Kapat</button></div>
+</dialog>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -651,5 +906,6 @@ function attachDuesTable(uid){
 })();
 }); // safeBoot
 </script>
+
 </body>
 </html>
