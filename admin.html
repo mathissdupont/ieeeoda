@@ -497,7 +497,7 @@ function initDatePreset(){
       setDtLocal('endAt',   eDate);
     };
 
-    if (preset.value === 'today') {
+    if (preset.value === 'tommorrow') {
       const d = new Date(); d.setHours(0,0,0,0);
       setCustom(d, now);
     } else if (preset.value === 'yesterday') {
