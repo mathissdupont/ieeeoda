@@ -93,16 +93,31 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth(), db=firebase.database();
 
-const $=id=>document.getElementById(id);
+/* ====== helpers ====== */
+const $ = id => document.getElementById(id);
 const urlParam = n => new URL(location.href).searchParams.get(n);
 const ROOM = urlParam('room') || 'LAB-101';
-$('roomName').textContent = 'Oda: ' + ROOM;
+$('roomName') && ($('roomName').textContent = 'Oda: ' + ROOM);
 
+const safeText = (id, t) => { const el=$(id); if(el) el.textContent=t; };
 function fmt(ts){ return new Date(ts).toLocaleString(); }
 function fmtTime(ts){
   const d=new Date(ts);
   return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
 }
+
+async function ensureQRCodeLib(){
+  if (window.QRCode) return; // zaten yüklü
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('QRCode lib yüklenemedi'));
+    document.head.appendChild(s);
+  });
+}
+
+
 function fmtRange(s,e){
   const ds=new Date(s), de=new Date(e);
   const sameDay = ds.toDateString()===de.toDateString();
@@ -110,10 +125,17 @@ function fmtRange(s,e){
   return sameDay ? `${day} ${fmtTime(s)}–${fmtTime(e)}` : `${fmt(s)} – ${fmt(e)}`;
 }
 
-/* ====== DETERMINISTIK SAATLİK KEY ====== */
+/* ====== saat yazısı (konsoldaki tickClock hatasını yok eder) ====== */
+function tickClock(){
+  safeText('nowText', new Date().toLocaleString());
+}
+
+/* ====== Deterministik saatlik KEY ====== */
 function hourTokenUTC(d=new Date()){
-  const y=d.getUTCFullYear(), m=String(d.getUTCMonth()+1).padStart(2,'0'),
-        day=String(d.getUTCDate()).padStart(2,'0'), h=String(d.getUTCHours()).padStart(2,'0');
+  const y=d.getUTCFullYear(),
+        m=String(d.getUTCMonth()+1).padStart(2,'0'),
+        day=String(d.getUTCDate()).padStart(2,'0'),
+        h=String(d.getUTCHours()).padStart(2,'0');
   return `${y}${m}${day}${h}`;
 }
 async function sha256Hex(s){
@@ -123,7 +145,11 @@ async function sha256Hex(s){
 }
 function takeKey6FromHex(hex){
   const map='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  let out=''; for(let i=0;i<hex.length && out.length<6;i++){ const v=parseInt(hex[i],16); out+=map[v%map.length]; }
+  let out=''; 
+  for(let i=0;i<hex.length && out.length<6;i++){
+    const v=parseInt(hex[i],16);
+    out+=map[v % map.length];
+  }
   return out.toUpperCase();
 }
 async function computeHourlyKey(seed,date){
@@ -131,87 +157,121 @@ async function computeHourlyKey(seed,date){
   return takeKey6FromHex(hex);
 }
 
+/* roomKeySeed düğümü hem doğru (roomKeySeed) hem yanlış yazılmış (roomkeySeed) olasılığına bak */
+async function getSeed(room){
+  let s = await db.ref('roomKeySeed/'+room).get();
+  if(!s.exists()) s = await db.ref('roomkeySeed/'+room).get();
+  return s.exists() ? String(s.val()) : '';
+}
+
 /* ====== QR OLUŞTURMA ====== */
+let lastDrawnHour = '';   // gereksiz yeniden çizimleri azalt
 async function makeQR(){
-  const seedSnap = await db.ref('roomKeySeed/'+ROOM).get();
-  if(!seedSnap.exists()){ $('qrText').textContent='Seed yok'; return; }
-  const seed = String(seedSnap.val());
-  const key = await computeHourlyKey(seed, new Date());
-  const link = `${location.origin}/gate.html?room=${encodeURIComponent(ROOM)}&key=${encodeURIComponent(key)}`;
+    await ensureQRCodeLib();
+  try{
+    const seed = await getSeed(ROOM);
+    if(!seed){ safeText('qrText','Seed yok'); return; }
 
-  $('qrText').textContent = link;
+    const now = new Date();
+    const hourTag = hourTokenUTC(now);
+    // aynı saat içinde israf etme
+    if (lastDrawnHour === hourTag && $('qr')?.dataset?.lastLink){
+      // sadece geçerlilik saatini güncelle
+      const nextHour = new Date(); nextHour.setUTCMinutes(0,0,0); nextHour.setUTCHours(nextHour.getUTCHours()+1);
+      safeText('qrUntil', 'Geçerlilik (UTC): ' + nextHour.toISOString().slice(0,16).replace('T',' '));
+      return;
+    }
 
-  // Canvas’a çiz (320px)
-  const cvs = $('qr');
-  const tmp = document.createElement('canvas');
-  await QRCode.toCanvas(tmp, link, {width:320, margin:1});
-  const ctx=cvs.getContext('2d'); ctx.clearRect(0,0,cvs.width,cvs.height); ctx.drawImage(tmp,0,0);
+    const key  = await computeHourlyKey(seed, now);
+    const link = `${location.origin}/gate.html?room=${encodeURIComponent(ROOM)}&key=${encodeURIComponent(key)}`;
 
-  // Bitiş (sonraki UTC saat başı)
-  const nextHour = new Date(); nextHour.setUTCMinutes(0,0,0); nextHour.setUTCHours(nextHour.getUTCHours()+1);
-  $('qrUntil').textContent = 'Geçerlilik (UTC): ' + nextHour.toISOString().slice(0,16).replace('T',' ');
+    // metin
+    safeText('qrText', link);
+
+    // Canvas’a çiz (bulunduğu canvas genişliğine göre ölçekle)
+    const cvs = $('qr');
+    const w = Math.max(240, Math.min(480, cvs?.clientWidth || 320));
+    const tmp = document.createElement('canvas');
+    await QRCode.toCanvas(tmp, link, { width:w, margin:1 });
+    if (cvs){
+      cvs.width = w; cvs.height = w;
+      const ctx=cvs.getContext('2d');
+      ctx.clearRect(0,0,cvs.width,cvs.height);
+      ctx.drawImage(tmp,0,0,w,w);
+      cvs.dataset.lastLink = link;
+    }
+
+    // Bitiş (sonraki UTC saat başı)
+    const nextHour = new Date(); nextHour.setUTCMinutes(0,0,0); nextHour.setUTCHours(nextHour.getUTCHours()+1);
+    safeText('qrUntil', 'Geçerlilik (UTC): ' + nextHour.toISOString().slice(0,16).replace('T',' '));
+
+    lastDrawnHour = hourTag;
+  }catch(e){
+    safeText('qrText', 'QR üretilemedi: ' + (e?.message || e));
+  }
 }
 
 /* ====== DURUM/REZERVASYON ====== */
 async function loadReservations(){
-  const now = Date.now();
-  const ref = db.ref('roomReservations/'+ROOM)
-               .orderByChild('startAt')
-               .startAt(now-48*3600e3)
-               .endAt(now+72*3600e3);
-  const s = await ref.get();
-  const rows = Object.values(s.val()||{}).sort((a,b)=>(a.startAt||0)-(b.startAt||0));
+  try{
+    const now = Date.now();
+    const ref = db.ref('roomReservations/'+ROOM)
+                  .orderByChild('startAt')
+                  .startAt(now-48*3600e3)
+                  .endAt(now+72*3600e3);
+    const s = await ref.get();
+    const rows = Object.values(s.val()||{}).sort((a,b)=>(a.startAt||0)-(b.startAt||0));
 
-  // aktif rezervasyon var mı?
-  const active = rows.find(r =>
-    (r.startAt||0) <= now && now <= (r.endAt||0) && (r.status||'pending') === 'approved'
-  );
+    // aktif rezervasyon var mı?
+    const active = rows.find(r =>
+      (r.startAt||0) <= now && now <= (r.endAt||0) && (r.status||'pending') === 'approved'
+    );
 
-  if (active) {
-    $('resLabel').textContent = 'REZERVE';
-    $('resSub').textContent = `${active.title||''} — ${fmtRange(active.startAt, active.endAt)}`;
-    $('stateChip').textContent = 'Durum: Rezerveli';
-    $('stateChip').className = 'status reserved';
-  } else {
-    $('resLabel').textContent = 'Müsait';
-    $('resSub').textContent = '';
-    // Rezervasyon yoksa durum daima Boş
-    $('stateChip').textContent = 'Durum: Boş';
-    $('stateChip').className = 'status ok';
-  }
+    if (active) {
+      safeText('resLabel','REZERVE');
+      safeText('resSub', `${active.title||''} — ${fmtRange(active.startAt, active.endAt)}`);
+      const chip=$('stateChip'); if(chip){ chip.textContent='Durum: Rezerveli'; chip.className='status reserved'; }
+    } else {
+      safeText('resLabel','Müsait');
+      safeText('resSub','');
+      const chip=$('stateChip'); if(chip){ chip.textContent='Durum: Boş'; chip.className='status ok'; }
+    }
 
-  // sıradaki rezervasyon listesi
-  const upcoming = rows.filter(r => (r.startAt||0) > now && (r.status||'pending') === 'approved').slice(0,3);
-  const ul = $('nextList'); ul.innerHTML = '';
-  if (!upcoming.length) {
-    ul.innerHTML = '<li class="muted">Yakın zamanda rezervasyon yok</li>';
-  } else {
-    upcoming.forEach(r=>{
-      const li = document.createElement('li');
-      li.textContent = `${fmtRange(r.startAt,r.endAt)} • ${r.title||r.userName||r.userId}`;
-      ul.appendChild(li);
-    });
+    // sıradaki 3 rezervasyon
+    const upcoming = rows.filter(r => (r.startAt||0) > now && (r.status||'pending') === 'approved').slice(0,3);
+    const ul = $('nextList'); if(ul){
+      ul.innerHTML = '';
+      if (!upcoming.length) {
+        ul.innerHTML = '<li class="muted">Yakın zamanda rezervasyon yok</li>';
+      } else {
+        upcoming.forEach(r=>{
+          const li=document.createElement('li');
+          li.textContent = `${fmtRange(r.startAt,r.endAt)} • ${r.title||r.userName||r.userId}`;
+          ul.appendChild(li);
+        });
+      }
+    }
+  }catch(e){
+    // sessiz düş
   }
 }
 
-
 /* ====== DOLULUK (son 24s giriş/çıkışa göre) ====== */
 async function loadOccupancy(){
-  const since = Date.now()-24*3600e3;
-  const s = await db.ref('attendanceByRoom/'+ROOM)
-                   .orderByChild('createdAt').startAt(since).get();
-  const rows = Object.values(s.val()||{}).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  try{
+    const since = Date.now()-24*3600e3;
+    const s = await db.ref('attendanceByRoom/'+ROOM)
+                      .orderByChild('createdAt').startAt(since).get();
+    const rows = Object.values(s.val()||{}).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
 
-  const state = new Map();
-  rows.forEach(r=>{
-    if (r.action==='enter') state.set(r.userId,true);
-    if (r.action==='exit')  state.set(r.userId,false);
-  });
-  const inside = [...state.values()].filter(Boolean).length;
-  $('occupancy').textContent = inside;
-
-  // ÖNEMLİ: burada 'stateChip' değiştirmiyoruz.
-  // (Rezervasyon varsa 'Rezerveli', yoksa 'Boş' kalacak)
+    const state = new Map();
+    rows.forEach(r=>{
+      if (r.action==='enter') state.set(r.userId,true);
+      if (r.action==='exit')  state.set(r.userId,false);
+    });
+    const inside = [...state.values()].filter(Boolean).length;
+    safeText('occupancy', String(inside));
+  }catch(_){}
 }
 
 /* ====== AUTH + LOOP ====== */
@@ -221,8 +281,7 @@ auth.onAuthStateChanged(async u=>{
     location.replace('login.html?next='+encodeURIComponent(location.href));
     return;
   }
-  // admin kontrolü (kurallar zaten gerektiriyor)
-  const isAdmin = await db.ref('admins/'+u.uid).get().then(s=>s.exists() && s.val()===true).catch(()=>false);
+  const isAdmin = await db.ref('admins/'+u.uid).get().then(s=>s.exists()&&s.val()===true).catch(()=>false);
   if(!isAdmin){ alert('Admin yetkisi yok.'); return; }
 
   // ilk yük
@@ -232,11 +291,22 @@ auth.onAuthStateChanged(async u=>{
   tickClock();
 
   // periyodik yenilemeler
-  setInterval(tickClock, 1000*1);          // saat yazısı
-  setInterval(makeQR,    1000*60);         // her dakika QR (saat başında değişir)
-  setInterval(loadReservations, 1000*30);  // 30 sn’de rezervasyon durumu
-  setInterval(loadOccupancy,    1000*30);  // 30 sn’de doluluk
+  setInterval(tickClock, 1000);           // saat yazısı
+  setInterval(makeQR, 60*1000);           // her dakika (saat başında değişir)
+  setInterval(loadReservations, 30*1000); // 30 sn
+  setInterval(loadOccupancy,   30*1000);  // 30 sn
+});
+
+// sekme görünür olunca tazele
+document.addEventListener('visibilitychange', ()=>{
+  if (!document.hidden){ makeQR(); loadReservations(); loadOccupancy(); tickClock(); }
+});
+// pencere boyutu değişirse QR’ı tekrar çiz (daha net)
+window.addEventListener('resize', ()=>{
+  lastDrawnHour=''; // yeniden çizsin
+  makeQR();
 });
 </script>
+
 </body>
 </html>

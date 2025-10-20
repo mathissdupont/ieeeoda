@@ -540,6 +540,21 @@
     $('timelineLegend').textContent = segs.length ? `Toplam: ${h} sa ${m} dk (blok: ${segs.length})` : 'Bugün kayıt yok';
   }
 
+
+//qr saat okuma
+  async function computeHourlyKey(seed, date=new Date()){
+  // UTC YYYYMMDDHH
+  const hourStr = new Date(date).toISOString().slice(0,13).replace(/[-T:]/g, '');
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(seed), {name:'HMAC', hash:'SHA-256'}, false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(hourStr));
+  const hex = [...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  const base36 = BigInt('0x'+hex).toString(36).toUpperCase();
+  return base36.slice(0, 6); // 6 hanelik saatlik anahtar
+}
+
   // ==== My log ====
   let myLogUnsub = null;
   function attachMyLog(uid){

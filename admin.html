@@ -525,6 +525,27 @@ function initDatePreset(){
 }
 
 
+
+function getRange(){
+  const now = Date.now();
+
+  const sVal = document.getElementById('startAt')?.value || '';
+  const eVal = document.getElementById('endAt')?.value || '';
+
+  // varsayılan: son 7 gün 00:00 → şimdi
+  let start = sVal ? new Date(sVal).getTime() : (()=>{ const d=new Date(now-6*86400000); d.setHours(0,0,0,0); return +d; })();
+  let end   = eVal ? new Date(eVal).getTime()   : now;
+
+  // bozuk/tarih ters ise güvenli fallback
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start){
+    start = now - 6*86400000;  // 7 gün
+    end   = now;
+  }
+  return { start, end };
+}
+
+
+
 /* ==== data ==== */
 let liveOffFns=[];
 async function applyFilters(){
