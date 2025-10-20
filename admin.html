@@ -164,6 +164,7 @@ dialog td { color: var(--ink) !important; }
 dialog th{ font-weight:800; }
 dialog td{ color: var(--ink); }
 
+
 </style>
 </head>
 <body>
@@ -433,6 +434,16 @@ firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth(), db=firebase.database();
 
 /* ==== helpers ==== */
+
+function dtLocalValue(d){
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+// input.value'ya yerel tarih yaz
+function setDtLocal(inputId, date){
+  $(inputId).value = dtLocalValue(date);
+}
+
 const $=id=>document.getElementById(id);
 const fmt=ts=>new Date(ts||0).toLocaleString();
 const esc=s=>String(s||'').replace(/[<>&]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[m]));
@@ -472,25 +483,47 @@ $('refresh').onclick=()=>applyFilters();
 $('live').onchange=()=>applyFilters();
 
 function initDatePreset(){
-  const preset=$('datePreset');
-  const change=()=>{
-    const now=Date.now();
-    const setCustom=(s,e)=>{ $('startAt').value=new Date(s).toISOString().slice(0,16); $('endAt').value=new Date(e).toISOString().slice(0,16); };
-    if(preset.value==='today'){ const d=new Date(); d.setHours(0,0,0,0); setCustom(+d,now); }
-    else if(preset.value==='yesterday'){ const d=new Date(); d.setDate(d.getDate()-1); d.setHours(0,0,0,0); setCustom(+d,+d+86399999); }
-    else if(preset.value==='7d'){ const d=new Date(now-6*86400000); d.setHours(0,0,0,0); setCustom(+d,now); }
-    else if(preset.value==='30d'){ const d=new Date(now-29*86400000); d.setHours(0,0,0,0); setCustom(+d,now); }
+  const preset = $('datePreset');
+
+  const change = () => {
+    const now = new Date();                 // yerel
+    const end = new Date(now);              // şimdi
+    const start = new Date(now);
+    start.setDate(start.getDate() - 6);     // bugün dahil son 7 gün
+    start.setHours(0,0,0,0);                // başlangıcı 00:00 yap
+
+    const setCustom = (sDate, eDate) => {
+      setDtLocal('startAt', sDate);
+      setDtLocal('endAt',   eDate);
+    };
+
+    if (preset.value === 'today') {
+      const d = new Date(); d.setHours(0,0,0,0);
+      setCustom(d, now);
+    } else if (preset.value === 'yesterday') {
+      const d = new Date(); d.setDate(d.getDate()-1); d.setHours(0,0,0,0);
+      const e = new Date(d); e.setHours(23,59,59,999);
+      setCustom(d, e);
+    } else if (preset.value === '7d') {
+      setCustom(start, end);                // 🔹 varsayılan: son 7 gün
+    } else if (preset.value === '30d') {
+      const d = new Date(now); d.setDate(d.getDate()-29); d.setHours(0,0,0,0);
+      setCustom(d, end);
+    }
   };
-  preset.onchange=()=>{ if(preset.value!=='custom'){ change(); applyFilters(); } };
-  $('startAt').onchange=()=>{ preset.value='custom'; applyFilters(); };
-  $('endAt').onchange=()=>{ preset.value='custom'; applyFilters(); };
+
+  // preset değişince uygula
+  preset.onchange = () => { if (preset.value !== 'custom'){ change(); applyFilters(); } };
+
+  // kullanıcı manuel değiştirirse preset'i custom yap
+  $('startAt').onchange = () => { preset.value='custom'; applyFilters(); };
+  $('endAt').onchange   = () => { preset.value='custom'; applyFilters(); };
+
+  // 🔹 açılışta zorlama: her zaman 7 gün göster
+  preset.value = '7d';
   change();
 }
-function getRange(){
-  const s=$('startAt').value?new Date($('startAt').value).getTime():Date.now()-7*86400000;
-  const e=$('endAt').value?new Date($('endAt').value).getTime():Date.now();
-  return {start:s,end:e};
-}
+
 
 /* ==== data ==== */
 let liveOffFns=[];
@@ -700,12 +733,24 @@ function makeLink(){
   return `${$('gateBase').value || (location.origin+'/gate.html')}?room=${encodeURIComponent(room)}&key=${encodeURIComponent(window.__roomKey||'')}`;
 }
 async function makeQR(){
-  const room=$('roomSelect').value; if(!room) return;
-  const keySnap=await db.ref('roomKeys/'+room).get();
-  window.__roomKey=keySnap.val()||'';
-  const link=makeLink();
-  $('qrText').textContent=link;
+  const room = $('roomSelect').value;
+  if(!room) return;
+
+  // seed getir
+  const seedSnap = await db.ref('roomKeySeed/'+room).get();
+  if(!seedSnap.exists()){ alert('Bu oda için seed yok.'); return; }
+  const seed = String(seedSnap.val());
+
+  const nowKey = await computeHourlyKey(seed, new Date());
+  const link = `${$('gateBase').value || (location.origin+'/gate.html')}?room=${encodeURIComponent(room)}&key=${encodeURIComponent(nowKey)}`;
+
+  $('qrText').textContent = link;
   await QRCode.toCanvas($('qrCanvas'), link, {width:160, margin:1});
+
+  // İstersen bitiş saatini göster (bir sonraki UTC saat başı)
+  const nextHour = new Date();
+  nextHour.setUTCMinutes(0,0,0); nextHour.setUTCHours(nextHour.getUTCHours()+1);
+  setStatus(`Bu QR ${nextHour.toISOString()} (UTC) saatine kadar geçerli`, true);
 }
 $('makeQR').onclick=makeQR;
 $('downloadQR').onclick=()=>{ const a=document.createElement('a'); a.href=$('qrCanvas').toDataURL('image/png'); a.download=`QR-${$('roomSelect').value}.png`; a.click(); };

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Oda Ekranı (Kiosk)</title>
+<link rel="icon" href="assets/techops.ico" type="image/x-icon"/>
+<style>
+  :root{
+    --bg:#0b1118; --card:#0f1a27; --edge:#1f2b3b; --ink:#e8eef6; --muted:#9bb0c8;
+    --pri:#2aa3ff; --ok:#62d29a; --err:#ff8a8a; --warn:#ffd27a;
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;font-family:ui-sans-serif,system-ui,Inter,Roboto,Arial;background:var(--bg);color:var(--ink)}
+  .wrap{max-width:980px;margin:0 auto;padding:18px}
+  .top{display:flex;align-items:center;gap:12px;justify-content:space-between;margin:6px 0 14px}
+  .pill{display:inline-flex;gap:8px;align-items:center;padding:8px 12px;border-radius:999px;border:1px solid var(--edge);background:#ffffff10;font-weight:800}
+  .status{display:inline-flex;gap:8px;align-items:center;padding:10px 12px;border-radius:12px;border:1px solid var(--edge);font-weight:900}
+  .status.ok{color:var(--ok);border-color:#2a533f;background:#0c2019}
+  .status.busy{color:#fff5; border-color:#5a4b1e;background:#2e240f}
+  .status.reserved{color:#ffd27a;border-color:#5a4b1e;background:#2e240f}
+  .card{background:linear-gradient(180deg,#0f1a27,#0d1723);border:1px solid var(--edge);border-radius:18px;box-shadow:0 16px 50px #0006;padding:16px}
+  .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+  @media (max-width:820px){ .grid{grid-template-columns:1fr;}}
+  h1{margin:0;font-size:22px}
+  h2{margin:0 0 6px;font-size:16px;color:var(--muted)}
+  .qrbox{display:grid;place-items:center;padding:12px;border:1px dashed var(--edge);border-radius:14px;background:#00000022}
+  canvas{background:#fff;border-radius:12px}
+  .muted{color:var(--muted)}
+  .big{font-size:48px;font-weight:900;letter-spacing:1px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .list{margin:0;padding:0;list-style:none}
+  .list li{padding:8px 0;border-bottom:1px solid var(--edge)}
+  .hint{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="row">
+      <div id="roomName" class="pill">Oda: —</div>
+      <div id="nowInfo" class="pill">—</div>
+    </div>
+    <div id="stateChip" class="status">Durum: —</div>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Bu saatin QR’ı</h2>
+      <div class="qrbox"><canvas id="qr" width="320" height="320"></canvas></div>
+      <div id="qrText" class="hint" style="margin-top:8px;word-break:break-all"></div>
+      <div id="qrUntil" class="hint"></div>
+    </section>
+
+    <section class="card">
+      <h2>Anlık Durum</h2>
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <div class="muted">İçeride tahmini kişi</div>
+          <div id="occupancy" class="big">—</div>
+        </div>
+        <div>
+          <div class="muted">Rezervasyon</div>
+          <div id="resLabel" style="font-weight:900">—</div>
+          <div id="resSub" class="hint"></div>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="muted">Sıradaki rezervasyon</div>
+        <ul id="nextList" class="list"><li class="muted">—</li></ul>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- libs -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+<script>
+/* ====== CONFIG ====== */
+const firebaseConfig = {
+  apiKey:"AIzaSyDJtcrJ6Eh4BfZnn0M-4z9QYi_2AS-ikHw",
+  authDomain:"ieee-oda.firebaseapp.com",
+  databaseURL:"https://ieee-oda-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"ieee-oda",
+  storageBucket:"ieee-oda.firebasestorage.app",
+  messagingSenderId:"788998880363",
+  appId:"1:788998880363:web:5eacc71c326cffe7b3452e"
+};
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth(), db=firebase.database();
+
+const $=id=>document.getElementById(id);
+const urlParam = n => new URL(location.href).searchParams.get(n);
+const ROOM = urlParam('room') || 'LAB-101';
+$('roomName').textContent = 'Oda: ' + ROOM;
+
+function fmt(ts){ return new Date(ts).toLocaleString(); }
+function fmtTime(ts){
+  const d=new Date(ts);
+  return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+function fmtRange(s,e){
+  const ds=new Date(s), de=new Date(e);
+  const sameDay = ds.toDateString()===de.toDateString();
+  const day = ds.toLocaleDateString();
+  return sameDay ? `${day} ${fmtTime(s)}–${fmtTime(e)}` : `${fmt(s)} – ${fmt(e)}`;
+}
+
+/* ====== DETERMINISTIK SAATLİK KEY ====== */
+function hourTokenUTC(d=new Date()){
+  const y=d.getUTCFullYear(), m=String(d.getUTCMonth()+1).padStart(2,'0'),
+        day=String(d.getUTCDate()).padStart(2,'0'), h=String(d.getUTCHours()).padStart(2,'0');
+  return `${y}${m}${day}${h}`;
+}
+async function sha256Hex(s){
+  const enc = new TextEncoder().encode(s);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function takeKey6FromHex(hex){
+  const map='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let out=''; for(let i=0;i<hex.length && out.length<6;i++){ const v=parseInt(hex[i],16); out+=map[v%map.length]; }
+  return out.toUpperCase();
+}
+async function computeHourlyKey(seed,date){
+  const hex = await sha256Hex(seed + hourTokenUTC(date));
+  return takeKey6FromHex(hex);
+}
+
+/* ====== QR OLUŞTURMA ====== */
+async function makeQR(){
+  const seedSnap = await db.ref('roomKeySeed/'+ROOM).get();
+  if(!seedSnap.exists()){ $('qrText').textContent='Seed yok'; return; }
+  const seed = String(seedSnap.val());
+  const key = await computeHourlyKey(seed, new Date());
+  const link = `${location.origin}/gate.html?room=${encodeURIComponent(ROOM)}&key=${encodeURIComponent(key)}`;
+
+  $('qrText').textContent = link;
+
+  // Canvas’a çiz (320px)
+  const cvs = $('qr');
+  const tmp = document.createElement('canvas');
+  await QRCode.toCanvas(tmp, link, {width:320, margin:1});
+  const ctx=cvs.getContext('2d'); ctx.clearRect(0,0,cvs.width,cvs.height); ctx.drawImage(tmp,0,0);
+
+  // Bitiş (sonraki UTC saat başı)
+  const nextHour = new Date(); nextHour.setUTCMinutes(0,0,0); nextHour.setUTCHours(nextHour.getUTCHours()+1);
+  $('qrUntil').textContent = 'Geçerlilik (UTC): ' + nextHour.toISOString().slice(0,16).replace('T',' ');
+}
+
+/* ====== DURUM/REZERVASYON ====== */
+async function loadReservations(){
+  const now = Date.now();
+  const ref = db.ref('roomReservations/'+ROOM)
+               .orderByChild('startAt')
+               .startAt(now-48*3600e3)
+               .endAt(now+72*3600e3);
+  const s = await ref.get();
+  const rows = Object.values(s.val()||{}).sort((a,b)=>(a.startAt||0)-(b.startAt||0));
+
+  // aktif rezervasyon var mı?
+  const active = rows.find(r =>
+    (r.startAt||0) <= now && now <= (r.endAt||0) && (r.status||'pending') === 'approved'
+  );
+
+  if (active) {
+    $('resLabel').textContent = 'REZERVE';
+    $('resSub').textContent = `${active.title||''} — ${fmtRange(active.startAt, active.endAt)}`;
+    $('stateChip').textContent = 'Durum: Rezerveli';
+    $('stateChip').className = 'status reserved';
+  } else {
+    $('resLabel').textContent = 'Müsait';
+    $('resSub').textContent = '';
+    // Rezervasyon yoksa durum daima Boş
+    $('stateChip').textContent = 'Durum: Boş';
+    $('stateChip').className = 'status ok';
+  }
+
+  // sıradaki rezervasyon listesi
+  const upcoming = rows.filter(r => (r.startAt||0) > now && (r.status||'pending') === 'approved').slice(0,3);
+  const ul = $('nextList'); ul.innerHTML = '';
+  if (!upcoming.length) {
+    ul.innerHTML = '<li class="muted">Yakın zamanda rezervasyon yok</li>';
+  } else {
+    upcoming.forEach(r=>{
+      const li = document.createElement('li');
+      li.textContent = `${fmtRange(r.startAt,r.endAt)} • ${r.title||r.userName||r.userId}`;
+      ul.appendChild(li);
+    });
+  }
+}
+
+
+/* ====== DOLULUK (son 24s giriş/çıkışa göre) ====== */
+async function loadOccupancy(){
+  const since = Date.now()-24*3600e3;
+  const s = await db.ref('attendanceByRoom/'+ROOM)
+                   .orderByChild('createdAt').startAt(since).get();
+  const rows = Object.values(s.val()||{}).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+
+  const state = new Map();
+  rows.forEach(r=>{
+    if (r.action==='enter') state.set(r.userId,true);
+    if (r.action==='exit')  state.set(r.userId,false);
+  });
+  const inside = [...state.values()].filter(Boolean).length;
+  $('occupancy').textContent = inside;
+
+  // ÖNEMLİ: burada 'stateChip' değiştirmiyoruz.
+  // (Rezervasyon varsa 'Rezerveli', yoksa 'Boş' kalacak)
+}
+
+/* ====== AUTH + LOOP ====== */
+auth.onAuthStateChanged(async u=>{
+  if(!u){
+    // Kiosk’ta bir admin hesabıyla giriş yap ve “oturumu açık bırak”
+    location.replace('login.html?next='+encodeURIComponent(location.href));
+    return;
+  }
+  // admin kontrolü (kurallar zaten gerektiriyor)
+  const isAdmin = await db.ref('admins/'+u.uid).get().then(s=>s.exists() && s.val()===true).catch(()=>false);
+  if(!isAdmin){ alert('Admin yetkisi yok.'); return; }
+
+  // ilk yük
+  await makeQR();
+  await loadReservations();
+  await loadOccupancy();
+  tickClock();
+
+  // periyodik yenilemeler
+  setInterval(tickClock, 1000*1);          // saat yazısı
+  setInterval(makeQR,    1000*60);         // her dakika QR (saat başında değişir)
+  setInterval(loadReservations, 1000*30);  // 30 sn’de rezervasyon durumu
+  setInterval(loadOccupancy,    1000*30);  // 30 sn’de doluluk
+});
+</script>
+</body>
+</html>
