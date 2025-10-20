@@ -5,35 +5,60 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Oda Ekranı (Kiosk)</title>
 <link rel="icon" href="assets/techops.ico" type="image/x-icon"/>
-<style>
-  :root{
-    --bg:#0b1118; --card:#0f1a27; --edge:#1f2b3b; --ink:#e8eef6; --muted:#9bb0c8;
-    --pri:#2aa3ff; --ok:#62d29a; --err:#ff8a8a; --warn:#ffd27a;
-  }
-  *{box-sizing:border-box} html,body{height:100%}
-  body{margin:0;font-family:ui-sans-serif,system-ui,Inter,Roboto,Arial;background:var(--bg);color:var(--ink)}
-  .wrap{max-width:980px;margin:0 auto;padding:18px}
-  .top{display:flex;align-items:center;gap:12px;justify-content:space-between;margin:6px 0 14px}
-  .pill{display:inline-flex;gap:8px;align-items:center;padding:8px 12px;border-radius:999px;border:1px solid var(--edge);background:#ffffff10;font-weight:800}
-  .status{display:inline-flex;gap:8px;align-items:center;padding:10px 12px;border-radius:12px;border:1px solid var(--edge);font-weight:900}
-  .status.ok{color:var(--ok);border-color:#2a533f;background:#0c2019}
-  .status.reserved{color:#ffd27a;border-color:#5a4b1e;background:#2e240f}
-  .card{background:linear-gradient(180deg,#0f1a27,#0d1723);border:1px solid var(--edge);border-radius:18px;box-shadow:0 16px 50px #0006;padding:16px}
-  .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
-  @media (max-width:820px){ .grid{grid-template-columns:1fr;} }
-  h2{margin:0 0 6px;font-size:16px;color:var(--muted)}
-  .qrbox{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px;border:1px dashed var(--edge);border-radius:14px;background:#00000022}
-  canvas{background:#fff;border-radius:12px}
-  .muted{color:var(--muted)}
-  .big{font-size:48px;font-weight:900;letter-spacing:1px}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .list{margin:0;padding:0;list-style:none}
-  .list li{padding:8px 0;border-bottom:1px solid var(--edge)}
-  .hint{font-size:12px;color:var(--muted)}
+:root{
+  --bg:#0b1118; --card:#0f1a27; --edge:#1f2b3b; --ink:#e8eef6; --muted:#9bb0c8;
+  --pri:#2aa3ff; --ok:#62d29a; --err:#ff8a8a; --warn:#ffd27a;
+}
+*{box-sizing:border-box} html,body{height:100%}
+body{margin:0;font-family:ui-sans-serif,system-ui,Inter,Roboto,Arial;background:var(--bg);color:var(--ink)}
+.wrap{max-width:980px;margin:0 auto;padding:18px}
+.top{display:flex;align-items:center;gap:12px;justify-content:space-between;margin:6px 0 14px}
+.pill{display:inline-flex;gap:8px;align-items:center;padding:8px 12px;border-radius:999px;border:1px solid var(--edge);background:#ffffff10;font-weight:800}
+.status{display:inline-flex;gap:8px;align-items:center;padding:10px 12px;border-radius:12px;border:1px solid var(--edge);font-weight:900}
+.status.ok{color:var(--ok);border-color:#2a533f;background:#0c2019}
+.status.reserved{color:#ffd27a;border-color:#5a4b1e;background:#2e240f}
+.card{background:linear-gradient(180deg,#0f1a27,#0d1723);border:1px solid var(--edge);border-radius:18px;box-shadow:0 16px 50px #0006;padding:16px}
+.grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+@media (max-width:820px){ .grid{grid-template-columns:1fr;} }
+h2{margin:0 0 6px;font-size:16px;color:var(--muted)}
+.muted{color:var(--muted)}
+.big{font-size:48px;font-weight:900;letter-spacing:1px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.list{margin:0;padding:0;list-style:none}
+.list li{padding:8px 0;border-bottom:1px solid var(--edge)}
+.hint{font-size:12px;color:var(--muted)}
 
-  .qr4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-  @media (max-width:720px){ .qr4{grid-template-columns:1fr} }
-</style>
+/* ==== QR 4’lü düzen (daha ferah) ==== */
+.qr4{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap:24px;
+  justify-items:center;
+  align-items:start;
+}
+.qrbox{
+  width:100%;
+  max-width:420px;
+  padding:16px;
+  border:1px dashed var(--edge);
+  border-radius:16px;
+  background:#00000028;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+}
+.qrbox canvas{
+  display:block;
+  width:100%;
+  max-width:320px;
+  height:auto;
+  aspect-ratio:1 / 1;
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 6px 20px #00000033;
+}
+
 </head>
 <body>
 <div class="wrap">
@@ -154,33 +179,43 @@ function ensureQRCodeLib(){
 
 /* ====== iki API'ye göre canvas'a çiz ====== */
 function drawQRToCanvasId(canvasId, link){
-  var cvs=$(canvasId);
-  var ctx=cvs.getContext('2d');
-  var clientW = cvs ? cvs.clientWidth : 260;
-  var w = Math.max(220, Math.min(420, clientW || 260));
-  cvs.width=w; cvs.height=w;
+  var cvs = $(canvasId);
+  var ctx = cvs.getContext('2d');
+
+  // Ölçüyü ebeveyn kutudan al ki gap/padding’e saygı duysun
+  var parent = cvs.parentElement;
+  var parentW = parent ? parent.clientWidth : 320;
+
+  // 220–320 aralığında sıkıştır
+  var w = Math.max(220, Math.min(320, parentW - 20));
+  cvs.width = w; 
+  cvs.height = w;
   ctx.clearRect(0,0,w,w);
 
   // npm "qrcode"
-  if (window.QRCode && typeof QRCode.toCanvas==='function'){
-    return new Promise(function(resolve,reject){
-      QRCode.toCanvas(cvs, link, {width:w, margin:1}, function(err){ return err?reject(err):resolve(); });
+  if (window.QRCode && typeof QRCode.toCanvas === 'function') {
+    return new Promise(function(resolve, reject){
+      QRCode.toCanvas(cvs, link, { width: w, margin: 1 }, function(err){
+        return err ? reject(err) : resolve();
+      });
     });
   }
-  // davidshimjs/qrcodejs
-  if (window.QRCode){
+
+  // davidshimjs/qrcodejs (fallback)
+  if (window.QRCode) {
     return new Promise(function(resolve){
-      var tmp=document.createElement('div');
-      tmp.style.position='absolute'; tmp.style.left='-9999px'; document.body.appendChild(tmp);
-      var q=new QRCode(tmp, {text:link, width:w, height:w});
-      var cleanup=function(){ if(q.clear) q.clear(); tmp.remove(); };
-      var tryDraw=function(){
-        var cnv=tmp.querySelector('canvas');
-        var img=tmp.querySelector('img');
+      var tmp = document.createElement('div');
+      tmp.style.position='absolute'; tmp.style.left='-9999px';
+      document.body.appendChild(tmp);
+      var q = new QRCode(tmp, { text: link, width: w, height: w });
+      var cleanup = function(){ q.clear && q.clear(); tmp.remove(); };
+      var tryDraw = function(){
+        var cnv = tmp.querySelector('canvas');
+        var img = tmp.querySelector('img');
         if (cnv){ ctx.drawImage(cnv,0,0,w,w); cleanup(); resolve(); return; }
         if (img){
           if (img.complete){ ctx.drawImage(img,0,0,w,w); cleanup(); resolve(); }
-          else { img.onload=function(){ ctx.drawImage(img,0,0,w,w); cleanup(); resolve(); }; }
+          else img.onload = function(){ ctx.drawImage(img,0,0,w,w); cleanup(); resolve(); };
           return;
         }
         setTimeout(tryDraw, 30);
@@ -188,6 +223,7 @@ function drawQRToCanvasId(canvasId, link){
       tryDraw();
     });
   }
+
   return Promise.reject(new Error('QR kütüphanesi bulunamadı'));
 }
 

@@ -6,30 +6,51 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="icon" href="assets/techops.ico" type="image/x-icon" />
 <style>
-  :root{--ink:#12223a; --muted:#6d7a90; --edge:#bcd2e8; --bg:#f4f7fb; --pri:#0a7cc1; --ok:#1a7f37; --err:#b00020;}
+  :root{
+    --ink:#0f2238; --muted:#6d7a90; --edge:#bfd3ea; --bg:#f4f7fb;
+    --pri:#0a7cc1; --pri2:#0b5aa6; --ok:#1a7f37; --err:#b00020; --warn:#b88700;
+  }
   *{box-sizing:border-box}
-  body{font-family:system-ui,-apple-system,Segoe UI,Roboto; margin:0; background:var(--bg); color:var(--ink)}
-  .wrap{max-width:860px; margin:24px auto; padding:16px}
-  .card{background:#fff; border-radius:14px; box-shadow:0 8px 22px #002b5c14; padding:18px}
-  h1{margin:0 0 8px; font-size:22px}
-  #reader{width:100%; min-height:240px; background:#eef4fb; border:1px dashed var(--edge); border-radius:12px; display:grid; place-items:center}
-  .status{margin-top:10px; min-height:22px; font-weight:600}
-  .ok{color:var(--ok)} .err{color:var(--err)} .muted{color:var(--muted)}
-  .pill{display:inline-block; padding:6px 10px; background:#e6f3ff; color:#0a5aa6; border-radius:999px; font-size:12px}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto; margin:0; background:linear-gradient(180deg,#f7fbff,#f1f6fc); color:var(--ink)}
+  .wrap{max-width:900px; margin:28px auto; padding:0 16px}
+  .card{
+    background:#fff; border:1px solid #e6eef7; border-radius:18px;
+    box-shadow:0 12px 34px #00315c15; padding:20px;
+  }
+  h1{margin:0 0 6px; font-size:24px; letter-spacing:.2px}
+  .sub{color:var(--muted); margin-bottom:8px}
+  .pill{display:inline-flex;align-items:center;gap:8px; padding:6px 10px; border-radius:999px;
+        background:#e8f3ff; color:var(--pri2); font-size:12px; font-weight:700}
   .row{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center}
-  input,button,select{padding:12px; border-radius:10px; border:1px solid #d7dfeb; font-size:14px; background:#fbfdff}
-  button{background:var(--pri); color:#fff; border:none; cursor:pointer; font-weight:800}
+  input,button,select{
+    padding:12px 12px; border-radius:12px; border:1px solid #d7e1ef; font-size:14px; background:#fbfdff
+  }
+  input:focus,select:focus{outline:3px solid #e6f3ff; border-color:#bad8ff}
+  button{
+    background:linear-gradient(180deg,#0e86d2,#0b6fb5); color:#fff; border:none; cursor:pointer; font-weight:800;
+    box-shadow:0 6px 14px #0e7ac61e; transition:transform .05s ease
+  }
+  button:active{transform:translateY(1px)}
   button.ghost{background:#eef4fb; color:#0b3a6f}
-  .hint{font-size:13px; color:#60738a; margin-top:8px}
+  #reader{
+    width:100%; min-height:260px; background:#f1f7ff; border:1px dashed var(--edge); border-radius:14px;
+    display:grid; place-items:center; overflow:hidden
+  }
+  .status{margin-top:12px; min-height:24px; font-weight:700}
+  .ok{color:var(--ok)} .err{color:var(--err)} .muted{color:var(--muted)} .warn{color:var(--warn)}
+  .hint{font-size:13px; color:#5e708a; margin-top:8px}
   .right{margin-left:auto}
   .hide{display:none}
   .big{font-size:18px; font-weight:800}
+  .kv{display:flex; gap:10px; flex-wrap:wrap}
+  .kv > div{background:#f6faff; border:1px solid #e6eef7; padding:8px 10px; border-radius:10px; font-size:13px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
     <h1>Geçiş (QR)</h1>
+    <div class="sub">Bu sayfa, QR’daki oda anahtarını doğrular ve <b>giriş/çıkış/mola</b> kayıtlarını yapar.</div>
     <span class="pill">Kamerayı QR’a tutun veya linkle gelin</span>
 
     <div class="row">
@@ -41,14 +62,20 @@
     </div>
 
     <div id="reader" style="margin-top:12px"></div>
-    <div id="scanStatus" class="status muted">Hazır</div>
 
+    <div class="kv" style="margin-top:10px">
+      <div>Tercih: <b>Arka kamera</b></div>
+      <div>Geçerli saat dilimi: <b>UTC (key üretimi)</b></div>
+      <div>Grace: <b>+/- 1 saat</b></div>
+    </div>
+
+    <div id="scanStatus" class="status muted">Hazır</div>
     <div id="resultBox" class="hint"></div>
 
-    <div class="row">
+    <div class="row" style="margin-top:14px">
       <input id="roomInput" placeholder="Oda Kodu (ör. LAB-101)" />
       <input id="keyInput"  placeholder="Anahtar (KEY)" />
-      <select id="actInput">
+      <select id="actInput" title="İşlem">
         <option value="enter">enter (giriş)</option>
         <option value="exit">exit (çıkış)</option>
         <option value="break_start">break_start (mola başlat)</option>
@@ -56,7 +83,8 @@
       </select>
       <button id="manualBtn" type="button">Onayla</button>
     </div>
-    <div class="hint">
+
+    <div class="hint" style="margin-top:6px">
       Bu sayfa; <b>room</b>, <b>key</b>, <b>act</b> query parametreleri ile gelindiyse otomatik işlem yapar.
     </div>
   </div>
@@ -84,7 +112,7 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var auth = firebase.auth(), db = firebase.database();
 
-/* ===== small utils ===== */
+/* ===== utils ===== */
 function $(id){ return document.getElementById(id); }
 var scanStatus = $('scanStatus');
 function show(cls, txt){ scanStatus.className='status '+cls; scanStatus.textContent=txt; }
@@ -92,14 +120,14 @@ function urlParam(n){ try{ return new URL(location.href).searchParams.get(n); }c
 function encodeParams(p){ return Object.keys(p).map(function(k){return k+'='+encodeURIComponent(p[k]||'');}).join('&'); }
 function resultInfo(html){ $('resultBox').innerHTML = html; }
 
-/* ===== key generation: SAME RULES as kiosk (UTC hour) ===== */
+/* ===== key generation (UTC hour) ===== */
 function hourTokenUTC(d){
   d = d || new Date();
   var y = d.getUTCFullYear();
   var m = ('0'+(d.getUTCMonth()+1)).slice(-2);
   var day = ('0'+d.getUTCDate()).slice(-2);
   var h = ('0'+d.getUTCHours()).slice(-2);
-  return ''+y+m+day+h; // YYYYMMDDHH
+  return ''+y+m+day+h;
 }
 function sha256Hex(s){
   var enc = new TextEncoder().encode(s);
@@ -132,7 +160,7 @@ function fetchSeed(room){
   });
 }
 
-/* ===== verify room+key (accept current or prev UTC hour) ===== */
+/* ===== verify (current or previous UTC hour) ===== */
 function verifyRoomKey(room, key){
   if (!room || !key) return Promise.reject(new Error('Oda veya key eksik.'));
   return fetchSeed(room).then(function(seed){
@@ -147,34 +175,26 @@ function verifyRoomKey(room, key){
   });
 }
 
-/* ===== write attendance (both room & user trees) =====
-   Security rules (senin kuralların):
-   attendanceByRoom/$roomId/$pushid: write if auth!=null && newData.userId===auth.uid
-   attendanceByUser/$uid/$pushid   : write if auth.uid===$uid
-   Payload must include: userId, roomId, action, createdAt
-*/
+/* ===== attendance write ===== */
 var ALLOWED_ACTS = { enter:1, exit:1, break_start:1, break_end:1 };
 
 function writeAttendance(uid, room, act){
   if (!ALLOWED_ACTS[act]) return Promise.reject(new Error('Geçersiz işlem (act).'));
   var now = Date.now();
   var payload = { userId: uid, roomId: room, action: act, createdAt: now };
-
   var p1 = db.ref('attendanceByRoom/'+room).push(payload);
   var p2 = db.ref('attendanceByUser/'+uid).push(payload);
   return Promise.all([p1,p2]);
 }
 
-/* ===== main flow (with deep-link support) ===== */
+/* ===== auth gate ===== */
 function requireAuthThen(fn){
-  return new Promise(function(resolve,reject){
+  return new Promise(function(resolve){
     var unsub = auth.onAuthStateChanged(function(u){
       unsub();
       if (!u){
-        // redirect to login and come back to this URL
         var nextUrl = location.pathname + location.search;
         location.replace('login.html?next='+encodeURIComponent(nextUrl));
-        // not resolving/rejecting; navigation will occur.
       }else{
         resolve(u);
       }
@@ -182,22 +202,19 @@ function requireAuthThen(fn){
   }).then(fn);
 }
 
+/* ===== link flow ===== */
 function handleLinkFlow(room, key, act){
   show('muted', 'Doğrulanıyor…');
   if (!ALLOWED_ACTS[act]){ show('err','Geçersiz act parametresi.'); return; }
 
-  // 1) verify key
   verifyRoomKey(room, key).then(function(){
-    // 2) ensure auth & write
     return requireAuthThen(function(u){
       return writeAttendance(u.uid, room, act).then(function(){
         show('ok', 'İşlem tamam ✅');
-        var textAct = (act==='enter'?'Giriş':
-                      act==='exit'?'Çıkış':
-                      act==='break_start'?'Mola başlangıcı':'Mola bitişi');
+        var textAct = (act==='enter'?'Giriş': act==='exit'?'Çıkış': act==='break_start'?'Mola başlangıcı':'Mola bitişi');
         resultInfo(
           '<div class="big">'+ textAct +' kaydedildi.</div>' +
-          '<div class="hint">Kullanıcı: '+(u.displayName||u.email||u.uid)+'<br>Oda: '+room+'</div>'
+          '<div class="hint">Kullanıcı: '+(u.displayName||u.email||u.uid)+' • Oda: '+room+'</div>'
         );
       });
     });
@@ -206,12 +223,26 @@ function handleLinkFlow(room, key, act){
   });
 }
 
-/* ===== QR SCANNER ===== */
+/* ===== camera helpers (prefer back camera) ===== */
+function preferBackCameraId(cams){
+  // Etiketlerinde "back", "rear", "arka", "environment" geçen ilk kamerayı seç
+  var i, t, id=null;
+  var prefers = ['back','rear','arka','environment'];
+  for(i=0;i<cams.length;i++){
+    t = (cams[i].label || '').toLowerCase();
+    for(var j=0;j<prefers.length;j++){
+      if (t.indexOf(prefers[j])>=0){ id=cams[i].id; break; }
+    }
+    if (id) break;
+  }
+  return id || (cams[0] && cams[0].id);
+}
+
 var qr = null, currentCamId = null, torchOn = false;
 var readerEl = $('reader');
 
 function calcQrBox(){
-  var w = Math.max(180, Math.min(360, Math.floor(readerEl.getBoundingClientRect().width*0.8)));
+  var w = Math.max(200, Math.min(420, Math.floor(readerEl.getBoundingClientRect().width*0.8)));
   return { width:w, height:w };
 }
 function listCameras(){
@@ -222,32 +253,45 @@ function listCameras(){
       o.value=c.id; o.textContent=c.label || (c.id && c.id.indexOf('back')>=0 ? 'Arka Kamera' : 'Kamera');
       sel.appendChild(o);
     });
-    if(cams[0]) sel.value=cams[0].id;
+    var pick = preferBackCameraId(cams);
+    if(pick) sel.value = pick;
     sel.classList.remove('hide');
     $('restartBtn').classList.remove('hide');
     $('fileScan').classList.remove('hide');
-    return cams;
+    return pick;
   });
 }
 function startCamera(camId){
   if(!qr) qr = new Html5Qrcode('reader', { verbose:false });
   if(qr.isScanning){ return qr.stop().then(function(){ return startCamera(camId); }); }
-  var config={ fps:10, qrbox: calcQrBox() };
-  var constraints = camId ? { deviceId:{exact:camId} } : { facingMode:'environment' };
+
+  var config={ fps:12, qrbox: calcQrBox() };
+  // Eğer camId verilmişse ona kilitlen, yoksa environment’ı zorla
+  var constraints = camId ? { deviceId:{exact:camId} } : { facingMode:{ exact: "environment" } };
+
   return qr.start(constraints, config, onScanSuccess, onScanFail).then(function(){
     currentCamId = camId || null;
     $('torchBtn').classList.remove('hide');
+    show('muted','Kamera aktif. QR’ı okutun.');
+  }).catch(function(err){
+    // Bazı iOS/desktop tarayıcılar facingMode exact'i reddeder -> fallback
+    if (!camId){
+      return Html5Qrcode.getCameras().then(function(cams){
+        var pick = preferBackCameraId(cams);
+        if (!pick) throw err;
+        return startCamera(pick);
+      });
+    }
+    throw err;
   });
 }
 function onScanSuccess(decodedText){
-  // Beklediğimiz format: gate.html?room=...&key=...&act=...
   try{
     var u = new URL(decodedText);
     var r = u.searchParams.get('room');
     var k = u.searchParams.get('key');
     var a = u.searchParams.get('act');
     if (r && k && a){
-      // aynı sayfaya yönlendir, link flow tetiklensin
       location.href = location.pathname + '?'+encodeParams({room:r, key:k, act:a});
       return;
     }
@@ -259,9 +303,10 @@ function onScanFail(){}
 /* ===== UI bindings ===== */
 $('startBtn').onclick = function(){
   show('muted','Kamera izinleri isteniyor…');
-  listCameras().then(function(){ return startCamera($('camSelect').value); })
-               .then(function(){ show('muted','Kamera aktif. QR’ı okutun.'); })
-               .catch(function(e){ show('err','Kamera açılamadı: '+(e && e.message ? e.message : e)); });
+  // Arka kamerayı öncelemeyi dene
+  listCameras()
+    .then(function(pick){ return startCamera(pick); })
+    .catch(function(e){ show('err','Kamera açılamadı: '+(e && e.message ? e.message : e)); });
 };
 $('camSelect').onchange = function(){ startCamera($('camSelect').value).catch(function(e){ show('err','Başlatılamadı: '+e); }); };
 $('restartBtn').onclick = function(){ startCamera($('camSelect').value).catch(function(e){ show('err','Başlatılamadı: '+e); }); };
@@ -293,11 +338,10 @@ $('manualBtn').onclick = function(){
   var key  = $('keyInput').value.trim();
   var act  = $('actInput').value;
   if (!ALLOWED_ACTS[act]){ show('err','Geçersiz işlem.'); return; }
-  // parametrelerle kendi kendine yönlendir (tek akış)
   location.href = location.pathname + '?'+encodeParams({room:room, key:key, act:act});
 };
 
-/* ===== Deep link (auto) ===== */
+/* ===== deep link ===== */
 (function init(){
   var room = urlParam('room');
   var key  = urlParam('key');
@@ -307,14 +351,13 @@ $('manualBtn').onclick = function(){
   }else{
     show('muted','Hazır. Kamerayı başlatın veya manuel girin.');
   }
-
-  // responsive yeniden başlat
+  // responsive restart
   var resizeTimer=null;
   window.addEventListener('resize', function(){
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(function(){
       if(qr && qr.isScanning){ qr.stop().then(function(){ startCamera(currentCamId||$('camSelect').value); }).catch(function(){}); }
-    }, 200);
+    }, 220);
   });
 })();
 </script>
