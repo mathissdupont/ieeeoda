@@ -301,6 +301,12 @@ input[type="number"]{
   .pill.avail-warn { background:#2e240f; color:#ffd27a; border-color:#5a471e; }
 }
 
+/* Zorunlu alan hatası vurgusu */
+.invalid{ border-color:#c62828 !important; box-shadow:0 0 0 3px rgba(198,40,40,.15) !important; }
+@media (prefers-color-scheme: dark){
+  .invalid{ border-color:#ff6b6b !important; box-shadow:0 0 0 3px rgba(255,107,107,.16) !important; }
+}
+
 
 
 </style>
@@ -717,6 +723,17 @@ async function handleAutoFromQR(){
 }
 
 
+// QR-çıkışta geri adımı engellemek için global bayrak
+window.__requireExitFb = false;
+
+// Esc veya backdrop tıklamasıyla kapanmayı blokla (gerekiyorsa)
+const __exitDlg = document.getElementById('exitDlg');
+if (__exitDlg) {
+  __exitDlg.addEventListener('cancel', (e)=>{
+    if (window.__requireExitFb) e.preventDefault();
+  });
+}
+
 
 /* ============================ ROOM SETUP ========================== */
 const DEFAULT_ROOM = 'ieeeoda';
@@ -906,23 +923,84 @@ $('camShoot')?.addEventListener('click', ()=>{
 $('fbCancel')?.addEventListener('click', ()=> $('exitDlg').close());
 $('fbSend')?.addEventListener('click', async ()=>{
   const btn=$('fbSend'); const old=btn.innerHTML; btn.disabled=true; btn.innerHTML=old+' <span class="spinner"></span>';
+
+  // === ZORUNLU ALAN DOĞRULAMA ===
+  const commentEl = $('fbComment');
+  // yıldız puanı "rating" değişkeninde tutuluyor (senin koddaki global)
+  const needStrict = !!window.__requireExitFb;     // yalnız QR-exit’te zorunlu
+
+  // alanları temizle (önceki invalid class’ı kaldır)
+  commentEl?.classList.remove('invalid');
+  if (starEl) [...starEl.children].forEach(x=> x.style.outline='');
+
+  if (needStrict) {
+    const comm = (commentEl?.value || '').trim();
+    const hasRating = (typeof rating==='number' && rating>=1);
+    let fail = false;
+
+    if (!hasRating) {
+      // yıldızlara hafif outline
+      if (starEl) [...starEl.children].forEach(x=> x.style.outline='2px solid #c62828');
+      fail = true;
+    }
+    if (!comm) {
+      commentEl?.classList.add('invalid');
+      fail = true;
+    }
+
+    if (fail) {
+      btn.disabled=false; btn.innerHTML=old;
+      toast('Lütfen puan ver ve kısa bir yorum yaz ✍️', false);
+      opMsg('Yorum/puan zorunlu (QR çıkış).', 'err');
+      return;
+    }
+  }
+
   try{
     const u = await requireLogin();
     const comment = $('fbComment').value.trim();
     const tags = Array.from(activeTags);
     const people = [...withBox.querySelectorAll('.person')].map(x=>x.textContent);
     const fbRef = db.ref(`roomFeedback/${room}`).push();
-    await fbRef.set({ userId:u.uid, userName:u.displayName||u.email||'unknown', status:fbStatusVal, rating, comment, tags, withPeople:people, photoB64:photoDataUrl||'', createdAt: Date.now() });
-    await writeAttendance('exit', { feedbackId: fbRef.key });
-    setPresence(false); opMsg('Çıkış + yorum kaydedildi.','ok');
-    $('fbComment').value=''; activeTags.clear(); document.querySelectorAll('.tag').forEach(t=>t.classList.remove('active'));
-    statusSeg?.querySelectorAll('.chip').forEach(x=>x.classList.remove('active')); statusSeg?.querySelector('[data-val="clean"]')?.classList.add('active'); fbStatusVal='clean';
-    rating=0; [...(starEl?.children||[])].forEach(x=>x.classList.remove('on')); [...withBox.querySelectorAll('.person')].forEach(x=>x.remove()); withInput.value='';
+    await fbRef.set({
+      userId:u.uid, userName:u.displayName||u.email||'unknown',
+      status:fbStatusVal, rating, comment, tags, withPeople:people,
+      photoB64:photoDataUrl||'', createdAt: Date.now()
+    });
+
+    // QR-exit akışında: exit kaydını şimdi yaz
+    if (window.__requireExitFb) {
+      await writeAttendance('exit', { feedbackId: fbRef.key, method:'qr' });
+      setPresence(false);
+      opMsg('Çıkış + yorum kaydedildi (QR).','ok');
+    } else {
+      await writeAttendance('exit', { feedbackId: fbRef.key });
+      setPresence(false);
+      opMsg('Çıkış + yorum kaydedildi.','ok');
+    }
+
+    // formu sıfırla (senin mevcut reset bloğun)
+    $('fbComment').value='';
+    activeTags.clear(); document.querySelectorAll('.tag').forEach(t=>t.classList.remove('active'));
+    statusSeg?.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+    statusSeg?.querySelector('[data-val="clean"]')?.classList.add('active'); fbStatusVal='clean';
+    rating=0; [...(starEl?.children||[])].forEach(x=>{ x.classList.remove('on'); x.style.outline=''; });
+    [...withBox.querySelectorAll('.person')].forEach(x=>x.remove()); withInput.value='';
     if(exitPreview) exitPreview.style.display='none'; if(photoStatus) photoStatus.textContent='';
-    photoDataUrl=''; $('exitDlg').close();
-  }catch(e){ console.error(e); opMsg('Gönderilemedi.','err'); }
-  finally{ btn.disabled=false; btn.innerHTML=old; }
+    photoDataUrl='';
+
+    // kilitleri kaldır ve modalı kapat
+    window.__requireExitFb = false;
+    document.getElementById('fbCancel')?.removeAttribute('disabled');
+    $('exitDlg').close();
+
+  }catch(e){
+    console.error(e); opMsg('Gönderilemedi.','err');
+  } finally {
+    btn.disabled=false; btn.innerHTML=old;
+  }
 });
+
 
 /* ========================= RESERVATIONS =========================== */
 function attachReservations(roomId, uid){
@@ -1190,7 +1268,19 @@ async function processQrAutoOnce(){
   const valid = await verifyQrKey(room, key);
   if(!valid){ opMsg('QR anahtarı geçersiz / süresi dolmuş','err'); return; }
 
-  const u = await requireLogin();               // login değilse aynı URL ile geri döner
+  const u = await requireLogin();
+  
+  if (act === 'exit') {
+    window.__requireExitFb = true;
+    document.getElementById('fbCancel')?.setAttribute('disabled','disabled'); // vazgeçi kilitle
+    document.getElementById('exitDlg')?.showModal();
+    toast('Çıkış QR okundu. Lütfen kısa bir yorum bırak 🙏', false);
+    opMsg('QR çıkış algılandı: yorum gerekli', 'warn');
+    qrHandled = true;        // aynı URL ile tekrar çalışmasın
+    return;                  // BURADA BİTİR — exit kaydını fbSend yapacak
+  }
+
+  // login değilse aynı URL ile geri döner
   await writeAttendance(act, { method:'qr' });  // KAYIT
   await hydratePresenceAndStats(u.uid);         // Durumu hesapla (enter/exit’e göre)
   setPresence(act!=='exit');                    // anlık badge
