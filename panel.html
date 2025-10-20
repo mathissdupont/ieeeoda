@@ -164,6 +164,134 @@
   .table-note{ color:#a9b7c8 !important; }
 }
 
+/* === Responsive iyileştirme katmanı (ekle: en alta) === */
+
+/* 1) Daha akıcı ızgara: kartlar 220px altına düşmeden otomatik sarmalansın */
+.tiles{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(10px, 2vw, 14px);
+}
+
+/* 2) Üst bar: öğeler dar ekranda taşmadan hizalansın */
+.top{
+  align-items: stretch;
+  gap: clamp(8px, 1.5vw, 12px);
+}
+.title{
+  flex: 1 1 auto;
+  min-width: 260px;            /* pill'ler kırpılmasın */
+}
+.right{
+  flex: 0 0 auto;
+  display:flex;
+  align-items:center;
+  gap: 10px;
+}
+
+/* 3) Kart içi butonlar dar ekranda kolay tıklansın */
+@media (max-width: 560px){
+  .tile .btn{ width:100%; }
+}
+
+/* 4) Dialoglar ve formlar: küçük ekranda kenarlara yapışmasın */
+dialog{
+  width: min(740px, calc(100% - 20px)); /* biraz daha esnek */
+}
+.dlg-body, .dlg-foot{
+  padding: clamp(12px, 2.6vw, 16px);
+}
+
+/* 5) Tablo taşması: küçük ekranda yatay kaydırma ver, içerik kırılmasın */
+.card table, dialog table, .table-slim{
+  display:block;
+  width:100%;
+  overflow-x:auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: separate;   /* iOS kaydırma bug fix */
+}
+
+/* 6) Tipografi ve boşluklar: ekran genişliğine göre akışkan */
+h2{
+  font-size: clamp(16px, 1.3vw + 12px, 20px);
+}
+.wrap{
+  padding: clamp(12px, 2.4vw, 16px);
+}
+
+/* 7) Pill & presence: dar ekranda taşmayı engelle */
+.pill, .presence{
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 8) Tarih girdi ve küçük inputlar dar ekranda kırılmadan sığsın */
+#schedDate,
+input[type="datetime-local"],
+input[type="date"],
+input[type="number"]{
+  min-width: 0;                /* flex konteyner içinde taşmayı engeller */
+}
+
+/* 9) Erişilebilirlik: hareket azaltma tercihinde animasyonları kıs */
+@media (prefers-reduced-motion: reduce){
+  .spinner{ animation: none; }
+  *{ scroll-behavior: auto; }
+}
+
+/* 10) Koyu modda tablo başlık/ayrım kontrastını biraz daha arttır */
+@media (prefers-color-scheme: dark){
+  .table-slim th{ background:#17263a; }
+  td, th{ border-bottom-color:#2a3a51; }
+}
+
+/* === Üst şerit düzen/overflow fix === */
+.top{
+  display: grid;                       /* flex yerine grid */
+  grid-template-columns: 1fr auto;     /* sol info + sağ buton */
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.title{
+  display: flex;
+  flex-wrap: wrap;                     /* pill'leri sar */
+  align-items: center;
+  gap: 8px;
+  min-width: 0;                        /* overflow fix */
+}
+
+.title h2{ flex: 0 0 auto; margin-right: 4px; }
+
+.pill, .presence{
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Sağ blok: inline style varsa ezmek için !important kullanıyoruz */
+.right{
+  justify-self: end;
+  display:flex !important;
+  align-items:center !important;
+  gap:10px !important;
+}
+
+/* Küçük ekran optimizasyonu */
+@media (max-width: 720px){
+  .top{ grid-template-columns: 1fr; }   /* buton alt satıra insin */
+  .right{ justify-self: end; }
+  .pill, .presence{ padding: 4px 8px; font-size: 11px; }
+  .btn.secondary{ padding: 8px 10px; }  /* çıkış butonu daha kompakt */
+  #hello{ display:none; }               /* selam metni mobilde gizle */
+}
+
+
+
 </style>
 
 <!-- PDF -->
@@ -178,6 +306,7 @@
     <div class="title">
       <h2>Oda Paneli</h2>
       <span id="roomPill" class="pill"></span>
+      <span id="occPill" class="pill" title="Şu an içeride">👥 0</span>
       <span id="presence" class="presence" aria-live="polite">Durum yükleniyor…</span>
       <span class="pill" title="Bugün toplam"><strong id="sumToday">00:00:00</strong></span>
       <span class="pill" title="Son hareket" id="lastAction">—</span>
@@ -189,13 +318,19 @@
   </div>
   <div id="opStatus" class="statusline muted"></div>
 
+  <div id="dash" class="card" style="margin-top:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <div style="font-weight:800;margin-bottom:8px">Yaklaşan Rezervasyonlar</div>
+        <ul id="dashUpcoming" style="margin:0;padding-left:18px">
+          <li class="muted">Yükleniyor…</li>
+        </ul>
+      </div>
+  </div>
+
+
   <!-- Tiles -->
   <div class="tiles">
-    <div class="tile">
-      <h3>Aksiyonlar</h3>
-      <p>Giriş / Çıkış (+yorum) / Mola</p>
-      <button id="openAct" class="btn">⚡ Aç</button>
-    </div>
     <div class="tile">
       <h3>Oda Takvimi</h3>
       <p>30 dk slot — dolu/boş & kullanıcı</p>
@@ -236,7 +371,7 @@
 
 <!-- ====== MODALLAR ====== -->
 
-<!-- Aksiyonlar -->
+<!-- Aksiyonlar 
 <dialog id="actDlg">
   <div class="dlg-head">Oda Aksiyonları</div>
   <div class="dlg-body" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
@@ -247,7 +382,7 @@
   </div>
   <div class="dlg-foot"><button id="actClose" class="btn light" type="button">Kapat</button></div>
 </dialog>
-
+-->
 <!-- Çıkış Yorumu (+kamera) -->
 <dialog id="exitDlg">
   <div class="dlg-head">Oda Çıkış — Son Durum</div>
@@ -449,6 +584,81 @@ const auth = firebase.auth();
 const db   = firebase.database();
 
 /* ============================ HELPERS ============================= */
+
+function hourTokenUTC(d){
+  d = d || new Date();
+  const y=d.getUTCFullYear();
+  const m=String(d.getUTCMonth()+1).padStart(2,'0');
+  const day=String(d.getUTCDate()).padStart(2,'0');
+  const h=String(d.getUTCHours()).padStart(2,'0');
+  return `${y}${m}${day}${h}`;
+}
+function sha256Hex(s){
+  const enc = new TextEncoder().encode(s);
+  return crypto.subtle.digest('SHA-256', enc).then(buf=>{
+    const arr = Array.from(new Uint8Array(buf));
+    return arr.map(b=>b.toString(16).padStart(2,'0')).join('');
+  });
+}
+function takeKey6FromHex(hex){
+  const map='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let out='';
+  for(let i=0;i<hex.length && out.length<6;i++){
+    const v=parseInt(hex[i],16);
+    out+=map[v % map.length];
+  }
+  return out.toUpperCase();
+}
+function computeHourlyKey(seed, date){
+  return sha256Hex(String(seed) + hourTokenUTC(date||new Date())).then(takeKey6FromHex);
+}
+function getSeed(roomId){
+  // hem roomKeySeed hem roomkeySeed kontrolü (yazım hatası toleransı)
+  return db.ref('roomKeySeed/'+roomId).get().then(s=>{
+    if(s.exists()) return String(s.val());
+    return db.ref('roomkeySeed/'+roomId).get().then(s2=> s2.exists()? String(s2.val()): '');
+  });
+}
+// key'i şu saat VE bir önceki saat için kabul et (±1h tolerans)
+async function verifyQrKey(roomId, keyFromUrl){
+  const seed = await getSeed(roomId);
+  if(!seed) return false;
+  const now = new Date();
+  const prev = new Date(now); prev.setUTCHours(prev.getUTCHours()-1,0,0,0);
+  const [kNow, kPrev] = await Promise.all([computeHourlyKey(seed, now), computeHourlyKey(seed, prev)]);
+  return (String(keyFromUrl||'').toUpperCase() === kNow) || (String(keyFromUrl||'').toUpperCase() === kPrev);
+}
+
+/* URL’den auto/act/key yakala ve doğrulanırsa attendance yaz */
+async function runAutoActionIfAny(){
+  const isAuto = qp('auto');
+  const act = qp('act');
+  const key = qp('key');
+  if(!isAuto || !act || !key) return;
+
+  const ALLOWED = new Set(['enter','exit','break_start','break_end']);
+  if(!ALLOWED.has(act)){
+    opMsg('Geçersiz eylem: '+act, 'err'); return;
+  }
+
+  try{
+    const ok = await verifyQrKey(room, key);
+    if(!ok){ opMsg('QR anahtarı geçersiz veya süresi dolmuş.', 'err'); return; }
+
+    // kullanıcı girişli mi? (requireLogin yönlendirmeyi artık URL’i koruyarak yapıyor)
+    await requireLogin();
+
+    await writeAttendance(act);
+    setPresence(act!=='exit');  // küçük UX: hemen rozeti güncelle
+    opMsg(`✔ ${act} kaydedildi (QR)`, 'ok');
+    toast('QR okundu, işlem kaydedildi ✅', true);
+  }catch(e){
+    console.error(e);
+    opMsg('QR işleminde hata.', 'err');
+  }
+}
+
+
 const $ = id => document.getElementById(id);
 const qp = n => { try{ return new URL(location.href).searchParams.get(n); }catch(_){ return null; } };
 const fmt = ts => new Date(ts||0).toLocaleString('tr-TR');
@@ -463,7 +673,16 @@ function toast(text, ok){
 }
 function opMsg(msg, type='muted'){ const el=$('opStatus'); if(!el) return; el.className='statusline '+type; el.textContent=msg||''; }
 function waitAuth(){ return new Promise(res=>{ const u=auth.currentUser; if(u) return res(u); const off=auth.onAuthStateChanged(x=>{off();res(x)}); }); }
-async function requireLogin(){ const u = await waitAuth(); if(!u){ location.replace('login.html?next='+encodeURIComponent('panel.html')); throw new Error('Oturum yok'); } return u; }
+async function requireLogin(){
+  const u = await waitAuth();
+  if(!u){
+    // ÖNCEKİ: login.html?next=panel.html  (parametreleri kaybediyordu)
+    location.replace('login.html?next=' + encodeURIComponent(location.href));
+    throw new Error('Oturum yok');
+  }
+  return u;
+}
+
 
 /* ============================ ROOM SETUP ========================== */
 const DEFAULT_ROOM = 'ieeeoda';
@@ -726,6 +945,74 @@ $('resSend')?.addEventListener('click', async ()=>{
   }catch(e){ console.error(e); show(e.message||'Gönderilemedi','err'); }
 });
 
+
+
+
+/* ========================= DASHBOARD ============================== */
+/* — Yaklaşan 5 rezervasyon + içerideki kişi sayısı/listesi — */
+function formatTimeRange(s, e){
+  const d1=new Date(s), d2=new Date(e);
+  const gun = d1.toLocaleDateString('tr-TR', {weekday:'short', day:'2-digit', month:'short'});
+  const hhmm = t => new Date(t).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+  return `${gun} ${hhmm(s)}–${hhmm(e)}`;
+}
+function attachDashboard(roomId){
+  /* Yaklaşan rezervasyonlar (ilk 5) */
+  const upRef = db.ref(`roomReservations/${roomId}`)
+                 .orderByChild('startAt').startAt(Date.now()).limitToFirst(5);
+  upRef.on('value', s=>{
+    const ul = $('dashUpcoming'); if(!ul) return;
+    const rows = Object.values(s.val()||{}).sort((a,b)=>(a.startAt||0)-(b.startAt||0));
+    if(!rows.length){ ul.innerHTML = '<li class="muted">Yaklaşan rezervasyon yok</li>'; return; }
+    ul.innerHTML = rows.map(r=>{
+      const t = formatTimeRange(r.startAt, r.endAt);
+      const st = (r.status||'pending');
+      return `<li><strong>${r.title||'Rezerve'}</strong> — ${r.userName||'—'} <span class="muted">(${t})</span> <span class="pill" style="margin-left:6px">${st}</span></li>`;
+    }).join('');
+  });
+
+  /* İçerideki kişi sayısı: son kayıtlarına göre enter/exit durumu */
+  const occRef = db.ref(`attendanceByRoom/${roomId}`).limitToLast(1000);
+  const renderOcc = (list)=>{
+    const byUser = new Map(); // userId -> {state:'in'|'out', name}
+    const rows = list.sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    for(const r of rows){
+      if(!r.userId) continue;
+      if(r.action==='enter') byUser.set(r.userId, {state:'in',  name:r.userName||r.userId});
+      else if(r.action==='exit') byUser.set(r.userId, {state:'out', name:r.userName||r.userId});
+      // break_* kayıtları sayacı etkilemesin
+    }
+    const inside = [...byUser.values()].filter(v=>v.state==='in');
+    const occ = inside.length;
+
+    // pill güncelle
+    const pill = $('occPill'); if(pill){ pill.textContent = `👥 ${occ}`; pill.title = `Şu an içeride: ${occ} kişi`; }
+
+    // liste + özet
+    const ul = $('dashOccList'), lg = $('dashOccLegend');
+    if(!ul || !lg) return;
+    if(!occ){
+      lg.textContent = 'İçeride kimse yok';
+      ul.innerHTML = '<li class="muted">—</li>';
+    }else{
+      lg.textContent = `Toplam ${occ} kişi içeride`;
+      ul.innerHTML = inside
+        .sort((a,b)=>a.name.localeCompare(b.name,'tr'))
+        .map(v=>`<li>${v.name}</li>`).join('');
+    }
+  };
+  // İlk doldurma + canlı dinleme
+  occRef.on('value', s=>{
+    const vals = Object.values(s.val()||{});
+    renderOcc(vals);
+  });
+}
+
+
+
+
+
+
 /* ========================= DAILY SCHEDULE ========================= */
 let _schedUnsub=null;
 function dayRange(ts){ const d=new Date(ts); d.setHours(0,0,0,0); const start=d.getTime(); return {start, end:start+86400000}; }
@@ -886,6 +1173,8 @@ function attachDuesTable(uid){
   attachReservations(room, u.uid);
   attachSchedule(room);
   await hydratePresenceAndStats(u.uid);
+  runAutoActionIfAny();
+  attachDashboard(room);
   attachDuesTable(u.uid);
   attachDuesApprovalListener(u.uid);
 
