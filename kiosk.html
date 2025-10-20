@@ -320,7 +320,7 @@ function makeQR(){
     }
 
     return computeHourlyKey(seed, now).then(function(key){
-      var base = location.origin + '/gate.html?room=' + encodeURIComponent(ROOM) + '&key=' + encodeURIComponent(key);
+      var base = location.origin + '/panel.html?auto=1&room=' + encodeURIComponent(ROOM) + '&key=' + encodeURIComponent(key);
       var linksTxt = [];
       var nh=new Date(); nh.setUTCMinutes(0,0,0); nh.setUTCHours(nh.getUTCHours()+1);
 

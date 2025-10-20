@@ -153,12 +153,22 @@
   const $ = id => document.getElementById(id);
   const st = $('st'), email=$('email'), pass=$('pass'), btn=$('btn'), gbtn=$('googleBtn');
 
-  // next paramını oku ve garantiye almak için sessionStorage'a da yaz
-  const url = new URL(location.href);
-  const nextParam = url.searchParams.get('next');
+  // --- SAFE NEXT (tam URL’yi koru, sadece aynı origin ise kabul et) ---
+  const NOW = new URL(location.href);
+  const rawNext = NOW.searchParams.get('next');      // panel.html?auto=... gibi gelebilir
   const NEXT_FALLBACK = 'panel.html';
-  const next = nextParam || sessionStorage.getItem('hept_next') || NEXT_FALLBACK;
-  try { sessionStorage.setItem('hept_next', next); } catch(_) {}
+  function sanitizeNext(n) {
+    if (!n) return NEXT_FALLBACK;
+    try {
+      // absolute gelirse origin kontrolü; relative ise OK
+      const u = new URL(n, location.origin);
+      if (u.origin !== location.origin) return NEXT_FALLBACK;
+      return u.pathname + u.search + u.hash;
+    } catch { return NEXT_FALLBACK; }
+  }
+  // sessionStorage ile de yedekle
+  const next = sanitizeNext(rawNext || sessionStorage.getItem('hept_next'));
+  try { sessionStorage.setItem('hept_next', next || NEXT_FALLBACK); } catch {}
 
   // şifre göster/gizle
   $('toggle').onclick = ()=>{
@@ -167,21 +177,25 @@
     $('toggle').textContent = v === 'text' ? '🙈' : '👁️';
   };
 
-  // beni hatırla → kalıcı oturum (hemen uygula, ayrıca girişten önce de set edeceğiz)
-  let rememberChecked = false;
-  $('remember').addEventListener('change', async (e)=>{
-    rememberChecked = e.target.checked;
-    const mode = rememberChecked ? firebase.auth.Auth.Persistence.LOCAL
-                                 : firebase.auth.Auth.Persistence.SESSION;
-    try{ await auth.setPersistence(mode); }catch{}
-  });
+  // --- PERSISTENCE ---
+  async function applyPersistence() {
+    const wantLocal = $('remember').checked;
+    const mode = wantLocal ? firebase.auth.Auth.Persistence.LOCAL
+                           : firebase.auth.Auth.Persistence.SESSION;
+    try { await auth.setPersistence(mode); } catch {}
+  }
+  // checkbox değiştiğinde uygula
+  $('remember').addEventListener('change', applyPersistence);
+  // sayfa ilk açıldığında da bir kez uygula
+  applyPersistence();
 
   function setLoading(on, which='email'){
     const target = which==='google' ? gbtn : btn;
     target.disabled = on;
-    target.innerHTML = on ? (which==='google' ? 'Google ile bağlanılıyor <span class="spinner"></span>'
-                                              : 'Giriş yapılıyor <span class="spinner"></span>')
-                          : (which==='google' ? (gbtn.dataset._t || 'Google ile Giriş Yap') : 'Giriş');
+    target.innerHTML = on
+      ? (which==='google' ? 'Google ile bağlanılıyor <span class="spinner"></span>'
+                          : 'Giriş yapılıyor <span class="spinner"></span>')
+      : (which==='google' ? (gbtn.dataset._t || 'Google ile Giriş Yap') : 'Giriş');
     if(!target.dataset._t) target.dataset._t = target.textContent;
   }
 
@@ -203,22 +217,18 @@
     }
   }
 
-  // e-posta/şifre ile giriş (persist'i burada da zorunlu set et)
+  // e-posta/şifre ile giriş
   $('btn').onclick = async ()=>{
     st.textContent=''; st.className='status';
-    const mail = email.value.trim();
-    const pw   = pass.value;
+    const mail = (email.value||'').trim();
+    const pw   = pass.value||'';
     if(!mail || !pw){ st.className='status err'; st.textContent='E-posta ve şifre gerekli.'; return; }
     try{
       setLoading(true,'email');
-
-      const mode = $('remember').checked ? firebase.auth.Auth.Persistence.LOCAL
-                                         : firebase.auth.Auth.Persistence.SESSION;
-      await auth.setPersistence(mode);
-
+      await applyPersistence();
       await auth.signInWithEmailAndPassword(mail, pw);
       // güvenli yönlendirme
-      const nx = new URL(location.href).searchParams.get('next') || sessionStorage.getItem('hept_next') || NEXT_FALLBACK;
+      const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
       location.replace(nx);
     }catch(e){ showError(e); }
     finally{ setLoading(false,'email'); }
@@ -227,7 +237,7 @@
   // şifre sıfırla
   $('reset').onclick = async (e)=>{
     e.preventDefault();
-    const mail = email.value.trim();
+    const mail = (email.value||'').trim();
     if(!mail){ st.className='status err'; st.textContent='Şifre sıfırlama için e-posta girin.'; return; }
     try{
       await auth.sendPasswordResetEmail(mail);
@@ -235,23 +245,21 @@
     }catch(err){ showError(err); }
   };
 
-  // Google ile giriş (redirect fallback + persist)
+  // Google ile giriş (popup → redirect fallback)
   async function googleSignIn(){
     st.textContent=''; st.className='status';
-    try{
-      const mode = $('remember').checked ? firebase.auth.Auth.Persistence.LOCAL
-                                         : firebase.auth.Auth.Persistence.SESSION;
-      await auth.setPersistence(mode);
-    }catch{}
-
+    try{ await applyPersistence(); }catch{}
     const provider = new firebase.auth.GoogleAuthProvider();
     try{
       setLoading(true,'google');
       await auth.signInWithPopup(provider);
-      const nx = new URL(location.href).searchParams.get('next') || sessionStorage.getItem('hept_next') || NEXT_FALLBACK;
+      const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
       location.replace(nx);
     }catch(e){
-      if(String(e.code||'').includes('operation-not-supported') || String(e.code||'').includes('popup-blocked')){
+      // popup engellendiyse redirect'e düş
+      if(String(e.code||'').includes('operation-not-supported') ||
+         String(e.code||'').includes('popup-blocked') ||
+         String(e.code||'').includes('popup-closed-by-user')){
         try{
           await auth.signInWithRedirect(provider);
           return;
@@ -268,22 +276,25 @@
   // enter tuşu
   document.addEventListener('keydown', e=>{ if(e.key==='Enter') $('btn').click(); });
 
-  // redirect sonrası dönüşü karşıla ve next'i uygula
-  auth.getRedirectResult().then(()=>{
-    const u = auth.currentUser;
-    if (u){
-      const nx = new URL(location.href).searchParams.get('next') || sessionStorage.getItem('hept_next') || NEXT_FALLBACK;
-      location.replace(nx);
-    }
-  }).catch(()=>{ /* sessiz geç */ });
+  // redirect dönüşünü yakala ve next'e at
+  auth.getRedirectResult()
+    .then(()=> {
+      const u = auth.currentUser;
+      if(u){
+        const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
+        location.replace(nx);
+      }
+    })
+    .catch(()=>{}); // sessiz geç
 
-  // oturum açıksa yönlendir (hem normal, hem redirect dönüşünde çalışır)
+  // zaten oturum varsa direkt next
   auth.onAuthStateChanged(u=>{
     if(u){
-      const nx = new URL(location.href).searchParams.get('next') || sessionStorage.getItem('hept_next') || NEXT_FALLBACK;
+      const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
       location.replace(nx);
     }
   });
 </script>
+
 </body>
 </html>

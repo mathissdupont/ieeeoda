@@ -419,507 +419,486 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
 <script>
-  // ==== FIREBASE ====
-  const firebaseConfig = {
-    apiKey: "AIzaSyDJtcrJ6Eh4BfZnn0M-4z9QYi_2AS-ikHw",
-    authDomain: "ieee-oda.firebaseapp.com",
-    databaseURL: "https://ieee-oda-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "ieee-oda",
-    storageBucket: "ieee-oda.firebasestorage.app",
-    messagingSenderId: "788998880363",
-    appId: "1:788998880363:web:5eacc71c326cffe7b3452e"
+/* ============================== INIT ============================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyDJtcrJ6Eh4BfZnn0M-4z9QYi_2AS-ikHw",
+  authDomain: "ieee-oda.firebaseapp.com",
+  databaseURL: "https://ieee-oda-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "ieee-oda",
+  storageBucket: "ieee-oda.firebasestorage.app",
+  messagingSenderId: "788998880363",
+  appId: "1:788998880363:web:5eacc71c326cffe7b3452e"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.database();
+
+/* ============================ HELPERS ============================= */
+const $ = id => document.getElementById(id);
+const qp = n => { try{ return new URL(location.href).searchParams.get(n); }catch(_){ return null; } };
+const fmt = ts => new Date(ts||0).toLocaleString('tr-TR');
+const fmtTRY = v => new Intl.NumberFormat('tr-TR', {style:'currency', currency:'TRY'}).format(+v||0);
+function toast(text, ok){
+  try{
+    const el = document.createElement('div');
+    el.textContent = text;
+    el.style.cssText = 'position:fixed;left:50%;top:16px;transform:translateX(-50%);padding:10px 14px;border-radius:10px;font-weight:800;z-index:99999;background:'+(ok?'#0c2019':'#220d0d')+';color:'+(ok?'#62d29a':'#ff8a8a')+';border:1px solid '+(ok?'#2a533f':'#5b2a2a')+';box-shadow:0 10px 30px #0007;';
+    document.body.appendChild(el); setTimeout(()=>el.remove(), 2200);
+  }catch(_){}
+}
+function opMsg(msg, type='muted'){ const el=$('opStatus'); if(!el) return; el.className='statusline '+type; el.textContent=msg||''; }
+function waitAuth(){ return new Promise(res=>{ const u=auth.currentUser; if(u) return res(u); const off=auth.onAuthStateChanged(x=>{off();res(x)}); }); }
+async function requireLogin(){ const u = await waitAuth(); if(!u){ location.replace('login.html?next='+encodeURIComponent('panel.html')); throw new Error('Oturum yok'); } return u; }
+
+/* ============================ ROOM SETUP ========================== */
+const DEFAULT_ROOM = 'ieeeoda';
+const room = qp('room') || DEFAULT_ROOM;
+$('roomPill').textContent = `Oda: ${room}`;
+
+/* =========================== UI WIRING ============================ */
+const openers = {
+  openAct:'actDlg', openRes:'resDlg', openSched:'schedDlg', openInv:'invDlg',
+  openLogs:'logsDlg', openInvcs:'invcsDlg', openDues:'duesDlg', openTime:'timeDlg'
+};
+Object.entries(openers).forEach(([btnId, dlgId])=>{
+  const btn=$(btnId), dlg=$(dlgId);
+  if(btn && dlg){ btn.addEventListener('click', ()=> dlg.showModal()); }
+});
+document.querySelectorAll('[data-close]').forEach(x=>{
+  x.addEventListener('click', ()=>{ const id=x.getAttribute('data-close'); $(id)?.close(); });
+});
+$('actClose')?.addEventListener('click', ()=> $('actDlg')?.close());
+
+/* ===================== PRESENCE & TIMELINE ======================== */
+const presenceEl = $('presence');
+function setPresence(inRoom){
+  if(!presenceEl) return;
+  presenceEl.className = 'presence ' + (inRoom?'in':'out');
+  presenceEl.textContent = inRoom ? 'İçeridesin' : 'Dışarıdasın';
+  // manuel giriş/çıkış butonlarını durumla kilitle (QR tercih ama UI kalsın)
+  const eBtn = $('enterBtn'), xBtn = $('exitBtn');
+  if(eBtn) eBtn.disabled = inRoom;
+  if(xBtn) xBtn.disabled = !inRoom;
+}
+async function fetchRows(uid, since){
+  try{
+    const s = await db.ref(`attendanceByUser/${uid}`).orderByChild('createdAt').startAt(since).get();
+    return Object.values(s.val()||{});
+  }catch(_){
+    const s2 = await db.ref(`attendanceByUser/${uid}`).limitToLast(1000).get();
+    return Object.values(s2.val()||{}).filter(r => (r.createdAt||0)>=since);
+  }
+}
+let liveTimer=null;
+async function hydratePresenceAndStats(uid){
+  const since = Date.now() - 30*86400000;
+  const rows = (await fetchRows(uid, since)).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  let inside=false, lastEnter=null;
+  for(const r of rows){
+    if(r.roomId!==room) continue;
+    if(r.action==='enter'){ inside=true; lastEnter=r.createdAt; }
+    if(r.action==='exit'){ inside=false; lastEnter=null; }
+  }
+  setPresence(inside);
+  const myLast = [...rows].reverse().find(r=>r.roomId===room);
+  $('lastAction').textContent = myLast ? `${myLast.action} @ ${fmt(myLast.createdAt)}` : '—';
+  renderTodaySum(rows, inside, lastEnter);
+  renderTimeline(rows);
+}
+function renderTodaySum(allRows, insideNow, lastEnter){
+  const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+  const today = (allRows||[]).filter(r=>r.roomId===room && (r.createdAt||0)>=startOfDay.getTime()).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  let total=0, openStart=null;
+  for(const r of today){
+    if(r.action==='enter') openStart=r.createdAt;
+    if(r.action==='exit' && openStart){ total += (r.createdAt - openStart); openStart=null; }
+  }
+  if(insideNow && (openStart||lastEnter)) total += (Date.now() - (openStart||lastEnter));
+  const show = ms => {
+    const h = Math.floor(ms/3600000), m = Math.floor((ms%3600000)/60000), s = Math.floor((ms%60000)/1000);
+    $('sumToday').textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
   };
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth(), db = firebase.database();
-
-  // ==== helpers ====
-  const $ = id => document.getElementById(id);
-  const room = sessionStorage.getItem('gate_room');
-  const verified = sessionStorage.getItem('gate_verified') === '1';
-  $('roomPill').textContent = room ? `Oda: ${room}` : '(QR yok)';
-  const presenceEl = $('presence');
-  const opMsg = (msg, type='muted')=>{ const el=$('opStatus'); el.className='statusline '+type; el.textContent=msg||''; };
-  const fmt = ts => new Date(ts||0).toLocaleString();
-  const fmtTRY = v => new Intl.NumberFormat('tr-TR', { style:'currency', currency:'TRY' }).format(+v||0);
-
-  function toast(msg){ const t=$('toast'); if(!t) return; t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 1800); }
-  function waitAuth(){ return new Promise(res => { const u = auth.currentUser; if(u) return res(u); const unsub=auth.onAuthStateChanged(x=>{unsub();res(x)}); }); }
-  async function requireLogin(){ const u = await waitAuth(); if(!u){ location.replace('login.html?next='+encodeURIComponent('panel.html')); throw new Error('Oturum yok.'); } return u; }
-
-  const actIds = ['enterBtn','exitBtn','breakStartBtn','breakEndBtn','invSend','fbSend','resSend','duesSend'];
-  const setActionsEnabled = on => actIds.forEach(id => { const b=$(id); if(b) b.disabled=!on; });
-
-  // ==== header open buttons & dialog closers ====
-  const openers = {
-    openAct:'actDlg', openRes:'resDlg', openSched:'schedDlg', openInv:'invDlg',
-    openLogs:'logsDlg', openInvcs:'invcsDlg', openDues:'duesDlg', openTime:'timeDlg'
-  };
-  Object.entries(openers).forEach(([btnId, dlgId])=>{
-    const btn=$(btnId), dlg=$(dlgId);
-    if(btn&&dlg){ btn.addEventListener('click', ()=> dlg.showModal()); }
+  show(total);
+  if(liveTimer) clearInterval(liveTimer);
+  if(insideNow){
+    const start = (openStart||lastEnter||Date.now());
+    liveTimer = setInterval(()=> show(total + (Date.now()-start)), 1000);
+  }
+}
+function renderTimeline(allRows){
+  const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+  const dayStart = startOfDay.getTime(), dayEnd = dayStart + 86400000;
+  const rows = (allRows||[]).filter(r=>r.roomId===room && (r.createdAt||0)>=dayStart).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+  const container=$('timeline'); if(!container) return; container.innerHTML='';
+  let open=null, segs=[];
+  rows.forEach(r=>{ if(r.action==='enter') open=r.createdAt; if(r.action==='exit'&&open){ segs.push([open,r.createdAt]); open=null; } });
+  if(open) segs.push([open, Date.now()]);
+  segs.forEach(([s,e])=>{
+    const l = Math.max(0, (s-dayStart)/(dayEnd-dayStart)*100);
+    const w = Math.max(0.5, (e-s)/(dayEnd-dayStart)*100);
+    const b=document.createElement('div');
+    b.style.position='absolute'; b.style.left=l+'%'; b.style.width=w+'%'; b.style.top='0'; b.style.bottom='0';
+    b.style.background='linear-gradient(90deg,var(--pri),var(--pri-2))'; b.style.borderRadius='999px';
+    container.appendChild(b);
   });
-  document.querySelectorAll('[data-close]').forEach(x=>{
-    x.addEventListener('click', ()=>{ const id=x.getAttribute('data-close'); $(id)?.close(); });
-  });
-  $('actClose')?.addEventListener('click', ()=> $('actDlg')?.close());
-
-  // ==== presence & stats ====
-  function setPresence(inRoom){
-    presenceEl.className = 'presence '+(inRoom?'in':'out');
-    presenceEl.textContent = inRoom ? 'İçeridesin' : 'Dışarıdasın';
-    ['enterBtn'].forEach(id=>{ const b=$(id); if(b) b.disabled=inRoom; });
-    ['exitBtn'].forEach(id=>{ const b=$(id); if(b) b.disabled=!inRoom; });
-  }
-  async function fetchRows(uid, since){
-    try{
-      const s = await db.ref(`attendanceByUser/${uid}`).orderByChild('createdAt').startAt(since).get();
-      return Object.values(s.val()||{});
-    }catch(_){
-      const s2 = await db.ref(`attendanceByUser/${uid}`).limitToLast(1000).get();
-      return Object.values(s2.val()||{}).filter(r => (r.createdAt||0) >= since);
-    }
-  }
-  let liveTimer=null;
-  async function hydratePresenceAndStats(uid){
-    const since = Date.now() - 30*86400000;
-    const rows = (await fetchRows(uid, since)).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-    let inside=false, lastEnter=null;
-    for(const r of rows){
-      if(r.roomId!==room) continue;
-      if(r.action==='enter'){ inside=true; lastEnter=r.createdAt; }
-      if(r.action==='exit'){ inside=false; lastEnter=null; }
-    }
-    setPresence(inside);
-    const myLast = [...rows].reverse().find(r=>r.roomId===room);
-    $('lastAction').textContent = myLast ? `${myLast.action} @ ${fmt(myLast.createdAt)}` : '—';
-    renderTodaySum(rows, inside, lastEnter);
-    renderTimeline(rows);
-  }
-  function renderTodaySum(allRows, insideNow, lastEnter){
-    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
-    const today = (allRows||[]).filter(r=>r.roomId===room && (r.createdAt||0)>=startOfDay.getTime()).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-    let total = 0, openStart=null;
-    for(const r of today){
-      if(r.action==='enter') openStart = r.createdAt;
-      if(r.action==='exit' && openStart){ total += (r.createdAt - openStart); openStart=null; }
-    }
-    if(insideNow && (openStart||lastEnter)) total += (Date.now() - (openStart||lastEnter));
-    const show = ms => {
-      const h = Math.floor(ms/3600000), m = Math.floor((ms%3600000)/60000), s = Math.floor((ms%60000)/1000);
-      $('sumToday').textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-    };
-    show(total);
-    if(liveTimer) clearInterval(liveTimer);
-    if(insideNow){
-      const start = (openStart||lastEnter||Date.now());
-      liveTimer = setInterval(()=> show(total + (Date.now() - start)), 1000);
-    }
-  }
-  function renderTimeline(allRows){
-    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
-    const dayStart = startOfDay.getTime(), dayEnd = dayStart + 86400000;
-    const rows = (allRows||[]).filter(r=>r.roomId===room && (r.createdAt||0)>=dayStart).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-    const container=$('timeline'); if(!container) return; container.innerHTML='';
-    let open=null, segs=[];
-    rows.forEach(r=>{
-      if(r.action==='enter') open=r.createdAt;
-      if(r.action==='exit' && open){ segs.push([open, r.createdAt]); open=null; }
-    });
-    if(open) segs.push([open, Date.now()]);
-    segs.forEach(([s,e])=>{
-      const l = Math.max(0, (s-dayStart)/(dayEnd-dayStart)*100);
-      const w = Math.max(0.5, (e-s)/(dayEnd-dayStart)*100);
-      const b=document.createElement('div');
-      b.style.position='absolute'; b.style.left=l+'%'; b.style.width=w+'%'; b.style.top='0'; b.style.bottom='0';
-      b.style.background='linear-gradient(90deg,var(--pri),var(--pri-2))'; b.style.borderRadius='999px';
-      container.appendChild(b);
-    });
-    const totalMs = segs.reduce((a,[s,e])=>a+(e-s),0);
-    const h = Math.floor(totalMs/3600000), m = Math.floor((totalMs%3600000)/60000);
-    $('timelineLegend').textContent = segs.length ? `Toplam: ${h} sa ${m} dk (blok: ${segs.length})` : 'Bugün kayıt yok';
-  }
-
-
-//qr saat okuma
-  async function computeHourlyKey(seed, date=new Date()){
-  // UTC YYYYMMDDHH
-  const hourStr = new Date(date).toISOString().slice(0,13).replace(/[-T:]/g, '');
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw', enc.encode(seed), {name:'HMAC', hash:'SHA-256'}, false, ['sign']
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(hourStr));
-  const hex = [...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join('');
-  const base36 = BigInt('0x'+hex).toString(36).toUpperCase();
-  return base36.slice(0, 6); // 6 hanelik saatlik anahtar
+  const totalMs = segs.reduce((a,[s,e])=>a+(e-s),0);
+  const h = Math.floor(totalMs/3600000), m = Math.floor((totalMs%3600000)/60000);
+  $('timelineLegend').textContent = segs.length ? `Toplam: ${h} sa ${m} dk (blok: ${segs.length})` : 'Bugün kayıt yok';
 }
 
-  // ==== My log ====
-  let myLogUnsub = null;
-  function attachMyLog(uid){
-    const ref = db.ref(`attendanceByUser/${uid}`).limitToLast(40);
-    if (myLogUnsub) ref.off('value', myLogUnsub);
-    myLogUnsub = ref.on('value', snap=>{
-      const tbody = $('myRows'); if(!tbody) return; tbody.innerHTML='';
-      const rows = Object.values(snap.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-      tbody.innerHTML = rows.map(r=>`<tr><td>${fmt(r.createdAt||0)}</td><td>${r.action}</td><td>${r.roomId}</td><td>${r.method||''}</td></tr>`).join('');
-    });
-  }
-  async function refreshMyLog(uid){
-    const s = await db.ref(`attendanceByUser/${uid}`).limitToLast(40).get();
-    const tbody = $('myRows'); if(!tbody) return;
-    const rows = Object.values(s.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+/* ====================== LOGS (Kayıtlarım) ========================= */
+let myLogUnsub = null;
+function attachMyLog(uid){
+  const ref = db.ref(`attendanceByUser/${uid}`).limitToLast(40);
+  if (myLogUnsub) ref.off('value', myLogUnsub);
+  myLogUnsub = ref.on('value', snap=>{
+    const tbody = $('myRows'); if(!tbody) return; tbody.innerHTML='';
+    const rows = Object.values(snap.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     tbody.innerHTML = rows.map(r=>`<tr><td>${fmt(r.createdAt||0)}</td><td>${r.action}</td><td>${r.roomId}</td><td>${r.method||''}</td></tr>`).join('');
-  }
+  });
+}
 
-  // ==== attendance write + undo ====
-  let writing = false;
-  async function writeAttendance(action, extra={}){
-    if (writing) return;
-    writing = true;
-    try{
-      const u = await requireLogin();
-      const pushId = db.ref().child('attendanceByUser').push().key;
-      const rec = { userId:u.uid, userName:u.displayName||u.email||'unknown', roomId:room, action, createdAt: firebase.database.ServerValue.TIMESTAMP, ua:navigator.userAgent||'', method:'panel', ...extra };
-      const updates = {};
-      setUndo({ uid:u.uid, room, pushId, action });
-      updates[`/attendanceByUser/${u.uid}/${pushId}`] = rec;
-      updates[`/attendanceByRoom/${room}/${pushId}`] = rec;
-      await db.ref().update(updates);
-      await hydratePresenceAndStats(u.uid); await refreshMyLog(u.uid);
-    } finally { writing = false; }
-  }
-  function setUndo(payload){ localStorage.setItem('lastOp', JSON.stringify({ at: Date.now(), ...payload })); }
-  async function tryUndo(){
-    const d = JSON.parse(localStorage.getItem('lastOp')||'null'); if(!d) return toast('Geri alınacak işlem yok');
-    if(Date.now() - d.at > 10000) return toast('Süre doldu (10 sn).');
-    try{
-      await db.ref(`/attendanceByUser/${d.uid}/${d.pushId}`).remove();
-      await db.ref(`/attendanceByRoom/${d.room}/${d.pushId}`).remove();
-      localStorage.removeItem('lastOp');
-      toast('İşlem geri alındı');
-      await hydratePresenceAndStats(d.uid); await refreshMyLog(d.uid);
-    }catch(e){ toast('Geri alınamadı'); console.error(e); }
-  }
+/* ======================== MANUAL ACTIONS ========================== */
+/* (QR dışında manuel düğmeler kalırsa çalışır) */
+let writing=false;
+async function writeAttendance(action, extra={}){
+  if(writing) return; writing=true;
+  try{
+    const u = await requireLogin();
+    const pushId = db.ref().child('attendanceByUser').push().key;
+    const rec = { userId:u.uid, userName:u.displayName||u.email||'unknown', roomId:room, action, createdAt: firebase.database.ServerValue.TIMESTAMP, ua:navigator.userAgent||'', method:'panel', ...extra };
+    const updates = {};
+    updates[`/attendanceByUser/${u.uid}/${pushId}`] = rec;
+    updates[`/attendanceByRoom/${room}/${pushId}`]  = rec;
+    await db.ref().update(updates);
+    await hydratePresenceAndStats(u.uid);
+  } finally { writing=false; }
+}
+$('enterBtn')?.addEventListener('click', async ()=>{
+  const btn=$('enterBtn'); const old=btn.innerHTML; btn.disabled=true; btn.innerHTML=old+' <span class="spinner"></span>';
+  try{ await writeAttendance('enter'); opMsg('Giriş kaydedildi','ok'); setPresence(true); } finally{ btn.disabled=false; btn.innerHTML=old; }
+});
+$('exitBtn')?.addEventListener('click', ()=> $('exitDlg').showModal());
+$('breakStartBtn')?.addEventListener('click', async ()=>{
+  const btn=$('breakStartBtn'); const old=btn.innerHTML; btn.disabled=true; btn.innerHTML=old+' <span class="spinner"></span>';
+  try{ await writeAttendance('break_start'); opMsg('Mola başlatıldı','ok'); } finally{ btn.disabled=false; btn.innerHTML=old; }
+});
+$('breakEndBtn')?.addEventListener('click', async ()=>{
+  const btn=$('breakEndBtn'); const old=btn.innerHTML; btn.disabled=true; btn.innerHTML=old+' <span class="spinner"></span>';
+  try{ await writeAttendance('break_end'); opMsg('Mola bitti','ok'); } finally{ btn.disabled=false; btn.innerHTML=old; }
+});
 
-  // ==== Aksiyon düğmeleri ====
-  const withLoading = (btn, fn) => async ()=>{ if(!btn) return; const old=btn.innerHTML; btn.disabled=true; btn.innerHTML=old+' <span class="spinner"></span>'; try{ await fn(); } finally{ btn.disabled=false; btn.innerHTML=old; } };
-  const enterBtn=$('enterBtn'), exitBtn=$('exitBtn'), bStart=$('breakStartBtn'), bEnd=$('breakEndBtn');
-  enterBtn?.addEventListener('click', withLoading(enterBtn, async ()=>{ await writeAttendance('enter'); opMsg('Giriş kaydedildi.', 'ok'); setPresence(true); }));
-  bStart?.addEventListener('click', withLoading(bStart, async ()=>{ await writeAttendance('break_start'); opMsg('Mola başlatıldı.', 'ok'); }));
-  bEnd?.addEventListener('click', withLoading(bEnd, async ()=>{ await writeAttendance('break_end'); opMsg('Mola bitti.', 'ok'); }));
+/* ================== EXIT DIALOG (stars/tags/people) =============== */
+const statusSeg = $('statusSeg'); let fbStatusVal='clean';
+if(statusSeg){
+  statusSeg.querySelectorAll('.chip').forEach(ch=>{
+    if(ch.dataset.val==='clean') ch.classList.add('active');
+    ch.addEventListener('click', ()=>{
+      statusSeg.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+      ch.classList.add('active'); fbStatusVal=ch.dataset.val;
+    });
+  });
+}
+const starEl=$('stars'); let rating=0;
+if(starEl){ [...starEl.children].forEach((s,i)=> s.addEventListener('click', ()=>{ rating=i+1; [...starEl.children].forEach((x,k)=> x.classList.toggle('on', k<rating)); })); }
+const activeTags=new Set();
+document.querySelectorAll('.tag').forEach(t=> t.addEventListener('click', ()=>{ const k=t.dataset.tag; activeTags.has(k)?(activeTags.delete(k),t.classList.remove('active')):(activeTags.add(k),t.classList.add('active')); }));
+const withBox=$('withBox'), withInput=$('withInput');
+function addPerson(raw){
+  const name=(raw||'').replace(/,/g,' ').trim(); if(!name) return;
+  const exists=[...withBox.querySelectorAll('.person')].some(n=>n.textContent.toLowerCase()===name.toLowerCase());
+  if(exists){ withInput.value=''; return; }
+  const chip=document.createElement('span'); chip.className='chip person'; chip.textContent=name; chip.title='Kaldır'; chip.onclick=()=>chip.remove();
+  withBox.insertBefore(chip, withInput); withInput.value='';
+}
+withInput?.addEventListener('keydown', e=>{
+  if(e.key==='Enter'||e.key===','){ e.preventDefault(); addPerson(withInput.value); }
+  if(e.key==='Backspace'&&!withInput.value){ const last=withBox.querySelector('.person:last-of-type'); last&&last.remove(); }
+});
+withInput?.addEventListener('blur', ()=> addPerson(withInput.value));
 
-  // ==== Exit dialog (tags + stars + people) ====
-  const statusSeg = $('statusSeg'); let fbStatusVal='clean';
-  statusSeg.querySelectorAll('.chip').forEach(ch=>{ if(ch.dataset.val==='clean') ch.classList.add('active'); ch.addEventListener('click', ()=>{ statusSeg.querySelectorAll('.chip').forEach(x=>x.classList.remove('active')); ch.classList.add('active'); fbStatusVal=ch.dataset.val; }); });
-  const starEl=$('stars'); let rating=0; [...starEl.children].forEach((s,i)=> s.addEventListener('click', ()=>{ rating=i+1; [...starEl.children].forEach((x,k)=> x.classList.toggle('on', k<rating)); }));
-  const activeTags=new Set(); document.querySelectorAll('.tag').forEach(t=> t.addEventListener('click', ()=>{ const k=t.dataset.tag; activeTags.has(k)?(activeTags.delete(k),t.classList.remove('active')):(activeTags.add(k),t.classList.add('active')); }));
-  const withBox=$('withBox'), withInput=$('withInput');
-  function addPerson(raw){ const name=(raw||'').replace(/,/g,' ').trim(); if(!name) return; const exists=[...withBox.querySelectorAll('.person')].some(n=>n.textContent.toLowerCase()===name.toLowerCase()); if(exists){ withInput.value=''; return; } const chip=document.createElement('span'); chip.className='chip person'; chip.textContent=name; chip.title='Kaldır'; chip.onclick=()=>chip.remove(); withBox.insertBefore(chip, withInput); withInput.value=''; }
-  withInput.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===','){ e.preventDefault(); addPerson(withInput.value); } if(e.key==='Backspace'&&!withInput.value){ const last=withBox.querySelector('.person:last-of-type'); last&&last.remove(); }});
-  withInput.addEventListener('blur', ()=> addPerson(withInput.value));
-  const exitDlg=$('exitDlg'); exitBtn?.addEventListener('click', ()=> exitDlg.showModal()); $('fbCancel')?.addEventListener('click', ()=> exitDlg.close());
+/* ========================= CAMERA DIALOG ========================== */
+let __camStream=null, photoDataUrl='';
+const camDlg=$('camDlg'), camVideo=$('camVideo'), camCanvas=$('camCanvas'), exitPreview=$('exitPreview'), photoStatus=$('photoStatus');
+async function startCamera(){
+  try{
+    __camStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720} }, audio:false });
+    camVideo.srcObject = __camStream; await camVideo.play();
+  }catch(e){ alert('Kamera açılamadı. Tarayıcı izinlerini kontrol et.'); stopCamera(); camDlg?.close(); }
+}
+function stopCamera(){ if(__camStream){ __camStream.getTracks().forEach(t=>t.stop()); __camStream=null; } if(camVideo) camVideo.srcObject=null; }
+$('openCam')?.addEventListener('click', ()=>{ photoDataUrl=''; camDlg.showModal(); startCamera(); });
+$('camCancel')?.addEventListener('click', ()=>{ stopCamera(); camDlg.close(); });
+$('camShoot')?.addEventListener('click', ()=>{
+  try{
+    const vw=camVideo.videoWidth, vh=camVideo.videoHeight; if(!vw||!vh) return;
+    const maxW=1024, maxH=768; const ratio=Math.min(maxW/vw,maxH/vh,1);
+    const w=Math.round(vw*ratio), h=Math.round(vh*ratio);
+    camCanvas.width=w; camCanvas.height=h; const ctx=camCanvas.getContext('2d'); ctx.drawImage(camVideo,0,0,w,h);
+    photoDataUrl = camCanvas.toDataURL('image/jpeg', .72);
+    exitPreview.src = photoDataUrl; exitPreview.style.display='inline-block'; photoStatus.textContent='Kameradan fotoğraf çekildi.';
+  }catch{ alert('Fotoğraf çekilemedi.'); }
+  finally{ stopCamera(); camDlg.close(); }
+});
 
-  // ==== Kamera ====
-  let __camStream = null, photoDataUrl = '';
-  const exitPreview = $('exitPreview'), photoStatus = $('photoStatus');
-  const camDlg=$('camDlg'), camVideo=$('camVideo'), camCanvas=$('camCanvas');
-  async function startCamera(){
-    try{
-      __camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal:'environment' }, width:{ideal:1280}, height:{ideal:720} }, audio:false });
-      camVideo.srcObject = __camStream; await camVideo.play();
-    }catch(e){ alert('Kamera açılamadı. Tarayıcı izinlerini kontrol et.'); stopCamera(); camDlg?.close(); }
-  }
-  function stopCamera(){ if(__camStream){ __camStream.getTracks().forEach(t=>t.stop()); __camStream=null; } camVideo.srcObject=null; }
-  $('openCam')?.addEventListener('click', ()=>{ photoDataUrl=''; camDlg.showModal(); startCamera(); });
-  $('camCancel')?.addEventListener('click', ()=>{ stopCamera(); camDlg.close(); });
-  $('camShoot')?.addEventListener('click', ()=>{ try{ const vw=camVideo.videoWidth, vh=camVideo.videoHeight; if(!vw||!vh) return; const maxW=1024, maxH=768; const ratio=Math.min(maxW/vw,maxH/vh,1); const w=Math.round(vw*ratio), h=Math.round(vh*ratio); camCanvas.width=w; camCanvas.height=h; const ctx=camCanvas.getContext('2d'); ctx.drawImage(camVideo,0,0,w,h); photoDataUrl=camCanvas.toDataURL('image/jpeg',0.72); exitPreview.src=photoDataUrl; exitPreview.style.display='inline-block'; photoStatus.textContent='Kameradan fotoğraf çekildi.'; }catch{ alert('Fotoğraf çekilemedi.'); }finally{ stopCamera(); camDlg.close(); } });
-
-  // ==== Çıkış Gönder ====
-  $('fbSend')?.addEventListener('click', withLoading($('fbSend'), async ()=>{
+/* ========================= FEEDBACK SEND ========================== */
+$('fbCancel')?.addEventListener('click', ()=> $('exitDlg').close());
+$('fbSend')?.addEventListener('click', async ()=>{
+  const btn=$('fbSend'); const old=btn.innerHTML; btn.disabled=true; btn.innerHTML=old+' <span class="spinner"></span>';
+  try{
     const u = await requireLogin();
     const comment = $('fbComment').value.trim();
     const tags = Array.from(activeTags);
     const people = [...withBox.querySelectorAll('.person')].map(x=>x.textContent);
-    const photoB64 = photoDataUrl || '';
     const fbRef = db.ref(`roomFeedback/${room}`).push();
-    await fbRef.set({ userId:u.uid, userName:u.displayName||u.email||'unknown', status:fbStatusVal, rating, comment, tags, withPeople:people, photoB64, createdAt: Date.now() });
+    await fbRef.set({ userId:u.uid, userName:u.displayName||u.email||'unknown', status:fbStatusVal, rating, comment, tags, withPeople:people, photoB64:photoDataUrl||'', createdAt: Date.now() });
     await writeAttendance('exit', { feedbackId: fbRef.key });
-    setPresence(false); opMsg('Çıkış + yorum kaydedildi.', 'ok');
+    setPresence(false); opMsg('Çıkış + yorum kaydedildi.','ok');
+    // form reset
     $('fbComment').value=''; activeTags.clear(); document.querySelectorAll('.tag').forEach(t=>t.classList.remove('active'));
-    statusSeg.querySelectorAll('.chip').forEach(x=>x.classList.remove('active')); statusSeg.querySelector('[data-val="clean"]').classList.add('active'); fbStatusVal='clean';
-    rating=0; [...starEl.children].forEach(x=>x.classList.remove('on')); [...withBox.querySelectorAll('.person')].forEach(x=>x.remove()); withInput.value='';
-    if(exitPreview){ exitPreview.style.display='none'; } if(photoStatus){ photoStatus.textContent=''; } photoDataUrl=''; exitDlg.close();
-  }));
+    statusSeg?.querySelectorAll('.chip').forEach(x=>x.classList.remove('active')); statusSeg?.querySelector('[data-val="clean"]')?.classList.add('active'); fbStatusVal='clean';
+    rating=0; [...(starEl?.children||[])].forEach(x=>x.classList.remove('on')); [...withBox.querySelectorAll('.person')].forEach(x=>x.remove()); withInput.value='';
+    if(exitPreview) exitPreview.style.display='none'; if(photoStatus) photoStatus.textContent='';
+    photoDataUrl=''; $('exitDlg').close();
+  }catch(e){ console.error(e); opMsg('Gönderilemedi.','err'); }
+  finally{ btn.disabled=false; btn.innerHTML=old; }
+});
 
-  // ==== Rezervasyonlar ====
-  function attachReservations(roomId, uid){
-    const now = Date.now(), soon = now + 30*86400000;
-    db.ref(`roomReservations/${roomId}`).orderByChild('startAt').startAt(now).endAt(soon).on('value', s=>{
-      const rows = Object.values(s.val()||{}).sort((a,b)=>(a.startAt||0)-(b.startAt||0));
-      const tb = $('resRows'); if(!tb) return;
-      tb.innerHTML = rows.length? rows.map(r=>`
-        <tr>
-          <td>${new Date(r.startAt).toLocaleString()} – ${new Date(r.endAt).toLocaleTimeString()}</td>
-          <td>${(r.title||'')}</td>
-          <td><span class="pill">${(r.status||'pending')}</span></td>
-        </tr>`).join('') : `<tr><td colspan="3" class="muted">Yaklaşan rezervasyon yok</td></tr>`;
-    });
-
-
-async function reserveAtomic(roomId, payload) {
+/* ========================= RESERVATIONS =========================== */
+function attachReservations(roomId, uid){
+  const now = Date.now(), soon = now + 30*86400000;
+  db.ref(`roomReservations/${roomId}`).orderByChild('startAt').startAt(now).endAt(soon).on('value', s=>{
+    const rows = Object.values(s.val()||{}).sort((a,b)=>(a.startAt||0)-(b.startAt||0));
+    const tb = $('resRows'); if(!tb) return;
+    tb.innerHTML = rows.length ? rows.map(r=>`
+      <tr>
+        <td>${new Date(r.startAt).toLocaleString('tr-TR')} – ${new Date(r.endAt).toLocaleTimeString('tr-TR')}</td>
+        <td>${r.title||''}</td>
+        <td><span class="pill">${(r.status||'pending')}</span></td>
+      </tr>`).join('') : `<tr><td colspan="3" class="muted">Yaklaşan rezervasyon yok</td></tr>`;
+  });
+}
+async function reserveAtomic(roomId, payload){
   const { startAt, endAt } = payload;
-  if (!startAt || !endAt || endAt <= startAt) throw new Error('Geçersiz zaman');
-
+  if(!startAt || !endAt || endAt<=startAt) throw new Error('Geçersiz zaman');
   const slotKey = `${startAt}-${endAt}`;
   const lockRef = db.ref(`roomReservationsLock/${roomId}/${slotKey}`);
-
-  // 1) TRANSACTION ile kilit
   const txn = await lockRef.transaction(v => v ? v : true, false, false);
-  if (!txn.committed || txn.snapshot.val() !== true) {
-    throw new Error('Bu aralık şu an meşgul (kilit alınamadı).');
-  }
-
-  try {
-    // 2) kayıt yaz
+  if (!txn.committed || txn.snapshot.val() !== true) throw new Error('Bu aralık şu an meşgul (kilit alınamadı).');
+  try{
     const ref = db.ref(`roomReservations/${roomId}`).push();
-    const rec = {
-      id: ref.key,
-      roomId,
-      userId: payload.userId,
-      userName: payload.userName,
-      title: payload.title,
-      note: payload.note || '',
-      startAt,
-      endAt,
-      status: 'pending',      // CF karar verecek
-      createdAt: Date.now()
-    };
+    const rec = { id: ref.key, roomId, userId: payload.userId, userName: payload.userName, title: payload.title, note: payload.note||'', startAt, endAt, status:'pending', createdAt: Date.now() };
     await ref.set(rec);
     await db.ref(`userReservations/${payload.userId}/${ref.key}`).set(rec);
     return ref.key;
-  } catch (e) {
-    // 3) hata durumunda kilidi bırak
-    await lockRef.remove();
-    throw e;
-  }
+  }catch(e){ await lockRef.remove(); throw e; }
 }
-
-// ——— “Rezervasyon Gönder” butonu
-$('resSend')?.addEventListener('click', async () => {
+// form enable/disable
+['resTitle','resStart','resEnd'].forEach(id=>{
+  $(id)?.addEventListener('input', ()=>{
+    const ok = $('resTitle').value.trim() && $('resStart').value && $('resEnd').value;
+    $('resSend').disabled = !ok;
+  });
+});
+$('resSend')?.addEventListener('click', async ()=>{
   const show = (txt, cls='muted') => { const el=$('resStatus'); el.className='statusline '+cls; el.textContent=txt; };
-
   try{
     const u = await requireLogin();
     const title = $('resTitle').value.trim();
     const start = $('resStart').value ? new Date($('resStart').value).getTime() : 0;
-    const end   = $('resEnd').value ? new Date($('resEnd').value).getTime()   : 0;
+    const end   = $('resEnd').value   ? new Date($('resEnd').value).getTime()   : 0;
     const note  = $('resNote').value.trim();
-
-    if (!title || !start || !end || end <= start) { show('Başlık ve geçerli zaman aralığı girin.', 'err'); return; }
-
-    $('resSend').disabled = true; show('Gönderiliyor…');
-
-    const id = await reserveAtomic(room, {
-      userId: (await waitAuth()).uid,
-      userName: (await waitAuth()).displayName || (await waitAuth()).email || 'unknown',
-      title, note, startAt: start, endAt: end
-    });
-
-    show('Talep iletildi. Karar birazdan görünecek (oto kontrol çalışıyor)…', 'ok');
-
-    // Karar görünene kadar mini-poll (isteğe bağlı)
+    if(!title || !start || !end || end<=start){ show('Başlık ve geçerli zaman aralığı girin.','err'); return; }
+    $('resSend').disabled=true; show('Gönderiliyor…');
+    const id = await reserveAtomic(room, { userId:u.uid, userName:u.displayName||u.email||'unknown', title, note, startAt:start, endAt:end });
+    show('Talep iletildi. Karar güncellendiğinde burada görünecek.','ok');
     const checkRef = db.ref(`roomReservations/${room}/${id}`);
-    const off = checkRef.on('value', s => {
-      const v = s.val() || {};
-      if (v.status && v.decisionNote) {
-        show(`Durum: ${v.status} (${v.decisionNote})`, v.status==='approved' ? 'ok' : (v.status==='declined' ? 'err' : 'warn'));
-        checkRef.off('value', off);
-      }
+    const off = checkRef.on('value', s=>{
+      const v=s.val()||{}; if(v.status && v.decisionNote){ show(`Durum: ${v.status} (${v.decisionNote})`, v.status==='approved'?'ok':(v.status==='declined'?'err':'warn')); checkRef.off('value', off); }
     });
-
-    // formu temizle
-    $('resTitle').value=''; $('resStart').value=''; $('resEnd').value=''; $('resNote').value='';
-
-  }catch(e){
-    console.error(e);
-    show(e.message || 'Gönderilemedi', 'err');
-  }finally{
-    $('resSend').disabled = false;
-  }
+    $('resTitle').value=''; $('resStart').value=''; $('resEnd').value=''; $('resNote').value=''; $('resSend').disabled=true;
+  }catch(e){ console.error(e); show(e.message||'Gönderilemedi','err'); }
+  finally{ /* no-op */ }
 });
 
+/* ========================= DAILY SCHEDULE ========================= */
+let _schedUnsub=null;
+function dayRange(ts){ const d=new Date(ts); d.setHours(0,0,0,0); const start=d.getTime(); return {start, end:start+86400000}; }
+function buildSlots(dayStart){ const out=[]; let t=dayStart; for(let i=0;i<48;i++){ const hh=String(new Date(t).getHours()).padStart(2,'0'); const mm=String(new Date(t).getMinutes()).padStart(2,'0'); out.push({t,label:`${hh}:${mm}`}); t+=1800000; } return out; }
+function statusClass(s){ s=(s||'pending').toLowerCase(); if(['approved','ok','accepted'].includes(s)) return 'slot-approved'; if(['declined','rejected'].includes(s)) return 'slot-declined'; if(s==='pending') return 'slot-pending'; return 'slot-pending'; }
+function human(name, fb='—'){ return String(name||'').trim() || fb; }
+function attachSchedule(roomId){
+  const dateInp=$('schedDate'), tbody=$('schedRows'); if(!dateInp || !tbody) return;
+  const d=new Date(); dateInp.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  async function listenDay(){
+    if(_schedUnsub && typeof _schedUnsub==='function'){ _schedUnsub(); _schedUnsub=null; }
+    const day = new Date(dateInp.value+'T00:00:00'); if(isNaN(day.getTime())) return;
+    const {start,end} = dayRange(day.getTime());
+    const ref = db.ref(`roomReservations/${roomId}`).orderByChild('startAt').startAt(start).endAt(end);
+    const cb = snap => {
+      const list = Object.values(snap.val()||{}).sort((a,b)=>(a.startAt||0)-(b.startAt||0));
+      renderSchedule(list, start);
+    };
+    ref.on('value', cb); _schedUnsub = ()=> ref.off('value', cb);
   }
-
-  // ==== Günlük Takvim (30 dk slot) ====
-  let _schedUnsub = null;
-  function dayRange(ts){ const d=new Date(ts); d.setHours(0,0,0,0); const start=d.getTime(); return {start, end:start+86400000}; }
-  function buildSlots(dayStart){ const out=[]; let t=dayStart; for(let i=0;i<48;i++){ const hh=String(new Date(t).getHours()).padStart(2,'0'); const mm=String(new Date(t).getMinutes()).padStart(2,'0'); out.push({t,label:`${hh}:${mm}`}); t+=1800000; } return out; }
-  function statusClass(s){ s=(s||'pending').toLowerCase(); if(['approved','ok','accepted'].includes(s)) return 'slot-approved'; if(['declined','rejected'].includes(s)) return 'slot-declined'; if(s==='pending') return 'slot-pending'; return 'slot-pending'; }
-  function human(name, fb='—'){ return String(name||'').trim() || fb; }
-
-  function attachSchedule(roomId){
-    const dateInp = $('schedDate'), tbody = $('schedRows');
-    if(!dateInp || !tbody) return;
-    const d = new Date(); dateInp.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    async function listenDay(){
-      if(_schedUnsub && typeof _schedUnsub==='function'){ _schedUnsub(); _schedUnsub=null; }
-      const day = new Date(dateInp.value+'T00:00:00'); if(isNaN(day.getTime())) return;
-      const { start, end } = dayRange(day.getTime());
-      const ref = db.ref(`roomReservations/${roomId}`).orderByChild('startAt').startAt(start).endAt(end);
-      const cb = (snap)=>{ const list = Object.values(snap.val()||{}).sort((a,b)=>(a.startAt||0)-(b.startAt||0)); renderSchedule(list, start); };
-      ref.on('value', cb); _schedUnsub = ()=> ref.off('value', cb);
-    }
-    function renderSchedule(resList, dayStart){
-      const slots = buildSlots(dayStart); tbody.innerHTML='';
-      for(const s of slots){
-        const slotStart = s.t, slotEnd = s.t + 1800000;
-        const hit = resList.find(r => !( (r.endAt||0) <= slotStart || (r.startAt||0) >= slotEnd ));
-        const tr=document.createElement('tr');
-        const tdTime=document.createElement('td'); tdTime.textContent=s.label; tdTime.className='slot-cell';
-        const tdState=document.createElement('td'); const tdInfo=document.createElement('td');
-        if(hit){
-          const st = statusClass(hit.status);
-          tdState.innerHTML = `<span class="${st}">${(hit.status||'pending')}</span>`;
-          tdInfo.innerHTML  = `<strong>${human(hit.title,'Rezerve')}</strong> — ${human(hit.userName)}${hit.note? ` <span class="muted">(${hit.note.slice(0,60)})</span>`:''}`;
-        }else{
-          tdState.innerHTML = `<span class="slot-free">Boş</span>`;
-          tdInfo.innerHTML  = `<span class="slot-click" data-start="${slotStart}" data-end="${slotEnd}">Bu slota rezervasyon iste</span>`;
-        }
-        tr.appendChild(tdTime); tr.appendChild(tdState); tr.appendChild(tdInfo); tbody.appendChild(tr);
+  function renderSchedule(resList, dayStart){
+    tbody.innerHTML=''; const slots = buildSlots(dayStart);
+    for(const s of slots){
+      const slotStart=s.t, slotEnd=s.t+1800000;
+      const hit = resList.find(r => !((r.endAt||0)<=slotStart || (r.startAt||0)>=slotEnd));
+      const tr=document.createElement('tr');
+      const tdTime=document.createElement('td'); tdTime.textContent=s.label; tdTime.className='slot-cell';
+      const tdState=document.createElement('td'); const tdInfo=document.createElement('td');
+      if(hit){
+        const st=statusClass(hit.status);
+        tdState.innerHTML = `<span class="${st}">${(hit.status||'pending')}</span>`;
+        tdInfo.innerHTML  = `<strong>${human(hit.title,'Rezerve')}</strong> — ${human(hit.userName)}${hit.note? ` <span class="muted">(${hit.note.slice(0,60)})</span>`:''}`;
+      }else{
+        tdState.innerHTML = `<span class="slot-free">Boş</span>`;
+        tdInfo.innerHTML  = `<span class="slot-click" data-start="${slotStart}" data-end="${slotEnd}">Bu slota rezervasyon iste</span>`;
       }
-      tbody.querySelectorAll('.slot-click').forEach(a=>{
-        a.addEventListener('click', ()=>{
-          const s = Number(a.getAttribute('data-start')), e = Number(a.getAttribute('data-end'));
-          const toIso = ms => new Date(ms - (new Date().getTimezoneOffset()*60000)).toISOString().slice(0,16);
-          const startInp = $('resStart'), endInp = $('resEnd');
-          if(startInp && endInp){ startInp.value = toIso(s); endInp.value = toIso(e); $('resDlg')?.showModal(); $('resTitle')?.focus(); toast('Slot seçildi: form dolduruldu'); }
-        });
-      });
+      tr.appendChild(tdTime); tr.appendChild(tdState); tr.appendChild(tdInfo); tbody.appendChild(tr);
     }
-    dateInp.addEventListener('change', listenDay);
-    listenDay();
-  }
-
-  // ==== Aidat (config + send + table + invoice) ====
-  function ymNow(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
-  async function loadDuesConfig(){
-    try{
-      const s = await db.ref('dues/config').get();
-      const cfg = s.val()||{};
-      if($('duesMonth'))  $('duesMonth').value  = $('duesMonth').value || ymNow();
-      if($('duesAmount') && (cfg.amount!=null)) $('duesAmount').value = cfg.amount;
-    }catch{}
-  }
-  $('duesSend')?.addEventListener('click', withLoading($('duesSend'), async ()=>{
-    try{
-      const u = await requireLogin();
-      const month = ($('duesMonth').value || '').trim() || ymNow();
-      const amt   = parseFloat(($('duesAmount').value||'').trim());
-      if(!(amt>=0)) { $('duesStatus').className='statusline err'; $('duesStatus').textContent='Geçerli tutar gir.'; return; }
-      const ref = db.ref(`duesPayments/${u.uid}`).push();
-      const rec = { id: ref.key, userId: u.uid, userName: u.displayName || u.email || 'unknown', amount:+(amt||0), month, status:'pending', createdAt: Date.now() };
-      await ref.set(rec);
-      await db.ref(`duesPaymentsIndex/${ref.key}`).set(rec);
-      $('duesStatus').className='statusline ok'; $('duesStatus').textContent='Aidat bildirimin gönderildi (onay bekliyor).';
-    }catch(e){ console.error(e); $('duesStatus').className='statusline err'; $('duesStatus').textContent='Gönderilemedi (yetki/bağlantı hatası).'; }
-  }));
-
-  // PDF helpers
-  function hasInvoiced(id){ try{ return JSON.parse(localStorage.getItem('invoices_done')||'{}')[id]; }catch{ return false; } }
-  function markInvoiced(id){ const m = JSON.parse(localStorage.getItem('invoices_done')||'{}'); m[id]=true; localStorage.setItem('invoices_done', JSON.stringify(m)); }
-  function makeInvoiceNo(rec){ const d=new Date(rec.createdAt||Date.now()); const y=d.getFullYear(); const short=(rec.id||'xxxxxx').slice(-6).toUpperCase(); return `IEEE-${y}-${short}`; }
-  async function generateInvoicePdf(rec, user){
-    const { jsPDF } = window.jspdf || {}; if(!jsPDF){ alert('PDF kütüphanesi yok'); return; }
-    const doc = new jsPDF({ unit:'pt', format:'a4' }), pageW = doc.internal.pageSize.getWidth(), margin=48;
-    doc.setFillColor(10,124,193); doc.rect(0,0,pageW,72,'F');
-    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.text('IEEE IKCU TechOps', margin, 42);
-    doc.setFont('helvetica','normal'); doc.setFontSize(12); doc.text('Aidat / Fatura Belgesi', margin, 60);
-    doc.setTextColor(16,36,59);
-    const invNo=makeInvoiceNo(rec), issueAt=new Date().toLocaleString('tr-TR'), month=rec.month||'—';
-    const boxX = pageW - margin - 220, boxY = 96, boxW = 220, boxH = 84;
-    doc.setDrawColor(233,239,248); doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8);
-    doc.setFont('helvetica','bold'); doc.text('MAKBUZ', boxX+14, boxY+22);
-    doc.setFont('helvetica','normal'); doc.text(`No: ${invNo}`, boxX+14, boxY+42); doc.text(`Tarih: ${issueAt}`, boxX+14, boxY+62);
-    const whoY=110; doc.setFont('helvetica','bold'); doc.text('ODEMEYI YAPAN', margin, whoY);
-    doc.setFont('helvetica','normal'); doc.text(`${user.displayName || user.email || user.uid}`, margin, whoY+18); if (user.email) doc.text(`${user.email}`, margin, whoY+36);
-    const orgY=whoY+64; doc.setFont('helvetica','bold'); doc.text('KURUM', margin, orgY);
-    doc.setFont('helvetica','normal'); doc.text('IEEE IKCU Ogrenci Kolu — TechOps', margin, orgY+18); doc.text('Amaç: Aidat tahsilati ve kulup faaliyetleri', margin, orgY+36);
-    doc.setDrawColor(233,239,248); doc.line(margin, orgY+56, pageW-margin, orgY+56);
-    const itemsY=orgY+84; doc.setFont('helvetica','bold'); doc.text('KALEM', margin, itemsY); doc.text('DONEM', margin+260, itemsY); doc.text('TUTAR', pageW-margin-100, itemsY, {align:'right'});
-    doc.setFont('helvetica','normal'); const rowY=itemsY+22; doc.text('Uye Aidati', margin, rowY); doc.text(`${month}`, margin+260, rowY); doc.text(fmtTRY(rec.amount), pageW-margin-100, rowY, {align:'right'});
-    const sumY=rowY+36; doc.setDrawColor(233,239,248); doc.line(margin, sumY, pageW-margin, sumY);
-    doc.setFont('helvetica','bold'); doc.text('TOPLAM', margin, sumY+22); doc.text(fmtTRY(rec.amount), pageW-margin-100, sumY+22, {align:'right'});
-    doc.setTextColor(109,122,144); doc.setFontSize(10); doc.text('© IEEE IKCU TechOps', margin, 820);
-    const fname=`ieee-techops-fatura_${month}_${invNo}.pdf`; doc.save(fname);
-    try{ await db.ref(`userInvoices/${user.uid}/${rec.id}`).set({ createdAt: Date.now(), title:`Aidat (${month})`, total:+(rec.amount||0), status:'paid', invoiceNo:invNo }); }catch(e){}
-  }
-  async function maybeInvoice(uid, rec){
-    try{
-      if(!rec || rec.userId !== uid) return;
-      const ok = (rec.status||'').toLowerCase();
-      if(!(ok==='approved' || ok==='received' || ok==='paid')) return;
-      if(hasInvoiced(rec.id)) return;
-      const u = await waitAuth(); if(!u) return;
-      await generateInvoicePdf(rec, u); markInvoiced(rec.id); toast('Fatura indirildi ✅');
-    }catch(e){ console.error('invoice fail:', e); }
-  }
-  function attachDuesApprovalListener(uid){
-    const ref = db.ref(`duesPayments/${uid}`);
-    ref.on('child_changed', s=>{ const rec = { id:s.key, ...s.val() }; maybeInvoice(uid, rec); });
-    ref.on('child_added',   s=>{ const rec = { id:s.key, ...s.val() }; maybeInvoice(uid, rec); });
-  }
-  function attachDuesTable(uid){
-    const ref = db.ref(`duesPayments/${uid}`).limitToLast(200);
-    ref.on('value', snap=>{
-      const tb = $('myInvRows'); if(!tb) return;
-      const rows = Object.values(snap.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-      tb.innerHTML = rows.length ? rows.map(r=>{
-        const canInvoice = ['approved','paid','received'].includes(String(r.status||'').toLowerCase());
-        const btn = canInvoice ? `<button class="btn light btn-make-invoice">Fatura oluştur</button>` : `<span class="muted">—</span>`;
-        return `<tr data-id="${r.id}"><td>${fmt(r.createdAt)}</td><td>Aidat (${r.month || '—'})</td><td>${fmtTRY(r.amount)}</td><td>${(r.status || 'pending')}</td><td>${btn}</td></tr>`;
-      }).join('') : `<tr><td colspan="5" class="muted">Fatura yok</td></tr>`;
-    });
-    $('myInvRows').addEventListener('click', async (e)=>{
-      const btn = e.target.closest('.btn-make-invoice'); if(!btn) return;
-      const tr = btn.closest('tr'); const id = tr?.dataset?.id; if(!id) return;
-      try{
-        const u = await waitAuth(); const s = await db.ref(`duesPayments/${uid}/${id}`).get(); const rec = { id, ...s.val() };
-        await generateInvoicePdf(rec, u); toast('Fatura indirildi ✅');
-      }catch(err){ console.error(err); toast('Fatura oluşturulamadı'); }
+    tbody.querySelectorAll('.slot-click').forEach(a=>{
+      a.addEventListener('click', ()=>{
+        const s = Number(a.getAttribute('data-start')), e = Number(a.getAttribute('data-end'));
+        const toIso = ms => new Date(ms - (new Date().getTimezoneOffset()*60000)).toISOString().slice(0,16);
+        const startInp=$('resStart'), endInp=$('resEnd');
+        if(startInp && endInp){
+          startInp.value=toIso(s); endInp.value=toIso(e);
+          $('resDlg')?.showModal(); $('resTitle')?.focus(); toast('Slot seçildi: form dolduruldu', true);
+          $('resSend').disabled = !($('resTitle').value.trim() && $('resStart').value && $('resEnd').value);
+        }
+      });
     });
   }
+  dateInp.addEventListener('change', listenDay);
+  listenDay();
+}
 
-  // ==== Günlük kısayollar ====
+/* ============================ DUES ================================ */
+function ymNow(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+$('duesMonth')?.value = $('duesMonth')?.value || ymNow();
+['duesMonth','duesAmount'].forEach(id=>{
+  $(id)?.addEventListener('input', ()=>{
+    const ok = ($('duesMonth').value||'').trim() && Number.isFinite(parseFloat($('duesAmount').value||'')); 
+    $('duesSend').disabled = !ok;
+  });
+});
+$('duesSend')?.addEventListener('click', async ()=>{
+  const btn=$('duesSend'); const old=btn.innerHTML; btn.disabled=true; btn.innerHTML=old+' <span class="spinner"></span>';
+  try{
+    const u = await requireLogin();
+    const month = ($('duesMonth').value||'').trim() || ymNow();
+    const amt = parseFloat(($('duesAmount').value||'').trim());
+    if(!(amt>=0)){ $('duesStatus').className='statusline err'; $('duesStatus').textContent='Geçerli tutar gir.'; return; }
+    const ref = db.ref(`duesPayments/${u.uid}`).push();
+    const rec = { id: ref.key, userId:u.uid, userName:u.displayName||u.email||'unknown', amount:+(amt||0), month, status:'pending', createdAt: Date.now() };
+    await ref.set(rec);
+    await db.ref(`duesPaymentsIndex/${ref.key}`).set(rec);
+    $('duesStatus').className='statusline ok'; $('duesStatus').textContent='Aidat bildirimin gönderildi (onay bekliyor).';
+  }catch(e){ console.error(e); $('duesStatus').className='statusline err'; $('duesStatus').textContent='Gönderilemedi (yetki/bağlantı hatası).'; }
+  finally{ btn.disabled=false; btn.innerHTML=old; }
+});
+
+/* ======= Fatura oluşturma (onaylandığında PDF indirme) ========= */
+function hasInvoiced(id){ try{ return JSON.parse(localStorage.getItem('invoices_done')||'{}')[id]; }catch{ return false; } }
+function markInvoiced(id){ const m=JSON.parse(localStorage.getItem('invoices_done')||'{}'); m[id]=true; localStorage.setItem('invoices_done', JSON.stringify(m)); }
+function makeInvoiceNo(rec){ const d=new Date(rec.createdAt||Date.now()); const y=d.getFullYear(); const short=(rec.id||'xxxxxx').slice(-6).toUpperCase(); return `IEEE-${y}-${short}`; }
+async function generateInvoicePdf(rec, user){
+  const { jsPDF } = window.jspdf || {}; if(!jsPDF){ alert('PDF kütüphanesi yok'); return; }
+  const doc = new jsPDF({ unit:'pt', format:'a4' }), pageW = doc.internal.pageSize.getWidth(), margin=48;
+  doc.setFillColor(10,124,193); doc.rect(0,0,pageW,72,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.text('IEEE IKCU TechOps', margin, 42);
+  doc.setFont('helvetica','normal'); doc.setFontSize(12); doc.text('Aidat / Fatura Belgesi', margin, 60);
+  doc.setTextColor(16,36,59);
+  const invNo=makeInvoiceNo(rec), issueAt=new Date().toLocaleString('tr-TR'), month=rec.month||'—';
+  const boxX = pageW - margin - 220, boxY = 96, boxW = 220, boxH = 84;
+  doc.setDrawColor(233,239,248); doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8);
+  doc.setFont('helvetica','bold'); doc.text('MAKBUZ', boxX+14, boxY+22);
+  doc.setFont('helvetica','normal'); doc.text(`No: ${invNo}`, boxX+14, boxY+42); doc.text(`Tarih: ${issueAt}`, boxX+14, boxY+62);
+  const whoY=110; doc.setFont('helvetica','bold'); doc.text('ODEMEYI YAPAN', margin, whoY);
+  doc.setFont('helvetica','normal'); doc.text(`${user.displayName || user.email || user.uid}`, margin, whoY+18); if (user.email) doc.text(`${user.email}`, margin, whoY+36);
+  const orgY=whoY+64; doc.setFont('helvetica','bold'); doc.text('KURUM', margin, orgY);
+  doc.setFont('helvetica','normal'); doc.text('IEEE IKCU Ogrenci Kolu — TechOps', margin, orgY+18); doc.text('Amaç: Aidat tahsilati ve kulup faaliyetleri', margin, orgY+36);
+  doc.setDrawColor(233,239,248); doc.line(margin, orgY+56, pageW-margin, orgY+56);
+  const itemsY=orgY+84; doc.setFont('helvetica','bold'); doc.text('KALEM', margin, itemsY); doc.text('DONEM', margin+260, itemsY); doc.text('TUTAR', pageW-margin-100, itemsY, {align:'right'});
+  doc.setFont('helvetica','normal'); const rowY=itemsY+22; doc.text('Uye Aidati', margin, rowY); doc.text(`${month}`, margin+260, rowY); doc.text(fmtTRY(rec.amount), pageW-margin-100, rowY, {align:'right'});
+  const sumY=rowY+36; doc.setDrawColor(233,239,248); doc.line(margin, sumY, pageW-margin, sumY);
+  doc.setFont('helvetica','bold'); doc.text('TOPLAM', margin, sumY+22); doc.text(fmtTRY(rec.amount), pageW-margin-100, sumY+22, {align:'right'});
+  doc.setTextColor(109,122,144); doc.setFontSize(10); doc.text('© IEEE IKCU TechOps', margin, 820);
+  const fname=`ieee-techops-fatura_${month}_${invNo}.pdf`; doc.save(fname);
+  try{ await db.ref(`userInvoices/${user.uid}/${rec.id}`).set({ createdAt: Date.now(), title:`Aidat (${month})`, total:+(rec.amount||0), status:'paid', invoiceNo:invNo }); }catch(e){}
+}
+async function maybeInvoice(uid, rec){
+  try{
+    if(!rec || rec.userId!==uid) return;
+    const ok=(rec.status||'').toLowerCase();
+    if(!(ok==='approved'||ok==='received'||ok==='paid')) return;
+    if(hasInvoiced(rec.id)) return;
+    const u = await waitAuth(); if(!u) return;
+    await generateInvoicePdf(rec, u); markInvoiced(rec.id); toast('Fatura indirildi ✅', true);
+  }catch(e){ console.error('invoice fail:', e); }
+}
+function attachDuesApprovalListener(uid){
+  const ref = db.ref(`duesPayments/${uid}`);
+  ref.on('child_changed', s=> maybeInvoice(uid, { id:s.key, ...s.val() }));
+  ref.on('child_added',   s=> maybeInvoice(uid, { id:s.key, ...s.val() }));
+}
+function attachDuesTable(uid){
+  const ref = db.ref(`duesPayments/${uid}`).limitToLast(200);
+  ref.on('value', snap=>{
+    const tb=$('myInvRows'); if(!tb) return;
+    const rows = Object.values(snap.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    tb.innerHTML = rows.length ? rows.map(r=>{
+      const canInvoice = ['approved','paid','received'].includes(String(r.status||'').toLowerCase());
+      const btn = canInvoice ? `<button class="btn light btn-make-invoice">Fatura oluştur</button>` : `<span class="muted">—</span>`;
+      return `<tr data-id="${r.id}"><td>${fmt(r.createdAt)}</td><td>Aidat (${r.month||'—'})</td><td>${fmtTRY(r.amount)}</td><td>${(r.status||'pending')}</td><td>${btn}</td></tr>`;
+    }).join('') : `<tr><td colspan="5" class="muted">Fatura yok</td></tr>`;
+  });
+  $('myInvRows')?.addEventListener('click', async (e)=>{
+    const btn=e.target.closest('.btn-make-invoice'); if(!btn) return;
+    const tr=btn.closest('tr'); const id=tr?.dataset?.id; if(!id) return;
+    try{
+      const u = await waitAuth(); const s=await db.ref(`duesPayments/${u.uid}/${id}`).get(); const rec={ id, ...s.val() };
+      await generateInvoicePdf(rec, u); toast('Fatura indirildi ✅', true);
+    }catch(err){ console.error(err); toast('Fatura oluşturulamadı', false); }
+  });
+}
+
+/* =========================== LIFECYCLE ============================ */
+(async ()=>{
+  const u = await waitAuth();
+  if(!u){ location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
+  $('hello').textContent = `Merhaba, ${u.displayName || u.email || u.uid}`;
+  $('logout')?.addEventListener('click', ()=> auth.signOut().then(()=>location.replace('login.html')));
+
+  attachMyLog(u.uid);
+  attachReservations(room, u.uid);
+  attachSchedule(room);
+  await hydratePresenceAndStats(u.uid);
+  attachDuesTable(u.uid);
+  attachDuesApprovalListener(u.uid);
+
+  // Kısayollar
   window.addEventListener('keydown', e=>{
     if(e.target && /input|textarea|select/i.test(e.target.tagName)) return;
-    const k = e.key.toLowerCase();
+    const k=e.key.toLowerCase();
     if(k==='e'){ $('actDlg')?.showModal(); $('enterBtn')?.click(); }
     else if(k==='x'){ $('actDlg')?.showModal(); $('exitBtn')?.click(); }
     else if(k==='b'){ $('actDlg')?.showModal(); $('breakStartBtn')?.click(); }
     else if(k==='n'){ $('actDlg')?.showModal(); $('breakEndBtn')?.click(); }
     else if(k==='r'){ $('resDlg')?.showModal(); }
-    else if(k==='u'){ tryUndo(); }
   });
 
-  // ==== sayfa açılışı ====
-  (async () => {
-    const u = await waitAuth();
-    if (!u) { location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
-    if (!verified || !room) { location.replace('gate.html'); return; }
-    $('hello').textContent = `Merhaba, ${u.displayName || u.email || u.uid}`;
-    attachMyLog(u.uid);
-    attachReservations(room, u.uid);
-    attachSchedule(room);
-    await hydratePresenceAndStats(u.uid);
-    attachDuesTable(u.uid);
-    attachDuesApprovalListener(u.uid);
-    setActionsEnabled(true);
-    // modal open hooks
-    $('openAct')?.addEventListener('click', ()=> $('actDlg').showModal());
-    $('logout')?.addEventListener('click', ()=> auth.signOut().then(()=>location.replace('login.html')));
-  })();
+  // form butonlarını ilk durumda kapalı tutma kontrolleri:
+  $('resSend').disabled = true;
+  $('invSend') && ($('invSend').disabled = true); // (envanter backend'i eklenirse aç)
+  $('duesSend').disabled = !(($('duesMonth')?.value||'').trim() && Number.isFinite(parseFloat($('duesAmount')?.value||'')));
+})();
 </script>
+
 </body>
 </html>
