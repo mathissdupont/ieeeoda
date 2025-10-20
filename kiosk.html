@@ -21,8 +21,7 @@
   .status.reserved{color:#ffd27a;border-color:#5a4b1e;background:#2e240f}
   .card{background:linear-gradient(180deg,#0f1a27,#0d1723);border:1px solid var(--edge);border-radius:18px;box-shadow:0 16px 50px #0006;padding:16px}
   .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
-  @media (max-width:820px){ .grid{grid-template-columns:1fr;}}
-  h1{margin:0;font-size:22px}
+  @media (max-width:820px){ .grid{grid-template-columns:1fr;} }
   h2{margin:0 0 6px;font-size:16px;color:var(--muted)}
   .qrbox{display:grid;place-items:center;padding:12px;border:1px dashed var(--edge);border-radius:14px;background:#00000022}
   canvas{background:#fff;border-radius:12px}
@@ -73,7 +72,7 @@
   </div>
 </div>
 
-<!-- libs -->
+<!-- Eğer yerelde qrcodejs (davidshimjs) dosyan varsa dursun; yoksa CDN'den npm sürümü yüklenecek -->
 <script src="assets/qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
@@ -97,17 +96,30 @@ const auth=firebase.auth(), db=firebase.database();
 const $ = id => document.getElementById(id);
 const urlParam = n => new URL(location.href).searchParams.get(n);
 const ROOM = urlParam('room') || 'LAB-101';
-$('roomName') && ($('roomName').textContent = 'Oda: ' + ROOM);
+$('roomName').textContent = 'Oda: ' + ROOM;
 
 const safeText = (id, t) => { const el=$(id); if(el) el.textContent=t; };
+
 function fmt(ts){ return new Date(ts).toLocaleString(); }
 function fmtTime(ts){
   const d=new Date(ts);
   return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
 }
+function fmtRange(s,e){
+  const ds=new Date(s), de=new Date(e);
+  const sameDay = ds.toDateString()===de.toDateString();
+  const day = ds.toLocaleDateString();
+  return sameDay ? `${day} ${fmtTime(s)}–${fmtTime(e)}` : `${fmt(s)} – ${fmt(e)}`;
+}
 
+/* Saat yazısı */
+function tickClock(){
+  safeText('nowInfo', new Date().toLocaleString());
+}
+
+/* ====== QR lib yükleme (gerekirse npm sürümü) ====== */
 async function ensureQRCodeLib(){
-  if (window.QRCode) return; // zaten yüklü
+  if (window.QRCode) return; // yerelde var
   await new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
@@ -117,17 +129,46 @@ async function ensureQRCodeLib(){
   });
 }
 
+/* ====== İki API için ortak çizim ====== */
+async function drawQRToCanvas(link){
+  const cvs = $('qr');
+  const ctx = cvs.getContext('2d');
+  const w = Math.max(240, Math.min(480, cvs?.clientWidth || 320));
+  cvs.width = w; cvs.height = w;
+  ctx.clearRect(0,0,w,w);
 
-function fmtRange(s,e){
-  const ds=new Date(s), de=new Date(e);
-  const sameDay = ds.toDateString()===de.toDateString();
-  const day = ds.toLocaleDateString();
-  return sameDay ? `${day} ${fmtTime(s)}–${fmtTime(e)}` : `${fmt(s)} – ${fmt(e)}`;
-}
+  // 1) npm "qrcode" → QRCode.toCanvas
+  if (window.QRCode && typeof QRCode.toCanvas === 'function') {
+    await new Promise((resolve, reject)=>{
+      QRCode.toCanvas(cvs, link, { width: w, margin: 1 }, err => err ? reject(err) : resolve());
+    });
+    return;
+  }
 
-/* ====== saat yazısı (konsoldaki tickClock hatasını yok eder) ====== */
-function tickClock(){
-  safeText('nowText', new Date().toLocaleString());
+  // 2) davidshimjs/qrcodejs → new QRCode(div, {...})
+  if (window.QRCode) {
+    const tmp = document.createElement('div');
+    tmp.style.position='absolute'; tmp.style.left='-9999px'; document.body.appendChild(tmp);
+    const q = new QRCode(tmp, { text: link, width: w, height: w });
+    await new Promise(resolve=>{
+      const tryDraw = () => {
+        const cnv = tmp.querySelector('canvas');
+        const img = tmp.querySelector('img');
+        if (cnv) { ctx.drawImage(cnv,0,0,w,w); cleanup(); resolve(); return; }
+        if (img) {
+          if (img.complete) { ctx.drawImage(img,0,0,w,w); cleanup(); resolve(); }
+          else img.onload = () => { ctx.drawImage(img,0,0,w,w); cleanup(); resolve(); };
+          return;
+        }
+        setTimeout(tryDraw, 30);
+      };
+      const cleanup = ()=>{ q.clear && q.clear(); tmp.remove(); };
+      tryDraw();
+    });
+    return;
+  }
+
+  throw new Error('QR kütüphanesi bulunamadı');
 }
 
 /* ====== Deterministik saatlik KEY ====== */
@@ -157,7 +198,7 @@ async function computeHourlyKey(seed,date){
   return takeKey6FromHex(hex);
 }
 
-/* roomKeySeed düğümü hem doğru (roomKeySeed) hem yanlış yazılmış (roomkeySeed) olasılığına bak */
+/* roomKeySeed normal/yanlış yazımına bak */
 async function getSeed(room){
   let s = await db.ref('roomKeySeed/'+room).get();
   if(!s.exists()) s = await db.ref('roomkeySeed/'+room).get();
@@ -165,18 +206,18 @@ async function getSeed(room){
 }
 
 /* ====== QR OLUŞTURMA ====== */
-let lastDrawnHour = '';   // gereksiz yeniden çizimleri azalt
+let lastDrawnHour = '';
 async function makeQR(){
-    await ensureQRCodeLib();
   try{
+    await ensureQRCodeLib();
+
     const seed = await getSeed(ROOM);
     if(!seed){ safeText('qrText','Seed yok'); return; }
 
     const now = new Date();
     const hourTag = hourTokenUTC(now);
-    // aynı saat içinde israf etme
+
     if (lastDrawnHour === hourTag && $('qr')?.dataset?.lastLink){
-      // sadece geçerlilik saatini güncelle
       const nextHour = new Date(); nextHour.setUTCMinutes(0,0,0); nextHour.setUTCHours(nextHour.getUTCHours()+1);
       safeText('qrUntil', 'Geçerlilik (UTC): ' + nextHour.toISOString().slice(0,16).replace('T',' '));
       return;
@@ -185,23 +226,10 @@ async function makeQR(){
     const key  = await computeHourlyKey(seed, now);
     const link = `${location.origin}/gate.html?room=${encodeURIComponent(ROOM)}&key=${encodeURIComponent(key)}`;
 
-    // metin
     safeText('qrText', link);
+    await drawQRToCanvas(link);
+    $('qr').dataset.lastLink = link;
 
-    // Canvas’a çiz (bulunduğu canvas genişliğine göre ölçekle)
-    const cvs = $('qr');
-    const w = Math.max(240, Math.min(480, cvs?.clientWidth || 320));
-    const tmp = document.createElement('canvas');
-    await QRCode.toCanvas(tmp, link, { width:w, margin:1 });
-    if (cvs){
-      cvs.width = w; cvs.height = w;
-      const ctx=cvs.getContext('2d');
-      ctx.clearRect(0,0,cvs.width,cvs.height);
-      ctx.drawImage(tmp,0,0,w,w);
-      cvs.dataset.lastLink = link;
-    }
-
-    // Bitiş (sonraki UTC saat başı)
     const nextHour = new Date(); nextHour.setUTCMinutes(0,0,0); nextHour.setUTCHours(nextHour.getUTCHours()+1);
     safeText('qrUntil', 'Geçerlilik (UTC): ' + nextHour.toISOString().slice(0,16).replace('T',' '));
 
@@ -222,7 +250,6 @@ async function loadReservations(){
     const s = await ref.get();
     const rows = Object.values(s.val()||{}).sort((a,b)=>(a.startAt||0)-(b.startAt||0));
 
-    // aktif rezervasyon var mı?
     const active = rows.find(r =>
       (r.startAt||0) <= now && now <= (r.endAt||0) && (r.status||'pending') === 'approved'
     );
@@ -230,33 +257,28 @@ async function loadReservations(){
     if (active) {
       safeText('resLabel','REZERVE');
       safeText('resSub', `${active.title||''} — ${fmtRange(active.startAt, active.endAt)}`);
-      const chip=$('stateChip'); if(chip){ chip.textContent='Durum: Rezerveli'; chip.className='status reserved'; }
+      const chip=$('stateChip'); chip.textContent='Durum: Rezerveli'; chip.className='status reserved';
     } else {
       safeText('resLabel','Müsait');
       safeText('resSub','');
-      const chip=$('stateChip'); if(chip){ chip.textContent='Durum: Boş'; chip.className='status ok'; }
+      const chip=$('stateChip'); chip.textContent='Durum: Boş'; chip.className='status ok';
     }
 
-    // sıradaki 3 rezervasyon
     const upcoming = rows.filter(r => (r.startAt||0) > now && (r.status||'pending') === 'approved').slice(0,3);
-    const ul = $('nextList'); if(ul){
-      ul.innerHTML = '';
-      if (!upcoming.length) {
-        ul.innerHTML = '<li class="muted">Yakın zamanda rezervasyon yok</li>';
-      } else {
-        upcoming.forEach(r=>{
-          const li=document.createElement('li');
-          li.textContent = `${fmtRange(r.startAt,r.endAt)} • ${r.title||r.userName||r.userId}`;
-          ul.appendChild(li);
-        });
-      }
+    const ul = $('nextList'); ul.innerHTML = '';
+    if (!upcoming.length) {
+      ul.innerHTML = '<li class="muted">Yakın zamanda rezervasyon yok</li>';
+    } else {
+      upcoming.forEach(r=>{
+        const li=document.createElement('li');
+        li.textContent = `${fmtRange(r.startAt,r.endAt)} • ${r.title||r.userName||r.userId}`;
+        ul.appendChild(li);
+      });
     }
-  }catch(e){
-    // sessiz düş
-  }
+  }catch(_){}
 }
 
-/* ====== DOLULUK (son 24s giriş/çıkışa göre) ====== */
+/* ====== DOLULUK ====== */
 async function loadOccupancy(){
   try{
     const since = Date.now()-24*3600e3;
@@ -277,36 +299,30 @@ async function loadOccupancy(){
 /* ====== AUTH + LOOP ====== */
 auth.onAuthStateChanged(async u=>{
   if(!u){
-    // Kiosk’ta bir admin hesabıyla giriş yap ve “oturumu açık bırak”
     location.replace('login.html?next='+encodeURIComponent(location.href));
     return;
   }
   const isAdmin = await db.ref('admins/'+u.uid).get().then(s=>s.exists()&&s.val()===true).catch(()=>false);
   if(!isAdmin){ alert('Admin yetkisi yok.'); return; }
 
-  // ilk yük
   await makeQR();
   await loadReservations();
   await loadOccupancy();
   tickClock();
 
-  // periyodik yenilemeler
-  setInterval(tickClock, 1000);           // saat yazısı
-  setInterval(makeQR, 60*1000);           // her dakika (saat başında değişir)
-  setInterval(loadReservations, 30*1000); // 30 sn
-  setInterval(loadOccupancy,   30*1000);  // 30 sn
+  setInterval(tickClock, 1000);
+  setInterval(makeQR, 60*1000);
+  setInterval(loadReservations, 30*1000);
+  setInterval(loadOccupancy,   30*1000);
 });
 
-// sekme görünür olunca tazele
 document.addEventListener('visibilitychange', ()=>{
   if (!document.hidden){ makeQR(); loadReservations(); loadOccupancy(); tickClock(); }
 });
-// pencere boyutu değişirse QR’ı tekrar çiz (daha net)
 window.addEventListener('resize', ()=>{
   lastDrawnHour=''; // yeniden çizsin
   makeQR();
 });
 </script>
-
 </body>
 </html>
