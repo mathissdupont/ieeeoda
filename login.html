@@ -278,22 +278,40 @@
 
   // redirect dönüşünü yakala ve next'e at
   auth.getRedirectResult()
-    .then(()=> {
+    .then(() => {
       const u = auth.currentUser;
-      if(u){
+      if (u && !u.isAnonymous) {
         const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
         location.replace(nx);
       }
+      // anonim kullanıcıyla geldiysek, login ekranında beklesin
     })
     .catch(()=>{}); // sessiz geç
 
-  // zaten oturum varsa direkt next
-  auth.onAuthStateChanged(u=>{
-    if(u){
-      const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
-      location.replace(nx);
+  // --- login sayfasında otomatik yönlendirme şartı: anonim OLMAMALI ---
+  auth.onAuthStateChanged(async (u) => {
+    if (!u) return;
+
+    if (u.isAnonymous) {
+      // paneldeki ensureAnon'dan kalmış olabilir; login'de bunu temizle
+      try { await auth.signOut(); } catch {}
+      return; // ekranda kal
     }
+
+    // gerçek (anonim olmayan) oturum varsa panele geçir
+    const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
+    location.replace(nx);
   });
+
+    (async () => {
+    try {
+      const u = auth.currentUser || await new Promise(r => {
+        const off = auth.onAuthStateChanged(x => { off(); r(x); });
+      });
+      if (u && u.isAnonymous) { await auth.signOut(); }
+    } catch {}
+  })();
+
 </script>
 
 </body>
