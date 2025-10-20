@@ -684,6 +684,71 @@ async function requireLogin(){
 }
 
 
+
+/* ===== QR auto-flow (kiosk) ===== */
+function hourTokenUTC(d){
+  d=d||new Date();
+  const y=d.getUTCFullYear();
+  const m=String(d.getUTCMonth()+1).padStart(2,'0');
+  const day=String(d.getUTCDate()).padStart(2,'0');
+  const h=String(d.getUTCHours()).padStart(2,'0');
+  return `${y}${m}${day}${h}`;
+}
+async function sha256Hex(txt){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function takeKey6FromHex(hex){
+  const map='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let out=''; for(let i=0;i<hex.length && out.length<6;i++){ out+=map[parseInt(hex[i],16)%map.length]; }
+  return out.toUpperCase();
+}
+async function computeKey(seed, date){ return takeKey6FromHex(await sha256Hex(seed + hourTokenUTC(date))); }
+async function getSeed(roomId){
+  const s = await db.ref('roomKeySeed/'+roomId).get();
+  if (s.exists()) return String(s.val());
+  const s2 = await db.ref('roomkeySeed/'+roomId).get();  // eski ad toleransı
+  return s2.exists()? String(s2.val()) : '';
+}
+async function verifyQrKey(roomId, provided){
+  const seed = await getSeed(roomId);
+  if(!seed || !provided) return false;
+  const now = new Date();
+  // saat sapmasına tolerans: [-1, 0, +1] saat
+  const candidates = [
+    new Date(now.getTime()-3600e3),
+    now,
+    new Date(now.getTime()+3600e3)
+  ];
+  for (const d of candidates){
+    if (await computeKey(seed,d) === String(provided).toUpperCase()) return true;
+  }
+  return false;
+}
+async function handleAutoFromQR(){
+  try{
+    if(qp('auto')!=='1') return;
+    const act = qp('act');                      // enter | exit | break_start | break_end
+    const key = (qp('key')||'').toUpperCase();
+    const okActs = new Set(['enter','exit','break_start','break_end']);
+    if(!okActs.has(act)){ opMsg('Geçersiz QR aksiyonu','err'); return; }
+
+    const roomId = room; // mevcut değişkeni kullanıyoruz
+    const valid = await verifyQrKey(roomId, key);
+    if(!valid){ opMsg('QR anahtarı geçersiz/timeout','err'); return; }
+
+    const u = await requireLogin();             // login değilse login.html’e yönlendirilir
+    await writeAttendance(act, { method:'qr' }); // kayıt iki indexe de yazılıyor
+    setPresence(act!=='exit');                  // anlık UI
+    opMsg(`QR ile ${act.replace('_',' ')} kaydedildi ✅`, 'ok');
+    toast('Kayıt alındı', true);
+  }catch(e){
+    console.error(e); opMsg('QR işlemi başarısız','err');
+  }
+}
+
+
+
 /* ============================ ROOM SETUP ========================== */
 const DEFAULT_ROOM = 'ieeeoda';
 const room = qp('room') || DEFAULT_ROOM;
@@ -1177,6 +1242,7 @@ function attachDuesTable(uid){
   attachDashboard(room);
   attachDuesTable(u.uid);
   attachDuesApprovalListener(u.uid);
+  await handleAutoFromQR();
 
   window.addEventListener('keydown', e=>{
     if(e.target && /input|textarea|select/i.test(e.target.tagName)) return;
