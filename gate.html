@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8" />
-<title>Oda Girişi (QR)</title>
+<title>Geçiş (QR)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="icon" href="assets/techops.ico" type="image/x-icon" />
 <style>
@@ -13,25 +13,26 @@
   .card{background:#fff; border-radius:14px; box-shadow:0 8px 22px #002b5c14; padding:18px}
   h1{margin:0 0 8px; font-size:22px}
   #reader{width:100%; min-height:240px; background:#eef4fb; border:1px dashed var(--edge); border-radius:12px; display:grid; place-items:center}
-  .status{margin-top:10px; min-height:20px; font-weight:600}
+  .status{margin-top:10px; min-height:22px; font-weight:600}
   .ok{color:var(--ok)} .err{color:var(--err)} .muted{color:var(--muted)}
   .pill{display:inline-block; padding:6px 10px; background:#e6f3ff; color:#0a5aa6; border-radius:999px; font-size:12px}
-  .row{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+  .row{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center}
   input,button,select{padding:12px; border-radius:10px; border:1px solid #d7dfeb; font-size:14px; background:#fbfdff}
   button{background:var(--pri); color:#fff; border:none; cursor:pointer; font-weight:800}
   button.ghost{background:#eef4fb; color:#0b3a6f}
   .hint{font-size:13px; color:#60738a; margin-top:8px}
   .right{margin-left:auto}
   .hide{display:none}
+  .big{font-size:18px; font-weight:800}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>Oda Girişi</h1>
-    <span class="pill">Kamerayı QR’a tutun ya da oda kodunu girin</span>
+    <h1>Geçiş (QR)</h1>
+    <span class="pill">Kamerayı QR’a tutun veya linkle gelin</span>
 
-    <div class="row" style="align-items:center">
+    <div class="row">
       <button id="startBtn">📷 Kamerayı Başlat</button>
       <select id="camSelect" class="hide"></select>
       <button id="restartBtn" class="ghost hide">Yeniden Başlat</button>
@@ -42,245 +43,280 @@
     <div id="reader" style="margin-top:12px"></div>
     <div id="scanStatus" class="status muted">Hazır</div>
 
+    <div id="resultBox" class="hint"></div>
+
     <div class="row">
       <input id="roomInput" placeholder="Oda Kodu (ör. LAB-101)" />
-      <input id="keyInput"  placeholder="Oda Anahtarı (KEY)" />
+      <input id="keyInput"  placeholder="Anahtar (KEY)" />
+      <select id="actInput">
+        <option value="enter">enter (giriş)</option>
+        <option value="exit">exit (çıkış)</option>
+        <option value="break_start">break_start (mola başlat)</option>
+        <option value="break_end">break_end (mola bitir)</option>
+      </select>
       <button id="manualBtn" type="button">Onayla</button>
     </div>
     <div class="hint">
+      Bu sayfa; <b>room</b>, <b>key</b>, <b>act</b> query parametreleri ile gelindiyse otomatik işlem yapar.
     </div>
   </div>
 </div>
 
+<!-- Scanner -->
 <script src="https://unpkg.com/html5-qrcode"></script>
+
+<!-- Firebase compat -->
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
 <script>
-  // === FIREBASE config (seninki) ===
-  const firebaseConfig = {
-    apiKey: "AIzaSyDJtcrJ6Eh4BfZnn0M-4z9QYi_2AS-ikHw",
-    authDomain: "ieee-oda.firebaseapp.com",
-    databaseURL: "https://ieee-oda-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "ieee-oda",
-    storageBucket: "ieee-oda.firebasestorage.app",
-    messagingSenderId: "788998880363",
-    appId: "1:788998880363:web:5eacc71c326cffe7b3452e"
-  };
-  firebase.initializeApp(firebaseConfig);
+/* ===== Firebase config ===== */
+var firebaseConfig = {
+  apiKey: "AIzaSyDJtcrJ6Eh4BfZnn0M-4z9QYi_2AS-ikHw",
+  authDomain: "ieee-oda.firebaseapp.com",
+  databaseURL: "https://ieee-oda-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "ieee-oda",
+  storageBucket: "ieee-oda.firebasestorage.app",
+  messagingSenderId: "788998880363",
+  appId: "1:788998880363:web:5eacc71c326cffe7b3452e"
+};
+firebase.initializeApp(firebaseConfig);
+var auth = firebase.auth(), db = firebase.database();
 
-  // === utils ===
-  const $ = id => document.getElementById(id);
-  const scanStatus = $('scanStatus');
-  const show = (cls, txt)=>{ scanStatus.className='status '+cls; scanStatus.textContent=txt; };
-  const PANEL_URL = 'panel.html';
-  const LOGIN_URL = 'login.html?next=' + encodeURIComponent(PANEL_URL);
-  const urlParam = (n)=>{ try{ return new URL(location.href).searchParams.get(n); }catch(_){ return null; } };
+/* ===== small utils ===== */
+function $(id){ return document.getElementById(id); }
+var scanStatus = $('scanStatus');
+function show(cls, txt){ scanStatus.className='status '+cls; scanStatus.textContent=txt; }
+function urlParam(n){ try{ return new URL(location.href).searchParams.get(n); }catch(_){ return null; } }
+function encodeParams(p){ return Object.keys(p).map(function(k){return k+'='+encodeURIComponent(p[k]||'');}).join('&'); }
+function resultInfo(html){ $('resultBox').innerHTML = html; }
 
-  function parseQr(text){
-    try{
-      if (text.includes('://')){
-        const u = new URL(text);
-        return { room: u.searchParams.get('room'), key: u.searchParams.get('key') };
-      }
-      const pairs = Object.fromEntries(text.split('|').map(p=>p.split('=')));
-      return { room: pairs.room, key: pairs.key };
-    }catch{ return { room:null, key:null }; }
-  }
-
-async function verifyRoomKey(room, key){
-  if (!room || !key) throw new Error("Oda kodu veya anahtar eksik.");
-
-  const seed = await fetchSeed(room);
-
-  // Şimdiki saat ve 1 saat öncesi kabul
-  const now = new Date();
-  const prev = new Date(now.getTime() - 3600*1000);
-
-  const kNow  = (await computeHourlyKey(seed, now)).toUpperCase();
-  const kPrev = (await computeHourlyKey(seed, prev)).toUpperCase();
-
-  if (key.toUpperCase() !== kNow && key.toUpperCase() !== kPrev){
-    throw new Error("Anahtar hatalı veya süresi dolmuş.");
-  }
-  return true;
+/* ===== key generation: SAME RULES as kiosk (UTC hour) ===== */
+function hourTokenUTC(d){
+  d = d || new Date();
+  var y = d.getUTCFullYear();
+  var m = ('0'+(d.getUTCMonth()+1)).slice(-2);
+  var day = ('0'+d.getUTCDate()).slice(-2);
+  var h = ('0'+d.getUTCHours()).slice(-2);
+  return ''+y+m+day+h; // YYYYMMDDHH
 }
-
-  function storeGate(room, key){
-    sessionStorage.setItem('gate_room', room);
-    sessionStorage.setItem('gate_key', key);
-    sessionStorage.setItem('gate_verified', '1');
-  }
-  function goNext(){
-    firebase.auth().onAuthStateChanged(u=>{ u ? location.replace(PANEL_URL) : location.replace(LOGIN_URL); });
-  }
-  async function handleRoomKey(room, key){
-    show('muted','Doğrulanıyor…');
-    await verifyRoomKey(room, key);
-    storeGate(room, key);
-    show('ok', `Geçiş onay: ${room}. Yönlendiriliyor…`);
-    setTimeout(goNext, 300);
-  }
-
-  // === QR scanner (responsive + controls) ===
-  let qr = null, currentCamId = null, torchOn = false;
-  const readerEl = $('reader');
-
-  // == Saatlik anahtar üretimi ==
-function hourTokenUTC(d=new Date()){
-  // YYYYMMDDHH (UTC)
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth()+1).padStart(2,'0');
-  const day = String(d.getUTCDate()).padStart(2,'0');
-  const h = String(d.getUTCHours()).padStart(2,'0');
-  return `${y}${m}${day}${h}`;
+function sha256Hex(s){
+  var enc = new TextEncoder().encode(s);
+  return crypto.subtle.digest('SHA-256', enc).then(function(buf){
+    var arr = Array.from(new Uint8Array(buf));
+    return arr.map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+  });
 }
-
-async function sha256Hex(s){
-  const enc = new TextEncoder().encode(s);
-  const buf = await crypto.subtle.digest('SHA-256', enc);
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-
 function takeKey6FromHex(hex){
-  // hex → 0-9a-f, buradan base36 benzeri oluşturup 6 hane seçelim
-  const map = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  let out = '';
-  for(let i=0;i<hex.length && out.length<6;i++){
-    const v = parseInt(hex[i], 16);         // 0..15
-    out += map[v % map.length];             // 0..35 (çok basit)
+  var map='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  var out=''; 
+  for(var i=0;i<hex.length && out.length<6;i++){
+    var v=parseInt(hex[i],16);
+    out+=map[v % map.length];
   }
   return out.toUpperCase();
 }
-
-async function computeHourlyKey(seed, date){
-  const token = hourTokenUTC(date);
-  const hex = await sha256Hex(seed + token);
-  return takeKey6FromHex(hex); // 6 hane
+function computeHourlyKey(seed,date){
+  return sha256Hex(seed + hourTokenUTC(date||new Date())).then(takeKey6FromHex);
 }
 
-// == Seed getir + doğrula ==
-async function fetchSeed(room){
-  const snap = await firebase.database().ref(`roomKeySeed/${room}`).get();
-  if(!snap.exists()) throw new Error('Oda için seed yok.');
-  return String(snap.val());
+/* ===== seed fetch (two spellings) ===== */
+function fetchSeed(room){
+  return db.ref('roomKeySeed/'+room).get().then(function(s){
+    if (s.exists()) return String(s.val());
+    return db.ref('roomkeySeed/'+room).get().then(function(s2){
+      if (s2.exists()) return String(s2.val());
+      throw new Error('Oda için seed yok.');
+    });
+  });
 }
 
+/* ===== verify room+key (accept current or prev UTC hour) ===== */
+function verifyRoomKey(room, key){
+  if (!room || !key) return Promise.reject(new Error('Oda veya key eksik.'));
+  return fetchSeed(room).then(function(seed){
+    var now = new Date();
+    var prev = new Date(now.getTime() - 3600*1000);
+    return Promise.all([computeHourlyKey(seed, now), computeHourlyKey(seed, prev)]).then(function(ks){
+      var kNow = ks[0].toUpperCase(), kPrev = ks[1].toUpperCase();
+      var kk = String(key).toUpperCase();
+      if (kk!==kNow && kk!==kPrev) throw new Error('Anahtar hatalı veya süresi dolmuş.');
+      return true;
+    });
+  });
+}
 
+/* ===== write attendance (both room & user trees) =====
+   Security rules (senin kuralların):
+   attendanceByRoom/$roomId/$pushid: write if auth!=null && newData.userId===auth.uid
+   attendanceByUser/$uid/$pushid   : write if auth.uid===$uid
+   Payload must include: userId, roomId, action, createdAt
+*/
+var ALLOWED_ACTS = { enter:1, exit:1, break_start:1, break_end:1 };
 
-  function calcQrBox(){
-    // container genişliğinin %80’i, 180–360px arası
-    const w = Math.max(180, Math.min(360, Math.floor(readerEl.getBoundingClientRect().width * 0.8)));
-    return { width: w, height: w };
-  }
+function writeAttendance(uid, room, act){
+  if (!ALLOWED_ACTS[act]) return Promise.reject(new Error('Geçersiz işlem (act).'));
+  var now = Date.now();
+  var payload = { userId: uid, roomId: room, action: act, createdAt: now };
 
-  async function listCameras(){
-    try{
-      const cams = await Html5Qrcode.getCameras();
-      const sel = $('camSelect'); sel.innerHTML='';
-      cams.forEach(c=>{
-        const o = document.createElement('option');
-        o.value = c.id; o.textContent = c.label || (c.id.includes('back')?'Arka Kamera': 'Kamera');
-        sel.appendChild(o);
-      });
-      if(cams[0]) sel.value = cams[0].id;
-      sel.classList.remove('hide');
-      $('restartBtn').classList.remove('hide');
-      $('fileScan').classList.remove('hide');
-      return cams;
-    }catch(e){
-      show('err','Kameralar listelenemedi: '+e);
-      throw e;
-    }
-  }
+  var p1 = db.ref('attendanceByRoom/'+room).push(payload);
+  var p2 = db.ref('attendanceByUser/'+uid).push(payload);
+  return Promise.all([p1,p2]);
+}
 
-  async function startCamera(camId){
-    if(!qr) qr = new Html5Qrcode("reader", { verbose: false });
-    if(qr.isScanning) await qr.stop();
-    const config = { fps: 10, qrbox: calcQrBox() };
-    const constraints = camId ? { deviceId: { exact: camId } } : { facingMode: "environment" };
-    await qr.start(constraints, config, onScanSuccess, onScanFail);
-    currentCamId = camId || null;
-    $('torchBtn').classList.remove('hide'); // deneyeceğiz, destek yoksa hata verirsek gizleriz
-  }
-
-  function onScanSuccess(decodedText){
-    qr.pause(true);
-    show('muted','QR doğrulanıyor...');
-    (async ()=>{
-      try{
-        const {room,key} = parseQr(decodedText);
-        await handleRoomKey(room, key);
-      }catch(e){
-        show('err', e.message||String(e));
-        setTimeout(()=>qr.resume(), 1200);
+/* ===== main flow (with deep-link support) ===== */
+function requireAuthThen(fn){
+  return new Promise(function(resolve,reject){
+    var unsub = auth.onAuthStateChanged(function(u){
+      unsub();
+      if (!u){
+        // redirect to login and come back to this URL
+        var nextUrl = location.pathname + location.search;
+        location.replace('login.html?next='+encodeURIComponent(nextUrl));
+        // not resolving/rejecting; navigation will occur.
+      }else{
+        resolve(u);
       }
-    })();
-  }
-  function onScanFail(){ /* sessiz geç */ }
+    });
+  }).then(fn);
+}
 
-  // Torch toggle (her cihaz desteklemez)
-  $('torchBtn').onclick = async ()=>{
-    if(!qr || !qr.getState()) return;
-    try{
-      // html5-qrcode 2.x için constraint uygulama:
-      await qr.applyVideoConstraints({ advanced: [{ torch: !torchOn }]});
+function handleLinkFlow(room, key, act){
+  show('muted', 'Doğrulanıyor…');
+  if (!ALLOWED_ACTS[act]){ show('err','Geçersiz act parametresi.'); return; }
+
+  // 1) verify key
+  verifyRoomKey(room, key).then(function(){
+    // 2) ensure auth & write
+    return requireAuthThen(function(u){
+      return writeAttendance(u.uid, room, act).then(function(){
+        show('ok', 'İşlem tamam ✅');
+        var textAct = (act==='enter'?'Giriş':
+                      act==='exit'?'Çıkış':
+                      act==='break_start'?'Mola başlangıcı':'Mola bitişi');
+        resultInfo(
+          '<div class="big">'+ textAct +' kaydedildi.</div>' +
+          '<div class="hint">Kullanıcı: '+(u.displayName||u.email||u.uid)+'<br>Oda: '+room+'</div>'
+        );
+      });
+    });
+  }).catch(function(e){
+    show('err', e && e.message ? e.message : String(e));
+  });
+}
+
+/* ===== QR SCANNER ===== */
+var qr = null, currentCamId = null, torchOn = false;
+var readerEl = $('reader');
+
+function calcQrBox(){
+  var w = Math.max(180, Math.min(360, Math.floor(readerEl.getBoundingClientRect().width*0.8)));
+  return { width:w, height:w };
+}
+function listCameras(){
+  return Html5Qrcode.getCameras().then(function(cams){
+    var sel=$('camSelect'); sel.innerHTML='';
+    cams.forEach(function(c){
+      var o=document.createElement('option');
+      o.value=c.id; o.textContent=c.label || (c.id && c.id.indexOf('back')>=0 ? 'Arka Kamera' : 'Kamera');
+      sel.appendChild(o);
+    });
+    if(cams[0]) sel.value=cams[0].id;
+    sel.classList.remove('hide');
+    $('restartBtn').classList.remove('hide');
+    $('fileScan').classList.remove('hide');
+    return cams;
+  });
+}
+function startCamera(camId){
+  if(!qr) qr = new Html5Qrcode('reader', { verbose:false });
+  if(qr.isScanning){ return qr.stop().then(function(){ return startCamera(camId); }); }
+  var config={ fps:10, qrbox: calcQrBox() };
+  var constraints = camId ? { deviceId:{exact:camId} } : { facingMode:'environment' };
+  return qr.start(constraints, config, onScanSuccess, onScanFail).then(function(){
+    currentCamId = camId || null;
+    $('torchBtn').classList.remove('hide');
+  });
+}
+function onScanSuccess(decodedText){
+  // Beklediğimiz format: gate.html?room=...&key=...&act=...
+  try{
+    var u = new URL(decodedText);
+    var r = u.searchParams.get('room');
+    var k = u.searchParams.get('key');
+    var a = u.searchParams.get('act');
+    if (r && k && a){
+      // aynı sayfaya yönlendir, link flow tetiklensin
+      location.href = location.pathname + '?'+encodeParams({room:r, key:k, act:a});
+      return;
+    }
+  }catch(_){}
+  show('err', 'Geçersiz QR.');
+}
+function onScanFail(){}
+
+/* ===== UI bindings ===== */
+$('startBtn').onclick = function(){
+  show('muted','Kamera izinleri isteniyor…');
+  listCameras().then(function(){ return startCamera($('camSelect').value); })
+               .then(function(){ show('muted','Kamera aktif. QR’ı okutun.'); })
+               .catch(function(e){ show('err','Kamera açılamadı: '+(e && e.message ? e.message : e)); });
+};
+$('camSelect').onchange = function(){ startCamera($('camSelect').value).catch(function(e){ show('err','Başlatılamadı: '+e); }); };
+$('restartBtn').onclick = function(){ startCamera($('camSelect').value).catch(function(e){ show('err','Başlatılamadı: '+e); }); };
+
+// Torch (desteklemeyebilir)
+$('torchBtn').onclick = function(){
+  if(!qr || !qr.getState) return;
+  try{
+    qr.applyVideoConstraints({ advanced:[{ torch: !torchOn }] }).then(function(){
       torchOn = !torchOn;
       $('torchBtn').textContent = torchOn ? '🔦 Fener (Açık)' : '🔦 Fener';
-    }catch{ $('torchBtn').classList.add('hide'); }
-  };
+    }).catch(function(){ $('torchBtn').classList.add('hide'); });
+  }catch(_){ $('torchBtn').classList.add('hide'); }
+};
 
-  // Start button = user gesture (iOS için şart)
-  $('startBtn').onclick = async ()=>{
-    show('muted','Kamera izinleri isteniyor…');
-    try{
-      await listCameras();
-      await startCamera($('camSelect').value);
-      show('muted','Kamera aktif. QR’ı okutun.');
-    }catch(e){
-      show('err','Kamera açılamadı: '+(e?.message||e));
-    }
-  };
-
-  $('camSelect').onchange = ()=> startCamera($('camSelect').value).catch(e=>show('err','Başlatılamadı: '+e));
-  $('restartBtn').onclick = ()=> startCamera($('camSelect').value).catch(e=>show('err','Başlatılamadı: '+e));
-
-  // Resimden tarama
-  $('fileScan').onchange = async (ev)=>{
-    const f = ev.target.files && ev.target.files[0];
-    if(!f) return;
-    if(!qr) qr = new Html5Qrcode("reader");
-    try{
-      const result = await qr.scanFile(f, true);
-      onScanSuccess(result);
-    }catch(e){ show('err','Resimden okuma başarısız: '+(e?.message||e)); }
-  };
-
-  // URL parametresi ile otomatik geçiş (QR deep-link)
-  (async ()=>{
-    const r = urlParam('room'); const k = urlParam('key');
-    if (r && k){
-      try { await handleRoomKey(r,k); return; }
-      catch(e){ show('err', e.message||String(e)); }
-    }
-    show('muted','Hazır. Kamerayı başlatın veya manuel girin.');
-  })();
-
-  // Manuel
-  $('manualBtn').addEventListener('click', async ()=>{
-    const room = $('roomInput').value.trim();
-    const key  = $('keyInput').value.trim();
-    try{ await handleRoomKey(room, key); }catch(e){ show('err', e.message||String(e)); }
+// Dosyadan okuma
+$('fileScan').onchange = function(ev){
+  var f = ev.target.files && ev.target.files[0];
+  if(!f) return;
+  if(!qr) qr = new Html5Qrcode('reader');
+  qr.scanFile(f, true).then(onScanSuccess).catch(function(e){
+    show('err','Resimden okuma başarısız: '+(e && e.message ? e.message : e));
   });
+};
 
-  // responsive qrbox yeniden hesapla
-  let resizeTimer=null;
-  window.addEventListener('resize', ()=>{
+// Manuel
+$('manualBtn').onclick = function(){
+  var room = $('roomInput').value.trim();
+  var key  = $('keyInput').value.trim();
+  var act  = $('actInput').value;
+  if (!ALLOWED_ACTS[act]){ show('err','Geçersiz işlem.'); return; }
+  // parametrelerle kendi kendine yönlendir (tek akış)
+  location.href = location.pathname + '?'+encodeParams({room:room, key:key, act:act});
+};
+
+/* ===== Deep link (auto) ===== */
+(function init(){
+  var room = urlParam('room');
+  var key  = urlParam('key');
+  var act  = urlParam('act');
+  if (room && key && act){
+    handleLinkFlow(room, key, act);
+  }else{
+    show('muted','Hazır. Kamerayı başlatın veya manuel girin.');
+  }
+
+  // responsive yeniden başlat
+  var resizeTimer=null;
+  window.addEventListener('resize', function(){
     clearTimeout(resizeTimer);
-    resizeTimer=setTimeout(async ()=>{
-      if(qr && qr.isScanning){ try{ await qr.stop(); await startCamera(currentCamId||$('camSelect').value); }catch{} }
+    resizeTimer=setTimeout(function(){
+      if(qr && qr.isScanning){ qr.stop().then(function(){ startCamera(currentCamId||$('camSelect').value); }).catch(function(){}); }
     }, 200);
   });
+})();
 </script>
 </body>
 </html>
