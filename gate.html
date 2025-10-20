@@ -193,7 +193,7 @@ function requireAuthThen(fn){
     var unsub = auth.onAuthStateChanged(function(u){
       unsub();
       if (!u){
-        var nextUrl = location.pathname + location.search;
+        var nextUrl = location.pathname + location.search; // tüm ?room&key&act&redir kalır
         location.replace('login.html?next='+encodeURIComponent(nextUrl));
       }else{
         resolve(u);
@@ -216,6 +216,13 @@ function handleLinkFlow(room, key, act){
           '<div class="big">'+ textAct +' kaydedildi.</div>' +
           '<div class="hint">Kullanıcı: '+(u.displayName||u.email||u.uid)+' • Oda: '+room+'</div>'
         );
+
+        // >>> YENİ: başarıdan sonra panele yönlendir
+        var redir = urlParam('redir') || 'panel.html';
+        setTimeout(function(){
+          // Paramları temizleyerek git (yeniden tetikleme olmasın)
+          location.replace(redir);
+        }, 1200);
       });
     });
   }).catch(function(e){

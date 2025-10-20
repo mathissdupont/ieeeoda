@@ -6,6 +6,7 @@
 <title>Giriş Yap — Heptapus Group</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
+  
   :root{
     --bg:#e9eef5; --ink:#102238; --muted:#6f7d93;
     --pri:#1279d6; --pri-2:#0a63b0; --ok:#1a7f37; --err:#c62828;
@@ -81,6 +82,8 @@
   @media (prefers-color-scheme: dark){
     .logo-wrap img{filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));}
   }
+  
+  
 </style>
 </head>
 <body>
@@ -149,7 +152,13 @@
   // === UI refs ===
   const $ = id => document.getElementById(id);
   const st = $('st'), email=$('email'), pass=$('pass'), btn=$('btn'), gbtn=$('googleBtn');
-  const next = new URL(location.href).searchParams.get('next') || 'panel.html';
+
+  // next paramını oku ve garantiye almak için sessionStorage'a da yaz
+  const url = new URL(location.href);
+  const nextParam = url.searchParams.get('next');
+  const NEXT_FALLBACK = 'panel.html';
+  const next = nextParam || sessionStorage.getItem('hept_next') || NEXT_FALLBACK;
+  try { sessionStorage.setItem('hept_next', next); } catch(_) {}
 
   // şifre göster/gizle
   $('toggle').onclick = ()=>{
@@ -158,7 +167,7 @@
     $('toggle').textContent = v === 'text' ? '🙈' : '👁️';
   };
 
-  // beni hatırla → kalıcı oturum
+  // beni hatırla → kalıcı oturum (hemen uygula, ayrıca girişten önce de set edeceğiz)
   let rememberChecked = false;
   $('remember').addEventListener('change', async (e)=>{
     rememberChecked = e.target.checked;
@@ -172,7 +181,7 @@
     target.disabled = on;
     target.innerHTML = on ? (which==='google' ? 'Google ile bağlanılıyor <span class="spinner"></span>'
                                               : 'Giriş yapılıyor <span class="spinner"></span>')
-                          : (which==='google' ? gbtn.dataset._t || 'Google ile Giriş Yap' : 'Giriş');
+                          : (which==='google' ? (gbtn.dataset._t || 'Google ile Giriş Yap') : 'Giriş');
     if(!target.dataset._t) target.dataset._t = target.textContent;
   }
 
@@ -194,7 +203,7 @@
     }
   }
 
-  // e-posta/şifre ile giriş
+  // e-posta/şifre ile giriş (persist'i burada da zorunlu set et)
   $('btn').onclick = async ()=>{
     st.textContent=''; st.className='status';
     const mail = email.value.trim();
@@ -202,8 +211,15 @@
     if(!mail || !pw){ st.className='status err'; st.textContent='E-posta ve şifre gerekli.'; return; }
     try{
       setLoading(true,'email');
+
+      const mode = $('remember').checked ? firebase.auth.Auth.Persistence.LOCAL
+                                         : firebase.auth.Auth.Persistence.SESSION;
+      await auth.setPersistence(mode);
+
       await auth.signInWithEmailAndPassword(mail, pw);
-      location.replace(next);
+      // güvenli yönlendirme
+      const nx = new URL(location.href).searchParams.get('next') || sessionStorage.getItem('hept_next') || NEXT_FALLBACK;
+      location.replace(nx);
     }catch(e){ showError(e); }
     finally{ setLoading(false,'email'); }
   };
@@ -219,12 +235,12 @@
     }catch(err){ showError(err); }
   };
 
-  // Google ile giriş
+  // Google ile giriş (redirect fallback + persist)
   async function googleSignIn(){
     st.textContent=''; st.className='status';
     try{
-      const mode = rememberChecked ? firebase.auth.Auth.Persistence.LOCAL
-                                   : firebase.auth.Auth.Persistence.SESSION;
+      const mode = $('remember').checked ? firebase.auth.Auth.Persistence.LOCAL
+                                         : firebase.auth.Auth.Persistence.SESSION;
       await auth.setPersistence(mode);
     }catch{}
 
@@ -232,7 +248,8 @@
     try{
       setLoading(true,'google');
       await auth.signInWithPopup(provider);
-      location.replace(next);
+      const nx = new URL(location.href).searchParams.get('next') || sessionStorage.getItem('hept_next') || NEXT_FALLBACK;
+      location.replace(nx);
     }catch(e){
       if(String(e.code||'').includes('operation-not-supported') || String(e.code||'').includes('popup-blocked')){
         try{
@@ -251,8 +268,22 @@
   // enter tuşu
   document.addEventListener('keydown', e=>{ if(e.key==='Enter') $('btn').click(); });
 
-  // oturum açıksa yönlendir
-  auth.onAuthStateChanged(u=>{ if(u) location.replace(next); });
+  // redirect sonrası dönüşü karşıla ve next'i uygula
+  auth.getRedirectResult().then(()=>{
+    const u = auth.currentUser;
+    if (u){
+      const nx = new URL(location.href).searchParams.get('next') || sessionStorage.getItem('hept_next') || NEXT_FALLBACK;
+      location.replace(nx);
+    }
+  }).catch(()=>{ /* sessiz geç */ });
+
+  // oturum açıksa yönlendir (hem normal, hem redirect dönüşünde çalışır)
+  auth.onAuthStateChanged(u=>{
+    if(u){
+      const nx = new URL(location.href).searchParams.get('next') || sessionStorage.getItem('hept_next') || NEXT_FALLBACK;
+      location.replace(nx);
+    }
+  });
 </script>
 </body>
 </html>
