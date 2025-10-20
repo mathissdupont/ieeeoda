@@ -6,12 +6,25 @@
 <title>Kayıt Ol — Heptapus Group</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
-  :root { --ink:#12223a; --muted:#6d7a90; --pri:#0a7cc1; --bg:#f4f7fb; --edge:#d7dfeb; --card:#fff; }
+  :root{
+    --ink:#12223a; --muted:#6d7a90; --pri:#0a7cc1; --bg:#f4f7fb; --edge:#d7dfeb; --card:#fff;
+
+    /* input (açık tema) */
+    --in-bg:#fbfdff; --in-ink:#0e2238; --in-ph:#7f8ea5;
+  }
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#0f141b; --ink:#e9eef5; --muted:#9fb0c8; --edge:#2a3a52; --card:#0f1a27; --pri:#2aa3ff; }
+    :root{
+      --bg:#0f141b; --ink:#e9eef5; --muted:#9fb0c8; --edge:#2a3a52; --card:#0f1a27; --pri:#2aa3ff;
+
+      /* input (koyu tema) — kutu siyaha yakın */
+      --in-bg:#0a0f16;   /* neredeyse siyah */
+      --in-ink:#e9eef5;  /* metin */
+      --in-ph:#8fa2bd;   /* placeholder */
+    }
   }
 
   *{box-sizing:border-box}
+  html,body{height:100%}
   body{
     font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
     background:
@@ -26,8 +39,8 @@
     width:min(520px, 94vw);
     background:var(--card);
     border:1px solid var(--edge);
-    border-radius:16px;
-    box-shadow:0 12px 30px #001a3b1a;
+    border-radius:18px;
+    box-shadow:0 22px 48px #001a3b1a;
     padding:24px 22px 22px;
   }
 
@@ -38,34 +51,9 @@
     .logo-wrap img{filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));}
   }
 
-  h2{margin:0 0 6px}
+  h2{margin:0 0 6px; font-size:clamp(20px,2.6vw,24px)}
   p.muted{margin:0 0 14px; color:var(--muted); font-size:14px}
 
-  label{display:block; font-size:13px; color:#406080; margin:10px 0 6px}
-  @media (prefers-color-scheme: dark){ label{ color:#b7c6da; } }
-
-  input{
-    width:100%; padding:12px; border-radius:12px;
-    border:1px solid var(--edge); background:#fbfdff; font-size:14px;
-  }
-  @media (prefers-color-scheme: dark){
-    input{ background:#0e1622; color:var(--ink); border-color:#2a3a52; }
-    input::placeholder{ color:#9fb0c8; }
-  }
-
-  .row{display:flex; gap:10px; flex-wrap:wrap}
-  button{
-    width:100%; padding:12px; border:none; border-radius:12px; font-weight:800; cursor:pointer
-  }
-  .primary{background:linear-gradient(90deg,var(--pri),#5ec1ff); color:#031424}
-  .google{
-    background:#fff; color:#202124; border:1px solid var(--edge);
-    display:flex; align-items:center; justify-content:center; gap:8px
-  }
-
-  .link{display:inline-block; margin-top:10px; color:var(--pri); text-decoration:none; font-weight:600}
-  .status{min-height:22px; margin-top:10px; font-weight:700}
-  .ok{color:#1a7f37} .err{color:#b00020} .mutedText{color:var(--muted)}
   .brand{
     display:inline-block;margin:6px 0 12px;padding:6px 10px;border:1px solid var(--edge);
     border-radius:999px;font-size:12px;background:#f0f6ff;color:#0a5aa6;font-weight:700
@@ -73,15 +61,67 @@
   @media (prefers-color-scheme: dark){
     .brand{ background:#132235; color:#cfe3ff; border-color:#2a3a52; }
   }
+
+  label{display:block; font-size:13px; color:#406080; margin:10px 0 6px}
+  @media (prefers-color-scheme: dark){ label{ color:#b7c6da; } }
+
+  input{
+    width:100%; padding:12px; border-radius:12px;
+    border:1px solid var(--edge); background:var(--in-bg); font-size:14px;
+    color:var(--in-ink); caret-color:var(--in-ink);
+    outline:none; transition:border .15s, box-shadow .15s, background .15s;
+    color-scheme: light dark; /* yerel picker/controls için */
+  }
+  input::placeholder{ color:var(--in-ph); }
+  input:focus{ border-color:#84baf6; box-shadow:0 0 0 4px #0a7cc112; }
+
+  /* Chrome/Safari autofill beyazını bastır */
+  input:-webkit-autofill{
+    -webkit-text-fill-color: var(--in-ink) !important;
+    -webkit-box-shadow: 0 0 0px 1000px var(--in-bg) inset !important;
+            box-shadow: 0 0 0px 1000px var(--in-bg) inset !important;
+    caret-color: var(--in-ink) !important;
+  }
+
+  .row{display:flex; gap:10px; flex-wrap:wrap}
+  button{
+    width:100%; padding:12px; border:none; border-radius:12px; font-weight:800; cursor:pointer;
+    transition:transform .08s ease, box-shadow .15s ease, opacity .15s ease;
+  }
+  .primary{
+    background:linear-gradient(90deg,var(--pri),#5ec1ff); color:#031424;
+    box-shadow:0 10px 22px #0a7cc123;
+  }
+  .primary:hover{ transform:translateY(-1px); box-shadow:0 14px 30px #0a7cc135; }
+
+  .google{
+    background:#fff; color:#202124; border:1px solid var(--edge);
+    display:flex; align-items:center; justify-content:center; gap:10px
+  }
+  .google:hover{ transform:translateY(-1px); box-shadow:0 10px 22px #00000014; }
+  .g-icon{width:18px; height:18px}
+
+  .link{display:inline-block; margin-top:10px; color:var(--pri); text-decoration:none; font-weight:700}
+  .status{min-height:22px; margin-top:10px; font-weight:700}
+  .ok{color:#1a7f37} .err{color:#b00020} .mutedText{color:var(--muted)}
+
+  /* küçük ekran */
+  @media (max-width: 420px){
+    .box{padding:18px 14px; border-radius:14px}
+  }
+
+  /* hareket kısıtlı kullanıcılar */
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition:none !important}
+  }
 </style>
 </head>
 <body>
-<div class="box">
+<div class="box" role="main" aria-labelledby="pageTitle">
 
   <!-- LOGO -->
   <div class="logo-wrap">
     <a href="/" aria-label="Heptapus Group">
-      <!-- açık/koyu tema için iki ayrı dosya: -->
       <img id="brandLogo"
            src="/assets/heptapus_logo_white.png"
            data-dark="/assets/heptapus_logo_white.png"
@@ -89,29 +129,34 @@
     </a>
   </div>
 
-  <h2>Hesap Oluştur</h2>
-  <div class="brand">Heptapus Group</div>
+  <h2 id="pageTitle">Hesap Oluştur</h2>
+  <div class="brand" aria-hidden="true">Heptapus Group</div>
   <p class="muted">E-posta/şifre ile kayıt olabilir veya Google ile devam edebilirsin.</p>
 
-  <label>Ad Soyad (profil ismi)</label>
+  <label for="displayName">Ad Soyad (profil ismi)</label>
   <input id="displayName" placeholder="Örn. Samet Ünsal" />
 
-  <label>E-posta</label>
-  <input id="email" type="email" placeholder="ornek@ogr.ikcu.edu.tr" autocomplete="username" />
+  <label for="email">E-posta</label>
+  <input id="email" type="email" placeholder="ornek@ogr.ikcu.edu.tr" autocomplete="username" inputmode="email" />
 
-  <label>Şifre</label>
+  <label for="password">Şifre</label>
   <input id="password" type="password" placeholder="En az 6 karakter" autocomplete="new-password" />
 
   <div class="row" style="margin-top:12px">
-    <button id="emailSignup" class="primary">Kayıt Ol</button>
+    <button id="emailSignup" class="primary" type="button">
+      Kayıt Ol
+    </button>
   </div>
 
   <div class="row" style="margin-top:8px">
-    <button id="googleBtn" class="google">Google ile Devam Et</button>
+    <button id="googleBtn" class="google" type="button" aria-label="Google ile Devam Et">
+      <svg class="g-icon" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.5 32.9 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.7 3l5.7-5.7C33.4 6.1 28.9 4 24 4 16.1 4 9.2 8.5 6.3 14.7z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16.2 18.9 14 24 14c3 0 5.7 1.1 7.7 3l5.7-5.7C33.4 6.1 28.9 4 24 4 16.1 4 9.2 8.5 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5.1l-6.2-5.1C29.2 36 26.7 37 24 37c-5.2 0-9.5-3.1-11-7.4l-6.6 5.1C9.2 39.5 16.1 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3C34.8 31.4 29.9 36 24 36c-5.2 0-9.5-3.1-11-7.4l-6.6 5.1C9.2 39.5 16.1 44 24 44c10 0 19-7.3 19-20 0-1.2-.1-2.3-.4-3.5z"/></svg>
+      Google ile Devam Et
+    </button>
   </div>
 
   <a class="link" href="login.html">Zaten hesabın var mı? Giriş yap</a>
-  <div id="status" class="status mutedText"></div>
+  <div id="status" class="status mutedText" aria-live="polite"></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>

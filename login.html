@@ -6,19 +6,28 @@
 <title>Giriş Yap — Heptapus Group</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
-  
   :root{
     --bg:#e9eef5; --ink:#102238; --muted:#6f7d93;
     --pri:#1279d6; --pri-2:#0a63b0; --ok:#1a7f37; --err:#c62828;
     --card:#ffffffcc; --edge:#dbe4f1;
+
+    /* input renkleri (açık tema) */
+    --in-bg:#ffffff; --in-ink:#0d2238; --in-ph:#7c8aa0;
   }
   @media (prefers-color-scheme: dark){
     :root{
       --bg:#0f141b; --ink:#e9eef5; --muted:#9fb0c8;
       --card:#0d1622cc; --edge:#213042;
+
+      /* input renkleri (koyu tema) — kutu siyah, yazı açık */
+      --in-bg:#0a0f16;   /* siyaha yakın koyu */
+      --in-ink:#e9eef5;  /* metin */
+      --in-ph:#8fa2bd;   /* placeholder */
     }
+    /* form kontrolleri sistem koyu renk şemasına uyumlu kalsın */
     input,button{color-scheme: dark;}
   }
+
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
@@ -29,45 +38,68 @@
                 var(--bg);
     display:grid; place-items:center; padding:24px;
   }
+
   .box{
-    width:min(420px, 92vw);
+    width:min(520px, 94vw);
     background:var(--card);
-    backdrop-filter: blur(6px);
+    backdrop-filter: blur(8px);
     border:1px solid var(--edge);
-    border-radius:16px;
-    box-shadow:0 18px 40px #0a254014;
+    border-radius:18px;
+    box-shadow:0 22px 48px #0a254018;
     padding:22px 20px;
   }
-  h2{margin:0 0 6px; font-size:22px; letter-spacing:.2px}
-  p.sub{margin:0 0 14px; color:var(--muted); font-size:14px}
-  .group{margin-top:12px; position:relative}
-  label{display:block; font-size:13px; color:var(--muted); margin-bottom:6px}
+
+  h2{margin:0 0 6px; font-size:clamp(20px,2.6vw,24px); letter-spacing:.2px}
+  p.sub{margin:6px 0 14px; color:var(--muted); font-size:14px}
+
+  .group{margin-top:12px; position:relative; display:grid; gap:6px}
+  label{display:block; font-size:13px; color:var(--muted)}
+
   input{
     width:100%; padding:12px 44px 12px 12px; border-radius:12px;
-    border:1px solid var(--edge); background:#ffffffee; outline:none;
-    transition:border .15s, box-shadow .15s;
+    border:1px solid var(--edge); background:var(--in-bg); outline:none;
+    color:var(--in-ink); caret-color:var(--in-ink);
+    transition:border .15s, box-shadow .15s, background .15s;
+    color-scheme: light dark; /* tarih/select vb. bileşenler için */
   }
+  input::placeholder{color:var(--in-ph)}
   input:focus{ border-color:#84baf6; box-shadow:0 0 0 4px #1279d612; }
-  .icon{
-    position:absolute; right:10px; top:35px; width:22px; height:22px; color:#6f86a0; display:grid; place-items:center; cursor:pointer;
+
+  /* Chrome/Safari autofill beyazını override */
+  input:-webkit-autofill{
+    -webkit-text-fill-color: var(--in-ink) !important;
+    -webkit-box-shadow: 0 0 0px 1000px var(--in-bg) inset !important;
+            box-shadow: 0 0 0px 1000px var(--in-bg) inset !important;
+    caret-color: var(--in-ink) !important;
   }
+
+  .icon{
+    position:absolute; right:10px; top:35px; width:26px; height:26px;
+    color:#6f86a0; display:grid; place-items:center; cursor:pointer;
+    border-radius:8px; background:transparent; border:none;
+  }
+  .icon:hover{ background:#00000010 }
+
   .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
   .row.between{justify-content:space-between}
   .help{font-size:13px; color:var(--muted)}
   .status{min-height:22px; margin-top:10px; font-weight:700}
   .ok{color:#1a7f37} .err{color:#c62828}
+
   button{
     width:100%; padding:12px; border-radius:12px; border:0; cursor:pointer;
     background:linear-gradient(90deg, var(--pri) 0%, #12a0ff 100%); color:#fff; font-weight:800;
-    box-shadow:0 8px 20px #1279d623; transition:transform .08s ease, box-shadow .15s ease;
+    box-shadow:0 10px 22px #1279d623; transition:transform .08s ease, box-shadow .15s ease, opacity .15s ease;
   }
-  button:hover{ transform:translateY(-1px); box-shadow:0 12px 26px #1279d635; }
+  button:hover{ transform:translateY(-1px); box-shadow:0 14px 30px #1279d635; }
   button:disabled{opacity:.65; cursor:progress}
+
   .ghost{background:#eaf2fd; color:#0a3c6e}
   a{color:var(--pri-2); text-decoration:none; font-weight:700}
-  .links{display:flex; justify-content:space-between; gap:8px; margin-top:10px}
+  .links{display:flex; justify-content:space-between; gap:8px; margin-top:10px; flex-wrap:wrap}
   .check{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted)}
   .spinner{width:16px;height:16px;border:2px solid #fff;border-right-color:transparent;border-radius:50%;display:inline-block;vertical-align:middle;animation:spin .7s linear infinite;margin-left:8px}
+
   .btn-google{
     background:#fff; color:#202124; border:1px solid var(--edge);
     display:flex; align-items:center; justify-content:center; gap:10px; margin-top:10px;
@@ -82,23 +114,31 @@
   @media (prefers-color-scheme: dark){
     .logo-wrap img{filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));}
   }
-  
-  
+
+  /* küçük ekran iyileştirmeleri */
+  @media (max-width: 420px){
+    .box{padding:18px 14px; border-radius:14px}
+    .icon{top:32px}
+  }
+
+  /* hareket hassasiyeti olan kullanıcılar için animasyon azalt */
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition:none !important}
+  }
 </style>
 </head>
 <body>
-  <div class="box">
+  <div class="box" role="main" aria-labelledby="pageTitle">
 
     <!-- LOGO -->
     <div class="logo-wrap">
       <a href="/" aria-label="Heptapus Group">
-        <!-- açık tema için light, koyu tema için dark versiyon kullanmak istersen alttaki iki satırı kullan -->
         <!-- <img id="brandLogo" src="/assets/heptapus-logo-light.png" data-dark="/assets/heptapus-logo-dark.png" alt="Heptapus Group"> -->
         <img src="/assets/heptapus_logo_white.png" alt="Heptapus Group">
       </a>
     </div>
 
-    <h2>Giriş Yap</h2>
+    <h2 id="pageTitle">Giriş Yap</h2>
     <p class="sub">IEEE oda takibi için hesabına gir.</p>
 
     <div class="group">
@@ -109,7 +149,7 @@
     <div class="group">
       <label for="pass">Şifre</label>
       <input id="pass" type="password" placeholder="••••••••" autocomplete="current-password" />
-      <span id="toggle" class="icon" title="Göster/Gizle">👁️</span>
+      <button type="button" id="toggle" class="icon" title="Göster/Gizle" aria-label="Şifreyi göster">👁️</button>
     </div>
 
     <div class="row between" style="margin-top:6px">
@@ -118,9 +158,9 @@
     </div>
 
     <div class="group">
-      <button id="btn">Giriş</button>
-      <button id="googleBtn" class="btn-google">
-        <svg class="g-icon" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.5 32.9 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.7 3l5.7-5.7C33.4 6.1 28.9 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c10 0 19-7.3 19-20 0-1.2-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16.2 18.9 14 24 14c3 0 5.7 1.1 7.7 3l5.7-5.7C33.4 6.1 28.9 4 24 4 16.1 4 9.2 8.5 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5.1l-6.2-5.1C29.2 36 26.7 37 24 37c-5.2 0-9.5-3.1-11-7.4l-6.6 5.1C9.2 39.5 16.1 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3C34.8 31.4 29.9 36 24 36c-5.2 0-9.5-3.1-11-7.4l-6.6 5.1C9.2 39.5 16.1 44 24 44c10 0 19-7.3 19-20 0-1.2-.1-2.3-.4-3.5z"/></svg>
+      <button id="btn" type="button">Giriş</button>
+      <button id="googleBtn" type="button" class="btn-google" aria-label="Google ile Giriş Yap">
+        <svg class="g-icon" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.5 32.9 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.7 3l5.7-5.7C33.4 6.1 28.9 4 24 4 12.9 4 9.2 8.5 6.3 14.7z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16.2 18.9 14 24 14c3 0 5.7 1.1 7.7 3l5.7-5.7C33.4 6.1 28.9 4 24 4 16.1 4 9.2 8.5 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5.1l-6.2-5.1C29.2 36 26.7 37 24 37c-5.2 0-9.5-3.1-11-7.4l-6.6 5.1C9.2 39.5 16.1 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3C34.8 31.4 29.9 36 24 36c-5.2 0-9.5-3.1-11-7.4l-6.6 5.1C9.2 39.5 16.1 44 24 44c10 0 19-7.3 19-20 0-1.2-.1-2.3-.4-3.5z"/></svg>
         Google ile Giriş Yap
       </button>
     </div>
@@ -130,7 +170,7 @@
       <a href="register.html">Kayıt ol</a>
     </div>
 
-    <div id="st" class="status"></div>
+    <div id="st" class="status" aria-live="polite"></div>
   </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>

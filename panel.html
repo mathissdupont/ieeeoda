@@ -290,6 +290,17 @@ input[type="number"]{
   #hello{ display:none; }               /* selam metni mobilde gizle */
 }
 
+/* Müsaitlik pill renkleri */
+.pill.avail-free  { background:#e9f8ee; color:#126b3a; border:1px solid #ccecd8; }
+.pill.avail-busy  { background:#ffe9e9; color:#9a1b1b; border:1px solid #ffd0d0; }
+.pill.avail-warn  { background:#fff7e8; color:#8a5a00; border:1px solid #ffe2b8; }
+
+@media (prefers-color-scheme: dark){
+  .pill.avail-free { background:#103022; color:#9ff0c0; border-color:#1e3a2f; }
+  .pill.avail-busy { background:#3a1414; color:#ff9b9b; border-color:#5a2020; }
+  .pill.avail-warn { background:#2e240f; color:#ffd27a; border-color:#5a471e; }
+}
+
 
 
 </style>
@@ -308,6 +319,7 @@ input[type="number"]{
       <span id="roomPill" class="pill"></span>
       <span id="occPill" class="pill" title="Şu an içeride">👥 0</span>
       <span id="presence" class="presence" aria-live="polite">Durum yükleniyor…</span>
+      <span id="availPill" class="pill" title="Anlık müsaitlik">Durum yükleniyor…</span>
       <span class="pill" title="Bugün toplam"><strong id="sumToday">00:00:00</strong></span>
       <span class="pill" title="Son hareket" id="lastAction">—</span>
     </div>
@@ -1031,6 +1043,78 @@ function attachDashboard(roomId){
 }
 
 
+function statusBusyLike(st){
+  st = String(st||'').toLowerCase();
+  if (['approved','accepted','ok'].includes(st)) return 'busy';
+  if (['pending','waiting','review'].includes(st)) return 'warn';
+  if (['declined','rejected','cancelled','canceled'].includes(st)) return 'free';
+  // bilinmeyen durumları temkinli yorumlayalım
+  return 'busy';
+}
+
+function humanTimeHM(ts){
+  return new Date(ts).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+}
+
+function attachRoomAvailability(roomId){
+  const ref = db.ref(`roomReservations/${roomId}`);
+  const pill = document.getElementById('availPill');
+  if(!pill) return;
+
+  function render(nowList){
+    const now = Date.now();
+
+    // şu anla çakışan rezervasyonlar
+    const overlaps = nowList.filter(r => (r.startAt||0) <= now && now < (r.endAt||0));
+    // sonraki rezervasyon (bilgi amaçlı)
+    const upcoming = nowList
+      .filter(r => (r.startAt||0) > now)
+      .sort((a,b)=>(a.startAt||0)-(b.startAt||0))[0];
+
+    if (overlaps.length){
+      // birden fazla varsa en "sert" statüyü göster
+      // öncelik: approved > pending > diğer
+      let flag = 'warn', chosen = overlaps[0];
+      for (const r of overlaps){
+        const s = statusBusyLike(r.status);
+        if (s === 'busy'){ flag = 'busy'; chosen = r; break; }
+        if (s === 'warn'){ flag = 'warn'; chosen = r; } // olası alternatif
+      }
+      pill.className = `pill avail-${flag}`;
+      const until = humanTimeHM(chosen.endAt);
+      const title = `${chosen.title || 'Rezerve'} — ${chosen.userName || '—'} (${humanTimeHM(chosen.startAt)}–${humanTimeHM(chosen.endAt)})`;
+      pill.textContent = flag==='busy' ? `Rezerve (bit.: ${until})` : `Beklemede (bit.: ${until})`;
+      pill.title = title;
+      return;
+    }
+
+    // çakışan yok → boş/müsait
+    pill.className = 'pill avail-free';
+    if (upcoming){
+      pill.textContent = `Müsait (sonraki: ${humanTimeHM(upcoming.startAt)})`;
+      pill.title = `${upcoming.title || 'Rezervasyon'} — ${upcoming.userName || '—'} (${humanTimeHM(upcoming.startAt)}–${humanTimeHM(upcoming.endAt)})`;
+    }else{
+      pill.textContent = 'Müsait';
+      pill.title = 'Yaklaşan rezervasyon yok';
+    }
+  }
+
+  // canlı dinle
+  const cb = snap => {
+    const list = Object.values(snap.val()||{});
+    render(list);
+  };
+  ref.on('value', cb);
+
+  // zaman ilerledikçe slot sınırı değiştiği için her dakikada bir tetikleyelim
+  setInterval(async ()=>{
+    const s = await ref.get();
+    const list = Object.values(s.val()||{});
+    render(list);
+  }, 60 * 1000);
+}
+
+
 
 
 
@@ -1221,6 +1305,7 @@ function attachDuesTable(uid){
   attachReservations(room, u.uid);
   attachSchedule(room);
   attachDashboard(room);
+  attachRoomAvailability(room);
   attachDuesTable(u.uid);
   attachDuesApprovalListener(u.uid);
   await hydratePresenceAndStats(u.uid);
