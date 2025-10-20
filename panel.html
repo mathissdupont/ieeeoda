@@ -624,14 +624,7 @@ function getSeed(roomId){
   });
 }
 // key'i şu saat VE bir önceki saat için kabul et (±1h tolerans)
-async function verifyQrKey(roomId, keyFromUrl){
-  const seed = await getSeed(roomId);
-  if(!seed) return false;
-  const now = new Date();
-  const prev = new Date(now); prev.setUTCHours(prev.getUTCHours()-1,0,0,0);
-  const [kNow, kPrev] = await Promise.all([computeHourlyKey(seed, now), computeHourlyKey(seed, prev)]);
-  return (String(keyFromUrl||'').toUpperCase() === kNow) || (String(keyFromUrl||'').toUpperCase() === kPrev);
-}
+
 
 /* URL’den auto/act/key yakala ve doğrulanırsa attendance yaz */
 async function runAutoActionIfAny(){
@@ -687,48 +680,8 @@ async function requireLogin(){
   return u;
 }
 
-
-
-/* ===== QR auto-flow (kiosk) ===== */
-function hourTokenUTC(d){
-  d=d||new Date();
-  const y=d.getUTCFullYear();
-  const m=String(d.getUTCMonth()+1).padStart(2,'0');
-  const day=String(d.getUTCDate()).padStart(2,'0');
-  const h=String(d.getUTCHours()).padStart(2,'0');
-  return `${y}${m}${day}${h}`;
-}
-async function sha256Hex(txt){
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-function takeKey6FromHex(hex){
-  const map='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  let out=''; for(let i=0;i<hex.length && out.length<6;i++){ out+=map[parseInt(hex[i],16)%map.length]; }
-  return out.toUpperCase();
-}
 async function computeKey(seed, date){ return takeKey6FromHex(await sha256Hex(seed + hourTokenUTC(date))); }
-async function getSeed(roomId){
-  const s = await db.ref('roomKeySeed/'+roomId).get();
-  if (s.exists()) return String(s.val());
-  const s2 = await db.ref('roomkeySeed/'+roomId).get();  // eski ad toleransı
-  return s2.exists()? String(s2.val()) : '';
-}
-async function verifyQrKey(roomId, provided){
-  const seed = await getSeed(roomId);
-  if(!seed || !provided) return false;
-  const now = new Date();
-  // saat sapmasına tolerans: [-1, 0, +1] saat
-  const candidates = [
-    new Date(now.getTime()-3600e3),
-    now,
-    new Date(now.getTime()+3600e3)
-  ];
-  for (const d of candidates){
-    if (await computeKey(seed,d) === String(provided).toUpperCase()) return true;
-  }
-  return false;
-}
+
 async function handleAutoFromQR(){
   try{
     if(qp('auto')!=='1') return;
@@ -1137,6 +1090,32 @@ function attachSchedule(roomId){
   listenDay();
 }
 
+
+// ---- QR auto-flow (TEK handler) ----
+let qrHandled = false;
+async function processQrAutoOnce(){
+  if (qrHandled) return;
+  const auto = qp('auto');                // '1' beklemeyelim; var olması yeter
+  const act  = qp('act');
+  const key  = (qp('key')||'').toUpperCase();
+  if(!auto || !act || !key) return;
+
+  const okActs = new Set(['enter','exit','break_start','break_end']);
+  if(!okActs.has(act)){ opMsg('Geçersiz QR aksiyonu','err'); return; }
+
+  const valid = await verifyQrKey(room, key);
+  if(!valid){ opMsg('QR anahtarı geçersiz / süresi dolmuş','err'); return; }
+
+  const u = await requireLogin();               // login değilse aynı URL ile geri döner
+  await writeAttendance(act, { method:'qr' });  // KAYIT
+  await hydratePresenceAndStats(u.uid);         // Durumu hesapla (enter/exit’e göre)
+  setPresence(act!=='exit');                    // anlık badge
+  toast('QR kaydı alındı ✅', true);
+  opMsg(`QR ile ${act.replace('_',' ')} kaydedildi`, 'ok');
+
+  qrHandled = true;
+}
+
 /* ============================ DUES ================================ */
 function ymNow(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
 {
@@ -1241,12 +1220,11 @@ function attachDuesTable(uid){
   attachMyLog(u.uid);
   attachReservations(room, u.uid);
   attachSchedule(room);
-  await hydratePresenceAndStats(u.uid);
-  runAutoActionIfAny();
   attachDashboard(room);
   attachDuesTable(u.uid);
   attachDuesApprovalListener(u.uid);
-  await handleAutoFromQR();
+  await hydratePresenceAndStats(u.uid);
+  await processQrAutoOnce();
 
   window.addEventListener('keydown', e=>{
     if(e.target && /input|textarea|select/i.test(e.target.tagName)) return;
