@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
+
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a7cc1">
+
+<!-- iOS “Ana Ekrana Ekle” için: -->
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta charset="UTF-8" />
 <link rel="icon" href="assets/techops.ico" type="image/x-icon" />
 <title>Giriş Yap — Heptapus Group</title>
@@ -353,6 +361,13 @@
   })();
 
 </script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(console.error);
+}
+</script>
+
 
 </body>
 </html>

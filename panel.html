@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a7cc1">
+
+<!-- iOS “Ana Ekrana Ekle” için: -->
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta charset="UTF-8" />
 <link rel="icon" href="assets/techops.ico" type="image/x-icon" />
 <title>Oda Paneli</title>
@@ -317,6 +324,24 @@ input[type="number"]{
 </head>
 <body>
 <div class="wrap">
+
+
+<button id="installApp" class="btn light">📲 Uygulama olarak yükle</button>
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installApp').style.display = 'inline-block';
+});
+
+document.getElementById('installApp')?.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+});
+</script>
 
   <!-- Header -->
   <div class="top">
@@ -1630,6 +1655,13 @@ function attachDuesTable(uid){
   </div>
   <div class="dlg-foot"><button class="btn light" data-close="helpDlg">Kapat</button></div>
 </dialog>
+
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(console.error);
+}
+</script>
+
 
 </body>
 </html>
