@@ -1,89 +1,373 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Welcome to Firebase Hosting</title>
+<html lang="tr">
+<head>
 
-    <!-- update the version number as needed -->
-    <script defer src="/__/firebase/12.4.0/firebase-app-compat.js"></script>
-    <!-- include only the Firebase features as you need -->
-    <script defer src="/__/firebase/12.4.0/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/12.4.0/firebase-database-compat.js"></script>
-    <script defer src="/__/firebase/12.4.0/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/12.4.0/firebase-functions-compat.js"></script>
-    <script defer src="/__/firebase/12.4.0/firebase-messaging-compat.js"></script>
-    <script defer src="/__/firebase/12.4.0/firebase-storage-compat.js"></script>
-    <script defer src="/__/firebase/12.4.0/firebase-analytics-compat.js"></script>
-    <script defer src="/__/firebase/12.4.0/firebase-remote-config-compat.js"></script>
-    <script defer src="/__/firebase/12.4.0/firebase-performance-compat.js"></script>
-    <!-- 
-      initialize the SDK after all desired features are loaded, set useEmulator to false
-      to avoid connecting the SDK to running emulators.
-    -->
-    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a7cc1">
 
-    <style media="screen">
-      body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
-      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
-      #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
-      #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
-      #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }
-      #message a { display: block; text-align: center; background: #039be5; text-transform: uppercase; text-decoration: none; color: white; padding: 16px; border-radius: 4px; }
-      #message, #message a { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
-      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
-      @media (max-width: 600px) {
-        body, #message { margin-top: 0; background: white; box-shadow: none; }
-        body { border-top: 16px solid #ffa100; }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="message">
-      <h2>Welcome</h2>
-      <h1>Firebase Hosting Setup Complete</h1>
-      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>
-      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>
+<!-- iOS “Ana Ekrana Ekle” için: -->
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta charset="UTF-8" />
+<link rel="icon" href="assets/techops.ico" type="image/x-icon" />
+<title>Giriş Yap — Heptapus Group</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --bg:#e9eef5; --ink:#102238; --muted:#6f7d93;
+    --pri:#1279d6; --pri-2:#0a63b0; --ok:#1a7f37; --err:#c62828;
+    --card:#ffffffcc; --edge:#dbe4f1;
+
+    /* input renkleri (açık tema) */
+    --in-bg:#ffffff; --in-ink:#0d2238; --in-ph:#7c8aa0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f141b; --ink:#e9eef5; --muted:#9fb0c8;
+      --card:#0d1622cc; --edge:#213042;
+
+      /* input renkleri (koyu tema) — kutu siyah, yazı açık */
+      --in-bg:#0a0f16;   /* siyaha yakın koyu */
+      --in-ink:#e9eef5;  /* metin */
+      --in-ph:#8fa2bd;   /* placeholder */
+    }
+    /* form kontrolleri sistem koyu renk şemasına uyumlu kalsın */
+    input,button{color-scheme: dark;}
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
+    margin:0; color:var(--ink);
+    background: radial-gradient(1200px 600px at 10% -10%, #b9d8ff33, transparent),
+                radial-gradient(900px 500px at 120% 20%, #9be7ff22, transparent),
+                var(--bg);
+    display:grid; place-items:center; padding:24px;
+  }
+
+  .box{
+    width:min(520px, 94vw);
+    background:var(--card);
+    backdrop-filter: blur(8px);
+    border:1px solid var(--edge);
+    border-radius:18px;
+    box-shadow:0 22px 48px #0a254018;
+    padding:22px 20px;
+  }
+
+  h2{margin:0 0 6px; font-size:clamp(20px,2.6vw,24px); letter-spacing:.2px}
+  p.sub{margin:6px 0 14px; color:var(--muted); font-size:14px}
+
+  .group{margin-top:12px; position:relative; display:grid; gap:6px}
+  label{display:block; font-size:13px; color:var(--muted)}
+
+  input{
+    width:100%; padding:12px 44px 12px 12px; border-radius:12px;
+    border:1px solid var(--edge); background:var(--in-bg); outline:none;
+    color:var(--in-ink); caret-color:var(--in-ink);
+    transition:border .15s, box-shadow .15s, background .15s;
+    color-scheme: light dark; /* tarih/select vb. bileşenler için */
+  }
+  input::placeholder{color:var(--in-ph)}
+  input:focus{ border-color:#84baf6; box-shadow:0 0 0 4px #1279d612; }
+
+  /* Chrome/Safari autofill beyazını override */
+  input:-webkit-autofill{
+    -webkit-text-fill-color: var(--in-ink) !important;
+    -webkit-box-shadow: 0 0 0px 1000px var(--in-bg) inset !important;
+            box-shadow: 0 0 0px 1000px var(--in-bg) inset !important;
+    caret-color: var(--in-ink) !important;
+  }
+
+  .icon{
+    position:absolute; right:10px; top:35px; width:26px; height:26px;
+    color:#6f86a0; display:grid; place-items:center; cursor:pointer;
+    border-radius:8px; background:transparent; border:none;
+  }
+  .icon:hover{ background:#00000010 }
+
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+  .row.between{justify-content:space-between}
+  .help{font-size:13px; color:var(--muted)}
+  .status{min-height:22px; margin-top:10px; font-weight:700}
+  .ok{color:#1a7f37} .err{color:#c62828}
+
+  button{
+    width:100%; padding:12px; border-radius:12px; border:0; cursor:pointer;
+    background:linear-gradient(90deg, var(--pri) 0%, #12a0ff 100%); color:#fff; font-weight:800;
+    box-shadow:0 10px 22px #1279d623; transition:transform .08s ease, box-shadow .15s ease, opacity .15s ease;
+  }
+  button:hover{ transform:translateY(-1px); box-shadow:0 14px 30px #1279d635; }
+  button:disabled{opacity:.65; cursor:progress}
+
+  .ghost{background:#eaf2fd; color:#0a3c6e}
+  a{color:var(--pri-2); text-decoration:none; font-weight:700}
+  .links{display:flex; justify-content:space-between; gap:8px; margin-top:10px; flex-wrap:wrap}
+  .check{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted)}
+  .spinner{width:16px;height:16px;border:2px solid #fff;border-right-color:transparent;border-radius:50%;display:inline-block;vertical-align:middle;animation:spin .7s linear infinite;margin-left:8px}
+
+  .btn-google{
+    background:#fff; color:#202124; border:1px solid var(--edge);
+    display:flex; align-items:center; justify-content:center; gap:10px; margin-top:10px;
+  }
+  .btn-google:hover{ transform:translateY(-1px); box-shadow:0 10px 22px #00000014; }
+  .g-icon{width:18px; height:18px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* === BRAND LOGO === */
+  .logo-wrap{display:flex;justify-content:center;align-items:center;margin:4px 0 14px}
+  .logo-wrap img{max-height:48px; width:auto; object-fit:contain}
+  @media (prefers-color-scheme: dark){
+    .logo-wrap img{filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));}
+  }
+
+  /* küçük ekran iyileştirmeleri */
+  @media (max-width: 420px){
+    .box{padding:18px 14px; border-radius:14px}
+    .icon{top:32px}
+  }
+
+  /* hareket hassasiyeti olan kullanıcılar için animasyon azalt */
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition:none !important}
+  }
+</style>
+</head>
+<body>
+  <div class="box" role="main" aria-labelledby="pageTitle">
+
+    <!-- LOGO -->
+    <div class="logo-wrap">
+      <a href="/" aria-label="Heptapus Group">
+        <!-- <img id="brandLogo" src="/assets/heptapus-logo-light.png" data-dark="/assets/heptapus-logo-dark.png" alt="Heptapus Group"> -->
+        <img src="/assets/heptapus_logo_white.png" alt="Heptapus Group">
+      </a>
     </div>
-    <p id="load">Firebase SDK Loading&hellip;</p>
 
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const loadEl = document.querySelector('#load');
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-        // // The Firebase SDK is initialized and available here!
-        //
-        // firebase.auth().onAuthStateChanged(user => { });
-        // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
-        // firebase.firestore().doc('/foo/bar').get().then(() => { });
-        // firebase.functions().httpsCallable('yourFunction')().then(() => { });
-        // firebase.messaging().requestPermission().then(() => { });
-        // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
-        // firebase.analytics(); // call to activate
-        // firebase.analytics().logEvent('tutorial_completed');
-        // firebase.performance(); // call to activate
-        //
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+    <h2 id="pageTitle">Giriş Yap</h2>
+    <p class="sub">IEEE oda takibi için hesabına gir.</p>
 
-        try {
-          let app = firebase.app();
-          let features = [
-            'auth', 
-            'database', 
-            'firestore',
-            'functions',
-            'messaging', 
-            'storage', 
-            'analytics', 
-            'remoteConfig',
-            'performance',
-          ].filter(feature => typeof app[feature] === 'function');
-          loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`;
-        } catch (e) {
-          console.error(e);
-          loadEl.textContent = 'Error loading the Firebase SDK, check the console.';
-        }
+    <div class="group">
+      <label for="email">E-posta</label>
+      <input id="email" type="email" placeholder="ornek@ogr.ikcu.edu.tr" autocomplete="username" inputmode="email" />
+    </div>
+
+    <div class="group">
+      <label for="pass">Şifre</label>
+      <input id="pass" type="password" placeholder="••••••••" autocomplete="current-password" />
+      <button type="button" id="toggle" class="icon" title="Göster/Gizle" aria-label="Şifreyi göster">👁️</button>
+    </div>
+
+    <div class="row between" style="margin-top:6px">
+      <label class="check"><input id="remember" type="checkbox" /> Beni hatırla</label>
+      <a id="reset" href="#">Şifremi unuttum</a>
+    </div>
+
+    <div class="group">
+      <button id="btn" type="button">Giriş</button>
+      <button id="googleBtn" type="button" class="btn-google" aria-label="Google ile Giriş Yap">
+        <svg class="g-icon" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.5 32.9 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.7 3l5.7-5.7C33.4 6.1 28.9 4 24 4 12.9 4 9.2 8.5 6.3 14.7z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16.2 18.9 14 24 14c3 0 5.7 1.1 7.7 3l5.7-5.7C33.4 6.1 28.9 4 24 4 16.1 4 9.2 8.5 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5.1l-6.2-5.1C29.2 36 26.7 37 24 37c-5.2 0-9.5-3.1-11-7.4l-6.6 5.1C9.2 39.5 16.1 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3C34.8 31.4 29.9 36 24 36c-5.2 0-9.5-3.1-11-7.4l-6.6 5.1C9.2 39.5 16.1 44 24 44c10 0 19-7.3 19-20 0-1.2-.1-2.3-.4-3.5z"/></svg>
+        Google ile Giriş Yap
+      </button>
+    </div>
+
+    <div class="links">
+      <span class="help">Hesabın yok mu?</span>
+      <a href="register.html">Kayıt ol</a>
+    </div>
+
+    <div id="st" class="status" aria-live="polite"></div>
+  </div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script>
+  // === FIREBASE ===
+  const firebaseConfig = {
+    apiKey: "AIzaSyDJtcrJ6Eh4BfZnn0M-4z9QYi_2AS-ikHw",
+    authDomain: "ieee-oda.firebaseapp.com",
+    databaseURL: "https://ieee-oda-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "ieee-oda",
+    storageBucket: "ieee-oda.firebasestorage.app",
+    messagingSenderId: "788998880363",
+    appId: "1:788998880363:web:5eacc71c326cffe7b3452e"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
+  // === UI refs ===
+  const $ = id => document.getElementById(id);
+  const st = $('st'), email=$('email'), pass=$('pass'), btn=$('btn'), gbtn=$('googleBtn');
+
+  // --- SAFE NEXT (tam URL’yi koru, sadece aynı origin ise kabul et) ---
+  const NOW = new URL(location.href);
+  const rawNext = NOW.searchParams.get('next');      // panel.html?auto=... gibi gelebilir
+  const NEXT_FALLBACK = 'panel.html';
+  function sanitizeNext(n) {
+    if (!n) return NEXT_FALLBACK;
+    try {
+      // absolute gelirse origin kontrolü; relative ise OK
+      const u = new URL(n, location.origin);
+      if (u.origin !== location.origin) return NEXT_FALLBACK;
+      return u.pathname + u.search + u.hash;
+    } catch { return NEXT_FALLBACK; }
+  }
+  // sessionStorage ile de yedekle
+  const next = sanitizeNext(rawNext || sessionStorage.getItem('hept_next'));
+  try { sessionStorage.setItem('hept_next', next || NEXT_FALLBACK); } catch {}
+
+  // şifre göster/gizle
+  $('toggle').onclick = ()=>{
+    const v = pass.type === 'password' ? 'text' : 'password';
+    pass.type = v;
+    $('toggle').textContent = v === 'text' ? '🙈' : '👁️';
+  };
+
+  // --- PERSISTENCE ---
+  async function applyPersistence() {
+    const wantLocal = $('remember').checked;
+    const mode = wantLocal ? firebase.auth.Auth.Persistence.LOCAL
+                           : firebase.auth.Auth.Persistence.SESSION;
+    try { await auth.setPersistence(mode); } catch {}
+  }
+  // checkbox değiştiğinde uygula
+  $('remember').addEventListener('change', applyPersistence);
+  // sayfa ilk açıldığında da bir kez uygula
+  applyPersistence();
+
+  function setLoading(on, which='email'){
+    const target = which==='google' ? gbtn : btn;
+    target.disabled = on;
+    target.innerHTML = on
+      ? (which==='google' ? 'Google ile bağlanılıyor <span class="spinner"></span>'
+                          : 'Giriş yapılıyor <span class="spinner"></span>')
+      : (which==='google' ? (gbtn.dataset._t || 'Google ile Giriş Yap') : 'Giriş');
+    if(!target.dataset._t) target.dataset._t = target.textContent;
+  }
+
+  function showError(err){
+    const msg = (err && (err.message||err.code)) || 'Giriş hatası';
+    st.className='status err';
+    if (String(err.code||'').includes('auth/invalid-credential') || String(msg).includes('password')) {
+      st.textContent = 'E-posta veya şifre hatalı.';
+    } else if (String(err.code||'').includes('too-many-requests')) {
+      st.textContent = 'Çok fazla deneme. Biraz bekleyip tekrar deneyin.';
+    } else if (String(err.code||'').includes('user-not-found')) {
+      st.textContent = 'Böyle bir kullanıcı yok. Kayıt olabilirsiniz.';
+    } else if (String(err.code||'').includes('popup-closed-by-user')) {
+      st.textContent = 'Popup kapatıldı. Tekrar deneyin.';
+    } else if (String(err.code||'').includes('operation-not-supported-in-this-environment')) {
+      st.textContent = 'Tarayıcı popup desteklemiyor, yönlendirerek deniyorum.';
+    } else {
+      st.textContent = msg;
+    }
+  }
+
+  // e-posta/şifre ile giriş
+  $('btn').onclick = async ()=>{
+    st.textContent=''; st.className='status';
+    const mail = (email.value||'').trim();
+    const pw   = pass.value||'';
+    if(!mail || !pw){ st.className='status err'; st.textContent='E-posta ve şifre gerekli.'; return; }
+    try{
+      setLoading(true,'email');
+      await applyPersistence();
+      await auth.signInWithEmailAndPassword(mail, pw);
+      // güvenli yönlendirme
+      const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
+      location.replace(nx);
+    }catch(e){ showError(e); }
+    finally{ setLoading(false,'email'); }
+  };
+
+  // şifre sıfırla
+  $('reset').onclick = async (e)=>{
+    e.preventDefault();
+    const mail = (email.value||'').trim();
+    if(!mail){ st.className='status err'; st.textContent='Şifre sıfırlama için e-posta girin.'; return; }
+    try{
+      await auth.sendPasswordResetEmail(mail);
+      st.className='status ok'; st.textContent='Şifre sıfırlama maili gönderildi.';
+    }catch(err){ showError(err); }
+  };
+
+  // Google ile giriş (popup → redirect fallback)
+  async function googleSignIn(){
+    st.textContent=''; st.className='status';
+    try{ await applyPersistence(); }catch{}
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try{
+      setLoading(true,'google');
+      await auth.signInWithPopup(provider);
+      const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
+      location.replace(nx);
+    }catch(e){
+      // popup engellendiyse redirect'e düş
+      if(String(e.code||'').includes('operation-not-supported') ||
+         String(e.code||'').includes('popup-blocked') ||
+         String(e.code||'').includes('popup-closed-by-user')){
+        try{
+          await auth.signInWithRedirect(provider);
+          return;
+        }catch(er){ showError(er); }
+      }else{
+        showError(e);
+      }
+    }finally{
+      setLoading(false,'google');
+    }
+  }
+  $('googleBtn').onclick = googleSignIn;
+
+  // enter tuşu
+  document.addEventListener('keydown', e=>{ if(e.key==='Enter') $('btn').click(); });
+
+  // redirect dönüşünü yakala ve next'e at
+  auth.getRedirectResult()
+    .then(() => {
+      const u = auth.currentUser;
+      if (u && !u.isAnonymous) {
+        const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
+        location.replace(nx);
+      }
+      // anonim kullanıcıyla geldiysek, login ekranında beklesin
+    })
+    .catch(()=>{}); // sessiz geç
+
+  // --- login sayfasında otomatik yönlendirme şartı: anonim OLMAMALI ---
+  auth.onAuthStateChanged(async (u) => {
+    if (!u) return;
+
+    if (u.isAnonymous) {
+      // paneldeki ensureAnon'dan kalmış olabilir; login'de bunu temizle
+      try { await auth.signOut(); } catch {}
+      return; // ekranda kal
+    }
+
+    // gerçek (anonim olmayan) oturum varsa panele geçir
+    const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
+    location.replace(nx);
+  });
+
+    (async () => {
+    try {
+      const u = auth.currentUser || await new Promise(r => {
+        const off = auth.onAuthStateChanged(x => { off(); r(x); });
       });
-    </script>
-  </body>
+      if (u && u.isAnonymous) { await auth.signOut(); }
+    } catch {}
+  })();
+
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(console.error);
+}
+</script>
+
+
+</body>
 </html>
