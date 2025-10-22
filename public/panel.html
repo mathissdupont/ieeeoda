@@ -328,19 +328,31 @@ input[type="number"]{
 
 <button id="installApp" class="btn light">📲 Uygulama olarak yükle</button>
 <script>
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
+let deferredPrompt=null;
+
+// iOS tespiti (Safari/WebView)
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+// Android/Chrome akışı
+window.addEventListener('beforeinstallprompt', (e)=>{
   e.preventDefault();
   deferredPrompt = e;
-  document.getElementById('installApp').style.display = 'inline-block';
+  if (!isIOS && !isStandalone) document.getElementById('installBtn').style.display='inline-block';
 });
 
-document.getElementById('installApp')?.addEventListener('click', async () => {
+document.getElementById('installBtn')?.addEventListener('click', async ()=>{
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
   await deferredPrompt.userChoice;
   deferredPrompt = null;
+  document.getElementById('installBtn').style.display='none';
 });
+
+// iOS için ipucu
+if (isIOS && !isStandalone) {
+  document.getElementById('iosHint').style.display='block';
+}
 </script>
 
   <!-- Header -->
