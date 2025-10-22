@@ -541,7 +541,7 @@ const setStatus=(msg,ok=false)=>{const el=$('status'); el.className=ok?'ok':'mut
 
 /* ==== auth ==== */
 auth.onAuthStateChanged(async u=>{
-  if(!u){ location.replace('login?next='+encodeURIComponent('panel')); return; }
+  if(!u){ location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
   $('mePill').textContent = u.email || u.uid;
   const isAdmin = await db.ref('admins/'+u.uid).get().then(s=>s.exists()&&s.val()===true).catch(()=>false);
   if(!isAdmin){ alert('Admin değilsiniz.'); return; }
@@ -552,7 +552,7 @@ auth.onAuthStateChanged(async u=>{
     $('cash').textContent=`Kasa: ₺${cash.toFixed(2)} (Toplanan ₺${collected.toFixed(2)} / Harcanan ₺${spent.toFixed(2)})`;
   });
 });
-$('logout').onclick=()=>auth.signOut().then(()=>location.replace('login'));
+$('logout').onclick=()=>auth.signOut().then(()=>location.replace('login.html'));
 
 /* ==== open/close dialogs ==== */
 document.querySelectorAll('[data-open]').forEach(b=> b.addEventListener('click', ()=> $(b.dataset.open)?.showModal()));
@@ -880,7 +880,7 @@ async function makeLink(){
   const seed = String(seedSnap.val());
   const nowKey = await computeHourlyKey(seed, new Date());
 
-  const base = $('gateBase').value || (location.origin + '/gate');
+  const base = $('gateBase').value || (location.origin + '/gate.html');
   return `${base}?room=${encodeURIComponent(room)}&key=${encodeURIComponent(nowKey)}`;
 }
 
@@ -894,7 +894,7 @@ async function makeQR(){
   const seed = String(seedSnap.val());
 
   const nowKey = await computeHourlyKey(seed, new Date());
-  const link = `${$('gateBase').value || (location.origin+'/gate')}?room=${encodeURIComponent(room)}&key=${encodeURIComponent(nowKey)}`;
+  const link = `${$('gateBase').value || (location.origin+'/gate.html')}?room=${encodeURIComponent(room)}&key=${encodeURIComponent(nowKey)}`;
 
 
 

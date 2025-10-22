@@ -175,7 +175,7 @@
 
     <div class="links">
       <span class="help">Hesabın yok mu?</span>
-      <a href="register">Kayıt ol</a>
+      <a href="register.html">Kayıt ol</a>
     </div>
 
     <div id="st" class="status" aria-live="polite"></div>
@@ -204,7 +204,7 @@
   // --- SAFE NEXT (tam URL’yi koru, sadece aynı origin ise kabul et) ---
   const NOW = new URL(location.href);
   const rawNext = NOW.searchParams.get('next');      // panel.html?auto=... gibi gelebilir
-  const NEXT_FALLBACK = 'panel';
+  const NEXT_FALLBACK = 'panel.html';
   function sanitizeNext(n) {
     if (!n) return NEXT_FALLBACK;
     try {
