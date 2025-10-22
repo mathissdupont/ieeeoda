@@ -735,7 +735,7 @@ async function requireLogin(){
   const u = await waitAuth();
   if(!u){
     // ÖNCEKİ: login.html?next=panel.html  (parametreleri kaybediyordu)
-    location.replace('login.html?next=' + encodeURIComponent(location.href));
+    location.replace('login?next=' + encodeURIComponent(location.href));
     throw new Error('Oturum yok');
   }
   return u;
@@ -1615,7 +1615,7 @@ function attachDuesTable(uid){
   const u = await waitAuth();
   await ensureDisplayName();
 
-  if(!u){ location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
+  if(!u){ location.replace('login?next='+encodeURIComponent('panel')); return; }
   $('hello').textContent = `Merhaba, ${u.displayName || u.email || u.uid}`;
   $('logout')?.addEventListener('click', ()=> auth.signOut().then(()=>location.replace('login.html')));
   watchMyDuesChanges(u.uid);

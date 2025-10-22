@@ -320,7 +320,7 @@ function makeQR(){
     }
 
     return computeHourlyKey(seed, now).then(function(key){
-      var base = location.origin + '/panel.html?auto=1&room=' + encodeURIComponent(ROOM) + '&key=' + encodeURIComponent(key);
+      var base = location.origin + '/panel?auto=1&room=' + encodeURIComponent(ROOM) + '&key=' + encodeURIComponent(key);
       var linksTxt = [];
       var nh=new Date(); nh.setUTCMinutes(0,0,0); nh.setUTCHours(nh.getUTCHours()+1);
 
@@ -400,7 +400,7 @@ function loadOccupancy(){
 /* ====== auth + loop ====== */
 auth.onAuthStateChanged(function(u){
   if(!u){
-    location.replace('login.html?next='+encodeURIComponent(location.href));
+    location.replace('login?next='+encodeURIComponent(location.href));
     return;
   }
   db.ref('admins/'+u.uid).get().then(function(s){
