@@ -326,34 +326,33 @@ input[type="number"]{
 <div class="wrap">
 
 
-<button id="installApp" class="btn light">📲 Uygulama olarak yükle</button>
+<!-- header’da görünür bir buton -->
+<button id="installBtn" style="display:none">📲 Uygulama olarak yükle</button>
+
 <script>
-let deferredPrompt=null;
+let deferredPrompt = null;
 
-// iOS tespiti (Safari/WebView)
-const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-
-// Android/Chrome akışı
-window.addEventListener('beforeinstallprompt', (e)=>{
-  e.preventDefault();
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();          // tarayıcının mini-barı çıkmasın
   deferredPrompt = e;
-  if (!isIOS && !isStandalone) document.getElementById('installBtn').style.display='inline-block';
+  document.getElementById('installBtn').style.display = 'inline-block';
 });
 
-document.getElementById('installBtn')?.addEventListener('click', async ()=>{
+document.getElementById('installBtn')?.addEventListener('click', async () => {
   if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  await deferredPrompt.userChoice;
+  deferredPrompt.prompt();     // kendi akışın
+  const { outcome } = await deferredPrompt.userChoice;
+  // 'accepted' veya 'dismissed'
   deferredPrompt = null;
-  document.getElementById('installBtn').style.display='none';
+  document.getElementById('installBtn').style.display = 'none';
 });
 
-// iOS için ipucu
-if (isIOS && !isStandalone) {
-  document.getElementById('iosHint').style.display='block';
-}
+window.addEventListener('appinstalled', () => {
+  // kurulum tamamlandı -> butonu gizle
+  document.getElementById('installBtn').style.display = 'none';
+});
 </script>
+
 
   <!-- Header -->
   <div class="top">

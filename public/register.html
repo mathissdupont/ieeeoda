@@ -5,6 +5,16 @@
 <link rel="icon" href="assets/techops.ico" type="image/x-icon" />
 <title>Kayıt Ol — Heptapus Group</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<link rel="manifest" href="/manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js');
+    });
+  }
+</script>
+
 <style>
   :root{
     --ink:#12223a; --muted:#6d7a90; --pri:#0a7cc1; --bg:#f4f7fb; --edge:#d7dfeb; --card:#fff;
