@@ -822,19 +822,43 @@ function attachMyLog(uid){
 }
 
 /* ======================== MANUAL ACTIONS ========================== */
-let writing=false;
-async function writeAttendance(action, extra={}){
-  if(writing) return; writing=true;
-  try{
+let writing = false;
+async function writeAttendance(action, extra = {}) {
+  if (writing) return;
+  writing = true;
+  try {
     const u = await requireLogin();
+
+    // 🔹 kullanıcı adını her kayıt öncesi veritabanından çek
+    let userName = u.displayName || u.email || 'unknown';
+    try {
+      const snap = await db.ref(`users/${u.uid}/displayName`).get();
+      if (snap.exists()) userName = snap.val();
+    } catch (e) {
+      console.warn('displayName fetch error', e);
+    }
+
     const pushId = db.ref().child('attendanceByUser').push().key;
-    const rec = { userId:u.uid, userName:u.displayName||u.email||'unknown', roomId:room, action, createdAt: firebase.database.ServerValue.TIMESTAMP, ua:navigator.userAgent||'', method:'panel', ...extra };
+    const rec = {
+      userId: u.uid,
+      userName, // artık gerçek isim gelecek
+      roomId: room,
+      action,
+      createdAt: firebase.database.ServerValue.TIMESTAMP,
+      ua: navigator.userAgent || '',
+      method: 'panel',
+      ...extra
+    };
+
     const updates = {};
     updates[`/attendanceByUser/${u.uid}/${pushId}`] = rec;
-    updates[`/attendanceByRoom/${room}/${pushId}`]  = rec;
+    updates[`/attendanceByRoom/${room}/${pushId}`] = rec;
     await db.ref().update(updates);
+
     await hydratePresenceAndStats(u.uid);
-  } finally { writing=false; }
+  } finally {
+    writing = false;
+  }
 }
 $('enterBtn')?.addEventListener('click', async ()=>{
   const btn=$('enterBtn'); const old=btn.innerHTML; btn.disabled=true; btn.innerHTML=old+' <span class="spinner"></span>';
