@@ -320,6 +320,14 @@ dialog td{ color: var(--ink); }
 <dialog id="dlg-fin">
   <div class="dlg-head"><span>Finans</span><button class="ghost" data-close>✕</button></div>
   <div class="dlg-body">
+
+    <div class="row" style="gap:6px;margin:6px 0">
+      <button class="ghost" id="fillThisMonth">Bu ayı doldur</button>
+      <button class="ghost" id="fillDefaultAmount">₺100 hızlı doldur</button>
+    </div>
+
+
+
     <div class="row" style="gap:12px; align-items:flex-end; margin-bottom:10px">
       <div>
         <h4 style="margin:0 0 6px">Aylık Aidat Oluştur</h4>
@@ -332,18 +340,40 @@ dialog td{ color: var(--ink); }
         <div class="muted" style="font-size:12px; margin-top:6px">
           E-postalar <code>/users</code> ile eşleştirilir; her kişi için “Aidat {YYYY-MM}” faturası açılır.
         </div>
-
+        <div class="row" style="gap:8px;margin:8px 0">
+        <input id="remMonth" placeholder="YYYY-MM" style="max-width:140px">
+        <button id="remAll" class="ghost">Bu ay tüm ödenmemişleri hatırlat</button>
+      </div>
         <h4 style="margin:10px 0 6px">Aidat Bildirimleri</h4>
         <div class="row" style="gap:8px; margin-bottom:6px">
           <button id="reloadDues" class="ghost">Yenile</button>
           <span class="muted">Kullanıcıların “Aidat Bildir” talepleri. Onay → kasa artar.</span>
         </div>
+
+        <div class="row" style="gap:8px;margin:8px 0">
+          <input id="reqMonth" placeholder="YYYY-MM" style="max-width:140px">
+          <input id="reqAmount" type="number" min="0" step="0.01" placeholder="₺" style="max-width:120px">
+          <input id="reqEmails" placeholder="E-posta(lar), virgülle" style="min-width:280px">
+          <button id="askDues" class="ghost">Aidat İste</button>
+        </div>
+
         <div class="table-wrap" style="margin-bottom:14px">
           <table>
             <thead><tr><th>Zaman</th><th>Kullanıcı</th><th>Dönem</th><th>Tutar</th><th>Durum</th><th>İşlem</th></tr></thead>
             <tbody id="duesTable"><tr><td colspan="6" class="empty">Veri yok</td></tr></tbody>
           </table>
         </div>
+      </div>
+    </div>
+    <!-- Ödeme Ayarları -->
+    <div class="card" style="margin:12px 0">
+      <h4 style="margin:0 0 8px">Ödeme Ayarları (IBAN / Bağlantı)</h4>
+      <div class="row" style="gap:8px; align-items:flex-end">
+        <input id="payBankName" placeholder="Banka & Hesap adı (örn. TechOps Bankası — Hesap: TechOps A.Ş.)" style="min-width:260px">
+        <input id="payIbanInp" placeholder="IBAN (örn. TR33 0006 1005 1978 6457 8413 26)" style="min-width:260px">
+        <input id="payUrlInp" placeholder="Ödeme bağlantısı (opsiyonel)" style="min-width:320px">
+        <button id="savePayInfo">Kaydet</button>
+        <span id="payInfoMsg" class="muted"></span>
       </div>
     </div>
 
@@ -402,6 +432,49 @@ dialog td{ color: var(--ink); }
   </div>
 </dialog>
 
+
+<!-- Payment dialog -->
+<dialog id="payDlg">
+  <div class="dlg-head"><span>Fatura Ödeme</span><button class="ghost" data-close>✕</button></div>
+  <div class="dlg-body" style="display:flex;gap:12px;flex-direction:column">
+    <div style="display:flex;gap:12px;align-items:flex-start">
+      <div style="min-width:260px">
+        <div class="muted">Alıcı / Banka</div>
+        <div id="payBank" style="font-weight:800;margin-bottom:6px">—</div>
+
+        <div class="muted">IBAN</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div id="payIban" style="font-family:monospace;font-weight:800">—</div>
+          <button id="copyIban" class="ghost" style="margin-left:auto">Kopyala</button>
+        </div>
+
+        <div class="muted" style="margin-top:8px">Açıklama</div>
+        <div id="payDesc" style="font-size:13px;word-break:break-all">—</div>
+      </div>
+
+      <div style="flex:1">
+        <div class="muted">Tutar</div>
+        <div id="payAmount" style="font-size:28px;font-weight:900;margin-bottom:8px">—</div>
+
+        <div class="muted">Ödeme bağlantısı</div>
+        <div id="payUrlWrap" style="margin-bottom:8px">
+          <a id="payUrl" target="_blank" rel="noopener noreferrer"></a>
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <button id="gotoBank" class="btn light">Bankaya Git</button>
+          <button id="markPaidNow" class="btn">Ödendi Olarak İşaretle</button>
+        </div>
+
+        <div class="muted" style="margin-top:10px;font-size:13px">
+          Not: Eğer doğrudan banka linki eklenmişse "Bankaya Git" onu açar. Aksi takdirde IBAN'ı kopyalayıp kendi internet bankacılığınızdan gönderim yapabilirsiniz.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="ghost" data-close>Kapat</button></div>
+</dialog>
+
 <!-- Photo preview for feedback (admin) -->
 <dialog id="photoDlg">
   <div class="dlg-head">Fotoğraf Önizleme</div>
@@ -439,6 +512,22 @@ function dtLocalValue(d){
   const pad = n => String(n).padStart(2,'0');
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+
+  // --- Saatlik oda anahtarı üretimi (fallback) ---
+if (typeof computeHourlyKey !== 'function') {
+  async function computeHourlyKey(seed, date){
+    const d = new Date(date);
+    const stamp = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}T${String(d.getUTCHours()).padStart(2,'0')}`;
+    const txt = `${seed}|${stamp}`;
+    const enc = new TextEncoder().encode(txt);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    const hex = [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+    return hex.slice(0, 8).toUpperCase(); // 8 hane yeterli (istersen 6 da yapabilirsin)
+  }
+}
+
+
 // input.value'ya yerel tarih yaz
 function setDtLocal(inputId, date){
   $(inputId).value = dtLocalValue(date);
@@ -497,7 +586,7 @@ function initDatePreset(){
       setDtLocal('endAt',   eDate);
     };
 
-    if (preset.value === 'tommorrow') {
+    if (preset.value === 'today') {
       const d = new Date(); d.setHours(0,0,0,0);
       setCustom(d, now);
     } else if (preset.value === 'yesterday') {
@@ -684,6 +773,18 @@ function renderInventory(rows){
   });
 }
 
+
+$('remAll').onclick = async () => {
+  const m = ($('remMonth').value||'').trim();
+  if(!m) return alert('Ay gir (YYYY-MM)');
+  const snap = await db.ref('invoices').orderByChild('createdAt').limitToLast(5000).get();
+  const rows = Object.values(snap.val()||{}).filter(r => r.status!=='paid' && (r.title||'').includes(m));
+  for(const r of rows){ await sendReminder(r.id); }
+  toast(`Toplu hatırlatma: ${rows.length} fatura`);
+};
+
+
+
 function renderReservations(rows){
   const tb=$('resBody'); tb.innerHTML=''; rows.sort((a,b)=>(a.startAt||0)-(b.startAt||0));
   if(!rows.length){ tb.innerHTML=`<tr><td colspan="7" class="empty">Veri yok</td></tr>`; return; }
@@ -748,11 +849,41 @@ $('csvFeedback').onclick=()=>downloadCSV('feedback.csv',window.__fbRows||[]);
 $('csvInv').onclick=()=>downloadCSV('inventory.csv',window.__invRows||[]);
 $('csvRes').onclick=()=>downloadCSV('reservations.csv',window.__resRows||[]);
 
+
+$('askDues').onclick = async () => {
+  const m = ($('reqMonth').value||'').trim();
+  const amt = parseFloat($('reqAmount').value||'0')||0;
+  const emails = ($('reqEmails').value||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  if(!m || amt<=0 || !emails.length) return alert('Ay, tutar, e-posta');
+
+  const res = {ok:[], miss:[]};
+  for(const mail of emails){
+    const u = await findUserByEmail(mail);
+    if(!u){ res.miss.push(mail); continue; }
+    await db.ref(`duesRequests/${u.uid}/${m}`).set({month:m, amount:amt, createdAt:Date.now(), state:'requested'});
+    res.ok.push(mail);
+  }
+  alert(`İstendi → ${res.ok.length} • Bulunamadı → ${res.miss.length}`);
+};
+
+
+
+
 /* ==== QR ==== */
-function makeLink(){
-  const room=$('roomSelect').value;
-  return `${$('gateBase').value || (location.origin+'/gate.html')}?room=${encodeURIComponent(room)}&key=${encodeURIComponent(window.__roomKey||'')}`;
+async function makeLink(){
+  const room = $('roomSelect').value;
+  if(!room) return '';
+
+  // seed → key
+  const seedSnap = await db.ref('roomKeySeed/'+room).get();
+  if(!seedSnap.exists()){ alert('Bu oda için seed yok.'); return ''; }
+  const seed = String(seedSnap.val());
+  const nowKey = await computeHourlyKey(seed, new Date());
+
+  const base = $('gateBase').value || (location.origin + '/gate.html');
+  return `${base}?room=${encodeURIComponent(room)}&key=${encodeURIComponent(nowKey)}`;
 }
+
 async function makeQR(){
   const room = $('roomSelect').value;
   if(!room) return;
@@ -765,6 +896,10 @@ async function makeQR(){
   const nowKey = await computeHourlyKey(seed, new Date());
   const link = `${$('gateBase').value || (location.origin+'/gate.html')}?room=${encodeURIComponent(room)}&key=${encodeURIComponent(nowKey)}`;
 
+
+
+
+
   $('qrText').textContent = link;
   await QRCode.toCanvas($('qrCanvas'), link, {width:160, margin:1});
 
@@ -775,7 +910,14 @@ async function makeQR(){
 }
 $('makeQR').onclick=makeQR;
 $('downloadQR').onclick=()=>{ const a=document.createElement('a'); a.href=$('qrCanvas').toDataURL('image/png'); a.download=`QR-${$('roomSelect').value}.png`; a.click(); };
-$('openQR').onclick=async()=>{ const link=makeLink(); $('qrLinkTxt').textContent=link; await QRCode.toCanvas($('qrBig'), link, {width:320, margin:1}); $('qrDlg').showModal(); };
+$('openQR').onclick = async () => {
+  const link = await makeLink();
+  if(!link) return;
+  $('qrLinkTxt').textContent = link;
+  await QRCode.toCanvas($('qrBig'), link, {width:320, margin:1});
+  $('qrDlg').showModal();
+};
+
 $('qrClose').onclick=()=>$('qrDlg').close();
 $('qrDownload').onclick=()=>{ const a=document.createElement('a'); a.href=$('qrBig').toDataURL('image/png'); a.download=`QR-${$('roomSelect').value}@2x.png`; a.click(); };
 
@@ -856,22 +998,57 @@ async function loadInvoices(){
   const rows=Object.values(snap.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   const tb=$('invTable'); tb.innerHTML='';
   if(!rows.length){ tb.innerHTML=`<tr><td colspan="6" class="empty">Veri yok</td></tr>`; return; }
-  tb.innerHTML=rows.map(r=>`
-    <tr>
-      <td>${fmt(r.createdAt)}</td>
-      <td>${esc(r.userName||r.userId)}</td>
-      <td>${esc(r.title||'')}</td>
-      <td>${(+r.total||0).toFixed(2)} ₺</td>
-      <td><span class="chip ${r.status||'unpaid'}">${esc(r.status||'unpaid')}</span></td>
-      <td class="row" style="gap:6px">
-        ${r.status!=='paid'?`<button class="ghost" data-paid="${r.id}">Ödendi</button>`:`<button class="ghost" data-unpaid="${r.id}">Geri Al</button>`}
-        <button class="red" data-del="${r.id}">Sil</button>
-      </td>
-    </tr>`).join('');
+
+  tb.innerHTML=rows.map(r=>{
+    const status = r.status || 'unpaid';
+    const btns = status!=='paid'
+      ? `<button class="ghost" data-paid="${r.id}">Ödendi</button>
+         <button class="ghost" data-remind="${r.id}">Hatırlat</button>
+         <button class="ghost" data-pay="${r.id}">Öde</button>`
+      : `<button class="ghost" data-unpaid="${r.id}">Geri Al</button>`;
+    return `
+      <tr>
+        <td>${fmt(r.createdAt)}</td>
+        <td>${esc(r.userName||r.userId)}</td>
+        <td>${esc(r.title||'')}</td>
+        <td>${(+r.total||0).toFixed(2)} ₺</td>
+        <td><span class="chip ${status}">${esc(status)}</span></td>
+        <td class="row" style="gap:6px">
+          ${btns}
+          <button class="red" data-del="${r.id}">Sil</button>
+        </td>
+      </tr>`;
+  }).join('');
+
   tb.querySelectorAll('button[data-paid]').forEach(b=> b.onclick=()=>markInvPaid(b.dataset.paid));
   tb.querySelectorAll('button[data-unpaid]').forEach(b=> b.onclick=()=>markInvUnpaid(b.dataset.unpaid));
   tb.querySelectorAll('button[data-del]').forEach(b=> b.onclick=()=>deleteInvoice(b.dataset.del));
+
+  // hatırlatıcı + öde butonları
+  tb.querySelectorAll('button[data-remind]').forEach(b=> b.onclick=()=>sendReminder(b.dataset.remind));
+  tb.querySelectorAll('button[data-pay]').forEach(b=> b.onclick=()=>openPaymentDialog(b.dataset.pay));
 }
+
+
+
+
+async function sendReminder(invId){
+  const s=await db.ref('invoices/'+invId).get(); if(!s.exists()) return;
+  const inv=s.val(); if(inv.status==='paid') return toast('Zaten ödenmiş');
+  const noteId = db.ref(`userNotifications/${inv.userId}`).push().key;
+  const payload = {
+    id: noteId, type: 'dues_reminder',
+    month: (inv.title||'').replace('Aidat ','') || '',
+    amount: inv.total || 0, invId, createdAt: Date.now()
+  };
+  await db.ref(`userNotifications/${inv.userId}/${noteId}`).set(payload);
+  // sayım için küçük index
+  await db.ref(`duesRemindersIndex/${invId}/${noteId}`).set({createdAt: payload.createdAt});
+  setStatus('Hatırlatma gönderildi', true);
+}
+
+
+
 async function markInvPaid(invId){
   const s=await db.ref('invoices/'+invId).get(); if(!s.exists()) return;
   const inv=s.val(); inv.status='paid'; inv.paidAt=Date.now();
@@ -896,7 +1073,214 @@ async function deleteInvoice(invId){
 
 /* ==== tiles içeriği açıldığında listeleri tazele ==== */
 document.getElementById('dlg-fin')?.addEventListener('close', ()=>{});
-document.querySelector('[data-open="dlg-fin"]')?.addEventListener('click', ()=>{ loadInvoices(); loadDuesPayments(); });
+document.querySelector('[data-open="dlg-fin"]')?.addEventListener('click', ()=>{ loadInvoices(); loadDuesPayments(); loadPaymentSettings(); });
+
+
+$('fillThisMonth').onclick=()=>{
+  const d=new Date(), m=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  $('finMonth').value = m; $('remMonth').value = m; $('reqMonth').value = m;
+};
+$('fillDefaultAmount').onclick=()=>{ $('finDueAmount').value=100; $('reqAmount').value=100; };
+
+
+
+
+// ---- Aidat Kes (güçlü sürüm) ----
+$('makeDues').onclick = async () => {
+  try {
+    const month = ($('finMonth').value || '').trim();         // "YYYY-MM" veya "YYYY-MM-DD"
+    const amount = parseFloat($('finDueAmount').value || '0') || 0;
+    const emails = ($('finEmails').value || '').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+
+    if (!month || amount <= 0 || emails.length === 0) {
+      alert('Ay (YYYY-MM), tutar ve en az bir e-posta girin.');
+      return;
+    }
+
+    const results = {ok:[], miss:[]};
+
+    for (const mail of emails) {
+      // 1) Kullanıcıyı bul
+      const u = await findUserByEmail(mail);
+      if (!u) { results.miss.push({mail, reason:'users altında yok'}); continue; }
+
+      // 2) Fatura kaydı hazırla (kuralların istediği TÜM alanlar)
+      const invRef = db.ref('invoices').push();
+      const inv = {
+        id: invRef.key,
+        userId: u.uid,
+        userName: u.displayName || u.email || u.uid,
+        roomId: $('roomSelect').value || null,
+        title: `Aidat ${month}`,
+        lines: [{ desc: `Aidat ${month}`, qty: 1, unitPrice: +amount }],
+        total: +(+amount).toFixed(2),
+        status: 'unpaid',
+        createdAt: Date.now(),
+        dueAt: new Date(month+'-28T23:59:59').getTime() || null,
+        source: 'dues',
+        sourceId: `dues-${month}`
+      };
+
+      // 3) Yaz (önce invoices, sonra userInvoices — kurallarla uyumlu)
+      await invRef.set(inv);
+      await db.ref(`userInvoices/${u.uid}/${invRef.key}`).set(inv);
+
+      results.ok.push({mail, uid:u.uid, invId:invRef.key});
+    }
+
+    // 4) Özet
+    const msg = [
+      `✔️ Oluşturulan: ${results.ok.length}`,
+      results.ok.slice(0,5).map(r=>`- ${r.mail} → ${r.invId}`).join('\n'),
+      results.miss.length ? `\n⚠️ Atlanan: ${results.miss.length}\n` + results.miss.slice(0,5).map(r=>`- ${r.mail} (${r.reason})`).join('\n') : ''
+    ].join('\n');
+    console.log('Aidat özet:', results);
+    toast('Aidat oluşturma tamamlandı'); 
+    alert(msg);
+
+    // Listeyi güncelle
+    await loadInvoices();
+
+  } catch (e) {
+    console.error('Aidat Kes ERR', e.code || e.name, e.message, e);
+    alert('Aidat keserken hata: ' + (e.code || e.message || e));
+  }
+};
+
+
+// Ödeme modalı için global yardımcıler
+async function getPaymentInfo(){
+  // admin panelinden db'ye ekleyebilirsin: paymentInfo/default => {iban, bankName, paymentUrl}
+  const snap = await db.ref('paymentInfo/default').get();
+  if(!snap.exists()) return {iban:'TRXXXXXXXXXXXX...', bankName:'(Henüz ayarlanmadı)', paymentUrl:''};
+  return snap.val();
+}
+
+async function openPaymentDialog(invId){
+  const s = await db.ref('invoices/'+invId).get(); if(!s.exists()) return alert('Fatura bulunamadı');
+  const inv = s.val();
+
+  // çek default payment info
+  const payInfo = await getPaymentInfo();
+
+  // fill modal
+  $('payBank').textContent = payInfo.bankName || '—';
+  $('payIban').textContent = payInfo.iban || '—';
+  $('payDesc').textContent = inv.title + (inv.lines && inv.lines.length ? ' — ' + (inv.lines.map(l=>l.desc).join(', ')) : '');
+  $('payAmount').textContent = (+(inv.total||0)).toFixed(2) + ' ₺';
+
+  // payment url: öncelik invoice.paymentUrl, sonra paymentInfo.paymentUrl
+  const baseUrl = (inv.paymentUrl || payInfo.paymentUrl || '').trim();
+  let finalUrl = '';
+  if (baseUrl) {
+    const amt = (+(inv.total||0)).toFixed(2);
+    if (baseUrl.includes('{amount}')) {
+      finalUrl = baseUrl.replace('{amount}', amt);
+    } else if (/[?&]amount=$/i.test(baseUrl) || baseUrl.endsWith('=')) {
+      finalUrl = baseUrl + amt;
+    } else {
+      // zaten kendi parametre formatın olabilir; dokunma
+      finalUrl = baseUrl;
+    }
+  }
+
+  if(finalUrl){
+    $('payUrl').textContent = finalUrl;
+    $('payUrl').href = finalUrl;
+    $('payUrlWrap').style.display='block';
+  }else{
+    $('payUrl').textContent = '';
+    $('payUrl').href = '';
+    $('payUrlWrap').style.display='none';
+  }
+
+
+  // bağla butonlar (her açılışta yeniden bağla)
+  $('copyIban').onclick = async () => {
+    const text = payInfo.iban || '';
+    try{
+      await navigator.clipboard.writeText(text);
+      toast('IBAN kopyalandı');
+    }catch(e){
+      // fallback
+      const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); toast('IBAN kopyalandı'); }catch(e2){ alert('Kopyalanamadı — lütfen elle kopyalayın: '+text); }
+      ta.remove();
+    }
+  };
+
+  $('gotoBank').onclick = () => {
+    if(finalUrl) { window.open(finalUrl, '_blank','noopener'); return; }
+    alert('Bu fatura için özel bir ödeme bağlantısı yok. Lütfen IBAN bilgisi ile internet bankacılığınızdan havale/EFT yapın.');
+  };
+
+
+  $('markPaidNow').onclick = async () => {
+    if(!confirm('Bu faturayı ödenmiş olarak işaretlemek istiyor musunuz? (Bu işlem geri alınabilir)')) return;
+    await markInvPaid(invId);
+    $('payDlg').close();
+    toast('Fatura ödendi olarak işaretlendi');
+  };
+
+  $('payDlg').showModal();
+}
+
+// (Varsa) önceden eklediğimiz getPaymentInfo() fonksiyonun varsa bunu EKLEME.
+// Yoksa aşağıdakini ekleyebilirsin:
+/*
+async function getPaymentInfo(){
+  const snap = await db.ref('paymentInfo/default').get();
+  if(!snap.exists()) return {iban:'', bankName:'', paymentUrl:''};
+  return snap.val() || {};
+}
+*/
+
+function normalizeIban(raw){
+  // TR xx xxxx xxxx ... → boşlukları toparla ve 4’lü gruplara ayır
+  const clean = String(raw||'').replace(/\s+/g,'').toUpperCase();
+  return clean.replace(/(.{4})/g,'$1 ').trim();
+}
+
+async function loadPaymentSettings(){
+  try{
+    const v = await getPaymentInfo();
+    $('payBankName').value = v.bankName || '';
+    $('payIbanInp').value  = v.iban || '';
+    $('payUrlInp').value   = v.paymentUrl || '';
+  }catch(e){
+    console.error('loadPaymentSettings ERR', e);
+  }
+}
+
+$('payIbanInp')?.addEventListener('blur', ()=>{
+  $('payIbanInp').value = normalizeIban($('payIbanInp').value);
+});
+
+$('savePayInfo')?.addEventListener('click', async ()=>{
+  try{
+    const payload = {
+      bankName: ($('payBankName').value||'').trim(),
+      iban: normalizeIban($('payIbanInp').value||''),
+      paymentUrl: ($('payUrlInp').value||'').trim()
+    };
+
+    // minicik doğrulama
+    const ibanCompact = payload.iban.replace(/\s/g,'');
+    if(!(ibanCompact.startsWith('TR') && ibanCompact.length>=12)){
+      alert('IBAN doğru görünmüyor. Lütfen kontrol edin.');
+      return;
+    }
+
+    await db.ref('paymentInfo/default').set(payload);
+    $('payInfoMsg').textContent = 'Kaydedildi';
+    setStatus('Ödeme ayarları kaydedildi', true);
+    setTimeout(()=>{$('payInfoMsg').textContent='';}, 1500);
+  }catch(e){
+    console.error('savePayInfo ERR', e);
+    alert('Kaydederken hata: ' + (e.message||e));
+  }
+});
+
 
 /* ==== done ==== */
 </script>

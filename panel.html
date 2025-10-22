@@ -344,6 +344,14 @@ input[type="number"]{
           <li class="muted">Yükleniyor…</li>
         </ul>
       </div>
+
+      <div>
+        <div style="font-weight:800;margin-bottom:8px">Şu An İçeride</div>
+        <div id="dashOccLegend" class="muted">Yükleniyor…</div>
+        <ul id="dashOccList" style="margin:6px 0 0; padding-left:18px">
+          <li class="muted">—</li>
+        </ul>
+      </div>
   </div>
 
 
@@ -384,6 +392,12 @@ input[type="number"]{
       <p>Bugün giriş-çıkış blokları</p>
       <button id="openTime" class="btn light">📈 Aç</button>
     </div>
+    <div class="tile">
+      <h3>Talep Geçmişim</h3>
+      <p>Gönderdiğim eksik/ekipman talepleri</p>
+      <button id="openMyInv" class="btn light">🧰 Aç</button>
+    </div>
+
   </div>
 </div>
 
@@ -566,6 +580,26 @@ input[type="number"]{
   <div class="dlg-foot"><button class="btn light" data-close="timeDlg">Kapat</button></div>
 </dialog>
 
+<dialog id="myInvDlg">
+  <div class="dlg-head">Taleplerim</div>
+  <div class="dlg-body">
+    <div class="seg" style="gap:8px;margin-bottom:8px">
+      <input id="myInvSearch" placeholder="Ara (ürün / not / durum)" style="max-width:300px">
+      <select id="myInvState" style="max-width:180px">
+        <option value="all">Tümü</option>
+        <option value="pending">Beklemede</option>
+        <option value="ordered">Sipariş verildi</option>
+        <option value="done">Tamamlandı</option>
+      </select>
+    </div>
+    <table>
+      <thead><tr><th>Zaman</th><th>Ürün</th><th>Adet</th><th>Not</th><th>Durum</th></tr></thead>
+      <tbody id="myReqRows"><tr><td colspan="5" class="muted">Yükleniyor…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="myInvDlg">Kapat</button></div>
+</dialog>
+
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <!-- Firebase -->
@@ -644,34 +678,6 @@ async function verifyQrKey(roomId, provided){
 }
 
 
-/* URL’den auto/act/key yakala ve doğrulanırsa attendance yaz */
-async function runAutoActionIfAny(){
-  const isAuto = qp('auto');
-  const act = qp('act');
-  const key = qp('key');
-  if(!isAuto || !act || !key) return;
-
-  const ALLOWED = new Set(['enter','exit','break_start','break_end']);
-  if(!ALLOWED.has(act)){
-    opMsg('Geçersiz eylem: '+act, 'err'); return;
-  }
-
-  try{
-    const ok = await verifyQrKey(room, key);
-    if(!ok){ opMsg('QR anahtarı geçersiz veya süresi dolmuş.', 'err'); return; }
-
-    // kullanıcı girişli mi? (requireLogin yönlendirmeyi artık URL’i koruyarak yapıyor)
-    await requireLogin();
-
-    await writeAttendance(act);
-    setPresence(act!=='exit');  // küçük UX: hemen rozeti güncelle
-    opMsg(`✔ ${act} kaydedildi (QR)`, 'ok');
-    toast('QR okundu, işlem kaydedildi ✅', true);
-  }catch(e){
-    console.error(e);
-    opMsg('QR işleminde hata.', 'err');
-  }
-}
 
 
 const $ = id => document.getElementById(id);
@@ -698,29 +704,7 @@ async function requireLogin(){
   return u;
 }
 
-async function computeKey(seed, date){ return takeKey6FromHex(await sha256Hex(seed + hourTokenUTC(date))); }
 
-async function handleAutoFromQR(){
-  try{
-    if(qp('auto')!=='1') return;
-    const act = qp('act');                      // enter | exit | break_start | break_end
-    const key = (qp('key')||'').toUpperCase();
-    const okActs = new Set(['enter','exit','break_start','break_end']);
-    if(!okActs.has(act)){ opMsg('Geçersiz QR aksiyonu','err'); return; }
-
-    const roomId = room; // mevcut değişkeni kullanıyoruz
-    const valid = await verifyQrKey(roomId, key);
-    if(!valid){ opMsg('QR anahtarı geçersiz/timeout','err'); return; }
-
-    const u = await requireLogin();             // login değilse login.html’e yönlendirilir
-    await writeAttendance(act, { method:'qr' }); // kayıt iki indexe de yazılıyor
-    setPresence(act!=='exit');                  // anlık UI
-    opMsg(`QR ile ${act.replace('_',' ')} kaydedildi ✅`, 'ok');
-    toast('Kayıt alındı', true);
-  }catch(e){
-    console.error(e); opMsg('QR işlemi başarısız','err');
-  }
-}
 
 
 // QR-çıkışta geri adımı engellemek için global bayrak
@@ -741,7 +725,7 @@ const room = qp('room') || DEFAULT_ROOM;
 $('roomPill').textContent = `Oda: ${room}`;
 
 /* =========================== UI WIRING ============================ */
-const openers = { openAct:'actDlg', openRes:'resDlg', openSched:'schedDlg', openInv:'invDlg', openLogs:'logsDlg', openInvcs:'invcsDlg', openDues:'duesDlg', openTime:'timeDlg' };
+const openers = { openAct:'actDlg', openRes:'resDlg', openSched:'schedDlg', openInv:'invDlg', openLogs:'logsDlg', openInvcs:'invcsDlg', openDues:'duesDlg', openTime:'timeDlg',openDues:'duesDlg', openTime:'timeDlg', openMyInv:'myInvDlg' };
 Object.entries(openers).forEach(([btnId, dlgId])=>{
   const btn=$(btnId), dlg=$(dlgId);
   if(btn && dlg){ btn.addEventListener('click', ()=> dlg.showModal()); }
@@ -1059,6 +1043,45 @@ $('resSend')?.addEventListener('click', async ()=>{
 
 
 
+/* ======== Bildirim aracı ======== */
+const Notif = {
+  async ensurePerm(){
+    try{
+      if(!('Notification' in window)) return false;
+      if(Notification.permission === 'granted') return true;
+      const p = await Notification.requestPermission();
+      return p === 'granted';
+    }catch{ return false; }
+  },
+  async show(title, body){
+    if(await this.ensurePerm()){
+      try{ new Notification(title, { body }); }catch(_){}
+    } else {
+      toast(`${title}: ${body}`, false); // fallback
+    }
+  }
+};
+// örnek abonelikler (mevcut dinleyicilerine ek)
+function watchMyDuesChanges(uid){
+  const ref = db.ref(`duesPayments/${uid}`);
+  ref.on('child_changed', s=>{
+    const v=s.val()||{};
+    if(v.status === 'approved') Notif.show('Aidat onaylandı', `Dönem: ${v.month} • ${fmtTRY(v.amount)}`);
+    if(v.status === 'rejected') Notif.show('Aidat reddedildi', `Dönem: ${v.month}`);
+  });
+}
+function watchMyReservations(uid){
+  const ref = db.ref(`userReservations/${uid}`).orderByChild('createdAt').limitToLast(50);
+  ref.on('child_changed', s=>{
+    const r=s.val()||{};
+    if(r.status==='approved') Notif.show('Rezervasyon onaylandı', `${r.title||'Rezervasyon'} (${new Date(r.startAt).toLocaleString('tr-TR')})`);
+    if(r.status==='declined') Notif.show('Rezervasyon reddedildi', `${r.title||'Rezervasyon'}`);
+  });
+}
+
+
+
+
 
 /* ========================= DASHBOARD ============================== */
 /* — Yaklaşan 5 rezervasyon + içerideki kişi sayısı/listesi — */
@@ -1193,6 +1216,80 @@ function attachRoomAvailability(roomId){
 }
 
 
+/* ================== INVENTORY REQUEST (KULLANICI) ================== */
+(function(){
+  const cat = $('invCat');
+  const name = $('invName');
+  const qty = $('invQty');
+  const note = $('invNote');
+  const send = $('invSend');
+  const status = $('invStatus');
+
+  if (!send) return;
+
+  // Form doğrulama: alanlar doluysa butonu aç
+  function validate() {
+    const ok =
+      (name.value || '').trim().length >= 2 &&
+      Number.isFinite(parseFloat(qty.value)) &&
+      parseFloat(qty.value) >= 1;
+    send.disabled = !ok;
+  }
+  ['change','input'].forEach(ev=>{
+    cat?.addEventListener(ev, validate);
+    name?.addEventListener(ev, validate);
+    qty?.addEventListener(ev, validate);
+    note?.addEventListener(ev, validate);
+  });
+  validate();
+
+  send.addEventListener('click', async () => {
+    if (send.disabled) return;
+    const old = send.innerHTML;
+    send.disabled = true;
+    send.innerHTML = old + ' <span class="spinner"></span>';
+    status.className = 'statusline muted';
+    status.textContent = 'Gönderiliyor…';
+
+    try{
+      const u = await requireLogin();
+      const roomId = room; // mevcut global
+      const ref = db.ref(`inventoryRequests/${roomId}`).push();
+      const rec = {
+        id: ref.key,
+        roomId,
+        userId: u.uid,
+        userName: u.displayName || u.email || 'unknown',
+        name: (name.value || '').trim(),
+        qty: +(parseFloat(qty.value) || 1),
+        status: 'pending',
+        note: (note.value || '').trim(),
+        category: (cat.value || 'genel'),
+        createdAt: Date.now()
+      };
+
+      // Kuralların .validate setiyle birebir uyumlu
+      await ref.set(rec);
+
+      status.className = 'statusline ok';
+      status.textContent = 'Talep iletildi. (Admin onayını bekliyor)';
+      toast('Talep gönderildi ✅', true);
+
+      // formu sıfırla
+      name.value = ''; qty.value = '1'; note.value = ''; cat.value = 'genel';
+      validate();
+    } catch(e){
+      console.error('inventory send ERR', e);
+      status.className = 'statusline err';
+      status.textContent = (e && e.code === 'PERMISSION_DENIED')
+        ? 'Yetki reddedildi (kuralları kontrol edin).'
+        : 'Gönderilemedi. Bağlantı/yetki hatası.';
+    } finally {
+      send.disabled = false;
+      send.innerHTML = old;
+    }
+  });
+})();
 
 
 
@@ -1290,6 +1387,45 @@ async function processQrAutoOnce(){
   qrHandled = true;
 }
 
+
+/* ======== Kendi envanter taleplerim ======== */
+let __myInvCache = [];
+function renderMyInvTable(){
+  const q = (document.getElementById('myInvSearch').value||'').toLowerCase();
+  const st = (document.getElementById('myInvState').value||'all');
+  const rows = __myInvCache.filter(r=>{
+    const blob = [r.name, r.note, r.status].join(' ').toLowerCase();
+    const ok = (st==='all' || r.status===st);
+    return (!q || blob.includes(q)) && ok;
+  });
+  const tb = document.getElementById('myReqRows');
+  tb.innerHTML = rows.length ? rows.map(r=>`
+    <tr>
+      <td>${fmt(r.createdAt)}</td>
+      <td>${r.name}</td>
+      <td>${r.qty}</td>
+      <td>${r.note||''}</td>
+      <td>${r.status}</td>
+    </tr>`).join('') : `<tr><td colspan="5" class="muted">Kayıt yok</td></tr>`;
+}
+function attachMyInventory(uid, roomId){
+  const ref = db.ref(`inventoryRequests/${roomId}`).orderByChild('userId').equalTo(uid);
+  ref.on('value', s=>{
+    __myInvCache = Object.values(s.val()||{}).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    renderMyInvTable();
+  });
+}
+document.getElementById('openMyInv')?.addEventListener('click', async ()=>{
+  (document.getElementById('myInvDlg')).showModal();
+  const u = await waitAuth();
+  attachMyInventory(u.uid, room);
+});
+document.getElementById('myInvSearch')?.addEventListener('input', renderMyInvTable);
+document.getElementById('myInvState')?.addEventListener('change', renderMyInvTable);
+
+
+
+
 /* ============================ DUES ================================ */
 function ymNow(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
 {
@@ -1318,6 +1454,35 @@ $('duesSend')?.addEventListener('click', async ()=>{
   }catch(e){ console.error(e); $('duesStatus').className='statusline err'; $('duesStatus').textContent='Gönderilemedi (yetki/bağlantı hatası).'; }
   finally{ btn.disabled=false; btn.innerHTML=old; }
 });
+
+/* ======== Görünen ad (displayName) iste ======== */
+async function ensureDisplayName(){
+  try{
+    const u = await waitAuth();
+    const s = await db.ref(`users/${u.uid}`).get();
+    const rec = s.val() || {};
+    const has = !!(rec.displayName || u.displayName);
+    if(has) return;
+
+    // basit prompt (ileride ayrı profil sayfası yapılabilir)
+    const guess = (u.email||'').split('@')[0].replace(/\./g,' ');
+    const dn = prompt('Görünen adını yaz (faturada ve listelerde gözükecek):', guess);
+    if(!dn) return;
+
+    // auth profile update (isteğe bağlı)
+    try{ await u.updateProfile({ displayName: dn }); }catch(_){}
+    // /users kaydına yaz
+    const payload = {
+      email: (rec.email || u.email || ''),
+      displayName: dn,
+      createdAt: rec.createdAt || Date.now()
+    };
+    await db.ref(`users/${u.uid}`).set(payload);
+    toast('Adın kaydedildi ✅', true);
+  }catch(_){}
+}
+
+
 
 /* ======= Fatura (PDF) ========= */
 function hasInvoiced(id){ try{ return JSON.parse(localStorage.getItem('invoices_done')||'{}')[id]; }catch{ return false; } }
@@ -1387,9 +1552,14 @@ function attachDuesTable(uid){
 /* =========================== LIFECYCLE ============================ */
 (async ()=>{
   const u = await waitAuth();
+  await ensureDisplayName();
+
   if(!u){ location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
   $('hello').textContent = `Merhaba, ${u.displayName || u.email || u.uid}`;
   $('logout')?.addEventListener('click', ()=> auth.signOut().then(()=>location.replace('login.html')));
+  watchMyDuesChanges(u.uid);
+  watchMyReservations(u.uid);
+
 
   attachMyLog(u.uid);
   attachReservations(room, u.uid);
@@ -1409,6 +1579,7 @@ function attachDuesTable(uid){
     else if(k==='b'){ $('actDlg')?.showModal(); $('breakStartBtn')?.click(); }
     else if(k==='n'){ $('actDlg')?.showModal(); $('breakEndBtn')?.click(); }
     else if(k==='r'){ $('resDlg')?.showModal(); }
+    else if(k==='?'){ $('helpDlg')?.showModal();}
   });
 
   $('resSend').disabled = true;
@@ -1418,6 +1589,23 @@ function attachDuesTable(uid){
 })();
 }); // safeBoot
 </script>
+<dialog id="helpDlg">
+  <div class="dlg-head">Klavye Kısayolları</div>
+  <div class="dlg-body">
+    <table>
+      <thead><tr><th>Tuş</th><th>İşlem</th></tr></thead>
+      <tbody>
+        <tr><td><code>E</code></td><td>Giriş</td></tr>
+        <tr><td><code>X</code></td><td>Çıkış (yorum diyalogu)</td></tr>
+        <tr><td><code>B</code></td><td>Mola Başlat</td></tr>
+        <tr><td><code>N</code></td><td>Mola Bitir</td></tr>
+        <tr><td><code>R</code></td><td>Rezervasyon formu</td></tr>
+        <tr><td><code>?</code></td><td>Bu pencere</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="dlg-foot"><button class="btn light" data-close="helpDlg">Kapat</button></div>
+</dialog>
 
 </body>
 </html>
