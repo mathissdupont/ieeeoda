@@ -178,7 +178,6 @@ dialog td{ color: var(--ink); }
 
 
 </style>
-<style>body{display:none}</style>
 
 
 </head>
@@ -564,47 +563,48 @@ const auth=firebase.auth(), db=firebase.database();
 /* ==== ADMIN GATE ==== */
 (async function adminGate(){
   try{
-    // 1) İlk auth durumunu bekle (user olabilir veya null olabilir)
-    const u = await new Promise(resolve => {
-      const unsub = firebase.auth().onAuthStateChanged(user => {
-        unsub();               // ilk state'i alır almaz çöz
-        resolve(user);         // user null olabilir
-      });
+    // 1) İlk auth state (user veya null)
+    const user = await new Promise(resolve => {
+      const off = firebase.auth().onAuthStateChanged(u => { off(); resolve(u || null); });
     });
+    console.log('[gate] user =', user?.uid || null);
 
-    // 2) Login yoksa → login.html'e
-    if (!u) {
+    // 2) Login yok → login.html
+    if (!user) {
+      console.warn('[gate] not logged in → redirect login');
       location.replace('login.html?next=' + encodeURIComponent(location.href));
       return;
     }
 
-    // 3) Admin kontrolü: önce custom claim, sonra RTDB /admins/<uid>
+    // 3) Admin kontrolü: claim → RTDB fallback
     let isAdmin = false;
-    try{
-      const tok = await u.getIdTokenResult(true);
+    try {
+      const tok = await user.getIdTokenResult(true);
       isAdmin = !!tok?.claims?.admin;
-    }catch(_){}
+      console.log('[gate] claim admin =', isAdmin);
+    } catch(e) { console.warn('[gate] claim read err', e); }
 
     if (!isAdmin) {
-      try{
-        const s = await firebase.database().ref('admins/' + u.uid).get();
+      try {
+        const s = await firebase.database().ref('admins/' + user.uid).get();
         isAdmin = s.exists() && (s.val() === true || s.val() === 'true' || s.val() === 1);
-      }catch(_){}
+        console.log('[gate] rtdb admin =', isAdmin);
+      } catch(e) { console.warn('[gate] rtdb read err', e); }
     }
 
-    // 4) Sonuç
     if (!isAdmin) {
-      // admin değilse login'e dön (istersen / koyabilirsin)
-      location.replace('login.html?next=' + encodeURIComponent(location.href));
+      console.warn('[gate] not admin → redirect /');
+      location.replace('/');
       return;
     }
 
-    // 5) Admin → sayfayı aç
+    // 4) Admin → sayfayı aç
     window.__ADMIN__ = true;
-    document.body.style.display = '';
-  }catch(e){
-    console.error('adminGate error', e);
-    // Güvenli fallback
+    document.body.style.display = ''; // (body gizli değilse zaten görünür)
+    console.log('[gate] OPEN');
+  } catch (e) {
+    console.error('[gate] fatal', e);
+    // Güvenli fallback: login’e dön
     location.replace('login.html?next=' + encodeURIComponent(location.href));
   }
 })();
