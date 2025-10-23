@@ -564,47 +564,50 @@ const auth=firebase.auth(), db=firebase.database();
 /* ==== ADMIN GATE ==== */
 (async function adminGate(){
   try{
-    // 1) Kullanıcı nesnesi gelene kadar BEKLE (null'da resolve etme)
+    // 1) İlk auth durumunu bekle (user olabilir veya null olabilir)
     const u = await new Promise(resolve => {
       const unsub = firebase.auth().onAuthStateChanged(user => {
-        if (user) { unsub(); resolve(user); }
+        unsub();               // ilk state'i alır almaz çöz
+        resolve(user);         // user null olabilir
       });
     });
 
-    // 2) Admin kontrolü: önce custom claim, sonra RTDB /admins/<uid>
-    let isAdmin = false;
-    try {
-      const tok = await u.getIdTokenResult(true);
-      isAdmin = !!(tok && tok.claims && tok.claims.admin);
-    } catch(e) {
-      console.debug('claims oku hata', e);
+    // 2) Login yoksa → login.html'e
+    if (!u) {
+      location.replace('login.html?next=' + encodeURIComponent(location.href));
+      return;
     }
+
+    // 3) Admin kontrolü: önce custom claim, sonra RTDB /admins/<uid>
+    let isAdmin = false;
+    try{
+      const tok = await u.getIdTokenResult(true);
+      isAdmin = !!tok?.claims?.admin;
+    }catch(_){}
 
     if (!isAdmin) {
       try{
         const s = await firebase.database().ref('admins/' + u.uid).get();
         isAdmin = s.exists() && (s.val() === true || s.val() === 'true' || s.val() === 1);
-      } catch(e) {
-        console.debug('admins/<uid> oku hata', e);
-      }
+      }catch(_){}
     }
 
+    // 4) Sonuç
     if (!isAdmin) {
-      // Admin değil → login'e gönder (veya 403 sayfan varsa oraya)
+      // admin değilse login'e dön (istersen / koyabilirsin)
       location.replace('login.html?next=' + encodeURIComponent(location.href));
       return;
     }
 
-    // 3) ADMIN → sayfayı göster
+    // 5) Admin → sayfayı aç
     window.__ADMIN__ = true;
     document.body.style.display = '';
-  } catch (e) {
-    console.error('adminGate hata:', e);
-    // Güvenli varsayılan: login'e at
+  }catch(e){
+    console.error('adminGate error', e);
+    // Güvenli fallback
     location.replace('login.html?next=' + encodeURIComponent(location.href));
   }
 })();
-
 
 /* ==== helpers ==== */
 
