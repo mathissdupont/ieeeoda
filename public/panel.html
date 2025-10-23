@@ -367,6 +367,7 @@ window.addEventListener('appinstalled', () => {
     </div>
     <div class="right" style="display:flex;align-items:center;gap:10px">
       <div class="muted" id="hello"></div>
+      <a id="adminBtn" href="ieeetechops.com/admin.html" class="btn" style="display:none">🛡️ Admin Paneli</a>
       <button id="logout" class="btn secondary">Çıkış</button>
     </div>
   </div>
@@ -433,6 +434,13 @@ window.addEventListener('appinstalled', () => {
       <p>Gönderdiğim eksik/ekipman talepleri</p>
       <button id="openMyInv" class="btn light">🧰 Aç</button>
     </div>
+    <div class="tile" id="adminTile" style="display:none">
+      <h3>Admin</h3>
+      <p>Oda, rezervasyon ve talepleri yönet</p>
+      <a class="btn" href="/admin">🛡️ Admin Paneli</a>
+    </div>
+
+
 
   </div>
 </div>
@@ -676,6 +684,26 @@ const db   = firebase.database();
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
 
 /* ============================ HELPERS ============================= */
+
+async function isAdmin(uid){
+  try{
+    const s = await db.ref('admins/'+uid).get();
+    return s.exists() && s.val() === true;
+  }catch(e){
+    // rules gereği non-admin için PERMISSION_DENIED gelebilir; bu normal.
+    return false;
+  }
+}
+function showIfAdmin(flag){
+  const btn  = document.getElementById('adminBtn');
+  const tile = document.getElementById('adminTile');
+  if (btn)  btn.style.display  = flag ? 'inline-flex' : 'none';
+  if (tile) tile.style.display = flag ? '' : 'none';
+  if (flag) document.body.dataset.role = 'admin';
+}
+
+
+
 
 function hourTokenUTC(d=new Date()){
   const y=d.getUTCFullYear();
@@ -1612,6 +1640,9 @@ function attachDuesTable(uid){
 /* =========================== LIFECYCLE ============================ */
 (async ()=>{
   const u = await waitAuth();
+  const amIAdmin = await isAdmin(u.uid);
+  showIfAdmin(amIAdmin);
+
   await ensureDisplayName();
 
   if(!u){ location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
