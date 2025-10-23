@@ -731,8 +731,7 @@ const setStatus=(msg,ok=false)=>{const el=$('status'); el.className=ok?'ok':'mut
 
 /* ==== auth ==== */
 auth.onAuthStateChanged(async u=>{
-  if(!u) return;                     // gate login'e attı
-  if(!window.__ADMIN__) return;      // gate admin değilse çoktan yönlendirdi
+  if(!u) return;                     // gate login'e attı    
   $('mePill').textContent = u.email || u.uid;
 
   // normal yüklemelere devam:
