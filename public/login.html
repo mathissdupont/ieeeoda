@@ -345,6 +345,7 @@
       try { await auth.signOut(); } catch {}
       return; // ekranda kal
     }
+    //düzeltme commiti
 
     // gerçek (anonim olmayan) oturum varsa panele geçir
     const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
