@@ -564,46 +564,44 @@ const auth=firebase.auth(), db=firebase.database();
 /* ==== ADMIN GATE ==== */
 (async function adminGate(){
   try{
-    // 1) Oturum bekle
-    const u = await new Promise(res => {
-      const cur = firebase.auth().currentUser;
-      if (cur) return res(cur);
-      firebase.auth().onAuthStateChanged(res);
+    // 1) Kullanıcı nesnesi gelene kadar BEKLE (null'da resolve etme)
+    const u = await new Promise(resolve => {
+      const unsub = firebase.auth().onAuthStateChanged(user => {
+        if (user) { unsub(); resolve(user); }
+      });
     });
 
-    // oturum yoksa login'e
-    if (!u) {
-      location.replace('login.html?next=' + encodeURIComponent(location.href));
-      return;
-    }
-
-    // 2) Admin kontrolü: önce custom claim, olmazsa RTDB /admins/<uid>
+    // 2) Admin kontrolü: önce custom claim, sonra RTDB /admins/<uid>
     let isAdmin = false;
-    try{
+    try {
       const tok = await u.getIdTokenResult(true);
-      isAdmin = !!tok?.claims?.admin;
-    }catch(_){}
+      isAdmin = !!(tok && tok.claims && tok.claims.admin);
+    } catch(e) {
+      console.debug('claims oku hata', e);
+    }
 
     if (!isAdmin) {
       try{
         const s = await firebase.database().ref('admins/' + u.uid).get();
         isAdmin = s.exists() && (s.val() === true || s.val() === 'true' || s.val() === 1);
-      }catch(_){}
+      } catch(e) {
+        console.debug('admins/<uid> oku hata', e);
+      }
     }
 
-    // 3) Sonuç
     if (!isAdmin) {
-      // admin değilse anasayfaya veya panel’e at
-      location.replace('/');
+      // Admin değil → login'e gönder (veya 403 sayfan varsa oraya)
+      location.replace('login.html?next=' + encodeURIComponent(location.href));
       return;
     }
 
-    // ADMIN → sayfayı göster ve devam et
-    document.body.style.display = '';
+    // 3) ADMIN → sayfayı göster
     window.__ADMIN__ = true;
-  }catch(e){
-    // Her ihtimale karşı güvenli varsayılan: gizli tut ve yönlendir
-    location.replace('/');
+    document.body.style.display = '';
+  } catch (e) {
+    console.error('adminGate hata:', e);
+    // Güvenli varsayılan: login'e at
+    location.replace('login.html?next=' + encodeURIComponent(location.href));
   }
 })();
 
