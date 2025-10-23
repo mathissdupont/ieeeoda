@@ -567,11 +567,10 @@ const auth=firebase.auth(), db=firebase.database();
     const user = await new Promise(resolve => {
       const off = firebase.auth().onAuthStateChanged(u => { off(); resolve(u || null); });
     });
-    console.log('[gate] user =', user?.uid || null);
+
 
     // 2) Login yok → login.html
     if (!user) {
-      console.warn('[gate] not logged in → redirect login');
       location.replace('login.html?next=' + encodeURIComponent(location.href));
       return;
     }
@@ -581,7 +580,6 @@ const auth=firebase.auth(), db=firebase.database();
     try {
       const tok = await user.getIdTokenResult(true);
       isAdmin = !!tok?.claims?.admin;
-      console.log('[gate] claim admin =', isAdmin);
     } catch(e) { console.warn('[gate] claim read err', e); }
 
     if (!isAdmin) {
@@ -861,6 +859,20 @@ function getRange(){
   }
   return { start, end };
 }
+
+// BUNU ÜSTE KOY (makeQR çağrılmadan önce)
+if (typeof window.computeHourlyKey !== 'function') {
+  window.computeHourlyKey = async function(seed, date){
+    const d = new Date(date);
+    const stamp = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}T${String(d.getUTCHours()).padStart(2,'0')}`;
+    const txt = `${seed}|${stamp}`;
+    const enc = new TextEncoder().encode(txt);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    const hex = [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+    return hex.slice(0, 8).toUpperCase();
+  };
+}
+
 
 
 
