@@ -178,6 +178,9 @@ dialog td{ color: var(--ink); }
 
 
 </style>
+<style>body{display:none}</style>
+
+
 </head>
 <body>
 
@@ -557,6 +560,54 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth(), db=firebase.database();
 
+
+/* ==== ADMIN GATE ==== */
+(async function adminGate(){
+  try{
+    // 1) Oturum bekle
+    const u = await new Promise(res => {
+      const cur = firebase.auth().currentUser;
+      if (cur) return res(cur);
+      firebase.auth().onAuthStateChanged(res);
+    });
+
+    // oturum yoksa login'e
+    if (!u) {
+      location.replace('login.html?next=' + encodeURIComponent(location.href));
+      return;
+    }
+
+    // 2) Admin kontrolü: önce custom claim, olmazsa RTDB /admins/<uid>
+    let isAdmin = false;
+    try{
+      const tok = await u.getIdTokenResult(true);
+      isAdmin = !!tok?.claims?.admin;
+    }catch(_){}
+
+    if (!isAdmin) {
+      try{
+        const s = await firebase.database().ref('admins/' + u.uid).get();
+        isAdmin = s.exists() && (s.val() === true || s.val() === 'true' || s.val() === 1);
+      }catch(_){}
+    }
+
+    // 3) Sonuç
+    if (!isAdmin) {
+      // admin değilse anasayfaya veya panel’e at
+      location.replace('/');
+      return;
+    }
+
+    // ADMIN → sayfayı göster ve devam et
+    document.body.style.display = '';
+    window.__ADMIN__ = true;
+  }catch(e){
+    // Her ihtimale karşı güvenli varsayılan: gizli tut ve yönlendir
+    location.replace('/');
+  }
+})();
+
+
 /* ==== helpers ==== */
 
 function dtLocalValue(d){
@@ -679,17 +730,21 @@ const setStatus=(msg,ok=false)=>{const el=$('status'); el.className=ok?'ok':'mut
 
 /* ==== auth ==== */
 auth.onAuthStateChanged(async u=>{
-  if(!u){ location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
+  if(!u) return;                     // gate login'e attı
+  if(!window.__ADMIN__) return;      // gate admin değilse çoktan yönlendirdi
   $('mePill').textContent = u.email || u.uid;
-  const isAdmin = await db.ref('admins/'+u.uid).get().then(s=>s.exists()&&s.val()===true).catch(()=>false);
-  if(!isAdmin){ alert('Admin değilsiniz.'); return; }
-  initDatePreset(); await loadRooms();
+
+  // normal yüklemelere devam:
+  initDatePreset();
+  await loadRooms();
   db.ref('fundTotals').on('value', s=>{
-    const v=s.val()||{}; const collected=+(v.collected||0), spent=+(v.spent||0);
+    const v=s.val()||{};
+    const collected=+(v.collected||0), spent=+(v.spent||0);
     const cash=+(collected-spent).toFixed(2);
     $('cash').textContent=`Kasa: ₺${cash.toFixed(2)} (Toplanan ₺${collected.toFixed(2)} / Harcanan ₺${spent.toFixed(2)})`;
   });
 });
+
 $('logout').onclick=()=>auth.signOut().then(()=>location.replace('login.html'));
 
 /* ==== open/close dialogs ==== */
