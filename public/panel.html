@@ -693,6 +693,9 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.database();
 
+const ADMIN_URL = '/admin.html'; // gerekirse '/admin' yap
+
+
 
 
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
@@ -736,10 +739,23 @@ async function isAdmin(uid){
 function showIfAdmin(flag){
   const btn  = document.getElementById('adminBtn');
   const tile = document.getElementById('adminTile');
-  if (btn)  btn.style.display  = flag ? 'inline-flex' : 'none';
+
+  if (btn){
+    btn.href = ADMIN_URL;                 // tek noktadan URL
+    btn.style.display = flag ? 'inline-flex' : 'none';
+  }
   if (tile) tile.style.display = flag ? '' : 'none';
-  if (flag) document.body.dataset.role = 'admin';
+
+  if (flag){
+    document.body.dataset.role = 'admin';
+
+    // URL parametresiyle otomatik yönlendir (örn. ?admin=1 veya ?goto=admin)
+    if (qp('admin') === '1' || qp('goto') === 'admin'){
+      location.replace(ADMIN_URL);
+    }
+  }
 }
+
 
 
 
