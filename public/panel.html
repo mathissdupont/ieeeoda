@@ -686,14 +686,39 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
 /* ============================ HELPERS ============================= */
 
 async function isAdmin(uid){
+  // 1) Custom claim (en güvenlisi, kurallardan bağımsız)
+  try{
+    const tok = await auth.currentUser.getIdTokenResult(true);
+    if (tok?.claims?.admin === true){
+      console.log('[admin] source=claims -> true');
+      return true;
+    }
+    console.log('[admin] claims admin?', tok?.claims?.admin);
+  }catch(e){ console.warn('[admin] claims read error', e); }
+
+  // 2) RTDB: /admins/<uid>  === true
   try{
     const s = await db.ref('admins/'+uid).get();
-    return s.exists() && s.val() === true;
-  }catch(e){
-    // rules gereği non-admin için PERMISSION_DENIED gelebilir; bu normal.
-    return false;
-  }
+    if (s.exists() && (s.val() === true || s.val() === 'true' || s.val() === 1)){
+      console.log('[admin] source=/admins/<uid> -> true');
+      return true;
+    }
+    console.log('[admin] /admins/<uid> val =', s.val());
+  }catch(e){ console.warn('[admin] /admins read error', e?.code || e); }
+
+  // 3) RTDB: /users/<uid>/isAdmin === true
+  try{
+    const s2 = await db.ref('users/'+uid+'/isAdmin').get();
+    if (s2.exists() && !!s2.val()){
+      console.log('[admin] source=/users/<uid>/isAdmin -> true');
+      return true;
+    }
+    console.log('[admin] /users/<uid>/isAdmin val =', s2.val());
+  }catch(e){ console.warn('[admin] /users isAdmin read error', e?.code || e); }
+
+  return false;
 }
+
 function showIfAdmin(flag){
   const btn  = document.getElementById('adminBtn');
   const tile = document.getElementById('adminTile');
