@@ -1,10 +1,8 @@
-
-# temiz URL -> gerçek dosya (adres DEĞİŞMEDEN içerik gelir, 200 rewrite)
- /gate      /gate.html      200
- /login     /login.html     200
- /panel     /panel.html     200
- /admin     /admin.html     200
- /account   /account.html   200
- /kiosk     /kiosk.html     200
- /docs      /docs.html      200
- /api       /api.html       200
+/gate    /gate.html    200
+/login   /login.html   200
+/panel   /panel.html   200
+/admin   /admin.html   200
+/account /account.html 200
+/kiosk   /kiosk.html   200
+/docs    /docs.html    200
+/api     /api.html     200
