@@ -342,29 +342,6 @@ input[type="number"]{
 <div class="wrap">
 
 
-<script>
-let deferredPrompt = null;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();          // tarayıcının mini-barı çıkmasın
-  deferredPrompt = e;
-  document.getElementById('installBtn').style.display = 'inline-block';
-});
-
-document.getElementById('installBtn')?.addEventListener('click', async () => {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();     // kendi akışın
-  const { outcome } = await deferredPrompt.userChoice;
-  // 'accepted' veya 'dismissed'
-  deferredPrompt = null;
-  document.getElementById('installBtn').style.display = 'none';
-});
-
-window.addEventListener('appinstalled', () => {
-  // kurulum tamamlandı -> butonu gizle
-  document.getElementById('installBtn').style.display = 'none';
-});
-</script>
 
 
   <!-- Header -->
@@ -380,6 +357,29 @@ window.addEventListener('appinstalled', () => {
     </div>
     <div class="right" style="display:flex;align-items:center;gap:10px">
       <button id="installBtn" class="btn ghost" style="display:none">➕ Uygulamayı Yükle</button>
+      <script>
+        let deferredPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();          // tarayıcının mini-barı çıkmasın
+          deferredPrompt = e;
+          document.getElementById('installBtn').style.display = 'inline-block';
+        });
+
+        document.getElementById('installBtn')?.addEventListener('click', async () => {
+          if (!deferredPrompt) return;
+          deferredPrompt.prompt();     // kendi akışın
+          const { outcome } = await deferredPrompt.userChoice;
+          // 'accepted' veya 'dismissed'
+          deferredPrompt = null;
+          document.getElementById('installBtn').style.display = 'none';
+        });
+
+        window.addEventListener('appinstalled', () => {
+          // kurulum tamamlandı -> butonu gizle
+          document.getElementById('installBtn').style.display = 'none';
+        });
+        </script>
       <div class="muted" id="hello"></div>
       <a id="adminBtn" href="ieeetechops.com/admin.html" class="btn" style="display:none">🛡️ Admin Paneli</a>
       <button id="logout" class="btn secondary">Çıkış</button>
