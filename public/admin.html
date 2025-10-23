@@ -186,10 +186,14 @@ dialog td{ color: var(--ink); }
   <div class="brand"><span class="badge"></span><span>TechOps • Admin Panel</span></div>
   <span id="mePill" class="pill">—</span>
   <div class="right">
+  
+
+
     <span class="mini" title="Yaklaşık doluluk (24s)">
       <span id="occupy">Doluluk: —</span>
       <span class="bar"><i style="width:40%"></i></span>
     </span>
+    <span id="staleBadge" class="pill" style="display:none">⚠️ 0 açık</span>
     <span id="cash" class="pill">Kasa: —</span>
     <button id="logout" class="ghost">Çıkış</button>
   </div>
@@ -237,6 +241,12 @@ dialog td{ color: var(--ink); }
     <div class="tile"><h3>Rezervasyonlar</h3><p>Onayla / reddet / sil</p><button class="btn light" data-open="dlg-res">📅 Aç</button></div>
     <div class="tile"><h3>Admin Yönetimi</h3><p>E-posta ile admin ver/kaldır</p><button class="btn light" data-open="dlg-admin">🛡️ Aç</button></div>
     <div class="tile"><h3>Finans</h3><p>Faturalar & Aidat bildirimleri</p><button class="btn light" data-open="dlg-fin">💰 Aç</button></div>
+    <div class="tile">
+      <h3>İçeride Unutulanlar</h3>
+      <p>24 saati geçen açık oturumlar</p>
+      <button class="btn light" data-open="dlg-stale">⏰ Aç</button>
+    </div>
+
   </section>
 
 </div>
@@ -496,6 +506,35 @@ dialog td{ color: var(--ink); }
   <div class="dlg-foot"><button id="photoClose" class="ghost">Kapat</button></div>
 </dialog>
 
+<!-- Stale (24h+) inside list -->
+<dialog id="dlg-stale">
+  <div class="dlg-head">
+    <span>İçeride Unutulanlar (24s+)</span>
+    <button class="ghost" data-close>✕</button>
+  </div>
+  <div class="dlg-body">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Kullanıcı</th>
+            <th>Odaya Giriş</th>
+            <th>Geçen Süre</th>
+            <th>Son Kayıt</th>
+            <th>İşlem</th>
+          </tr>
+        </thead>
+        <tbody id="staleBody">
+          <tr><td colspan="5" class="empty">Kontrol ediliyor…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="ghost" data-close>Kapat</button></div>
+</dialog>
+
+
+
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <!-- libs -->
@@ -540,6 +579,93 @@ if (typeof computeHourlyKey !== 'function') {
 }
 
 
+
+
+/* ==== 24h+ içeride kalanlar ==== */
+function durFmt(ms){
+  const s = Math.max(0, Math.floor(ms/1000));
+  const h = Math.floor(s/3600);
+  const m = Math.floor((s%3600)/60);
+  return `${h} sa ${String(m).padStart(2,'0')} dk`;
+}
+
+async function findStaleInside(room){
+  // son 7 gün yeterli (daha eski girişler pratikte yok varsayımı);
+  // istersen 30 güne çıkarabilirsin.
+  const since = Date.now() - 7*24*3600e3;
+  const snap = await db.ref('attendanceByRoom/'+room)
+    .orderByChild('createdAt').startAt(since).get();
+
+  const rows = Object.values(snap.val()||{})
+    .sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+
+  // her kullanıcı için son state’i takip et
+  const last = new Map(); // uid -> {action, ts, name}
+  rows.forEach(r=>{
+    if(!r.userId) return;
+    last.set(r.userId, { action:r.action, ts:r.createdAt||0, name:(r.userName||r.userId) });
+  });
+
+  const now = Date.now(), out = [];
+  for(const [uid, info] of last.entries()){
+    if(info.action === 'enter'){
+      const age = now - info.ts;
+      if(age >= 24*3600e3){
+        out.push({
+          userId: uid,
+          userName: info.name,
+          enterAt: info.ts,
+          ageMs: age,
+          lastAction: 'enter',
+          lastAt: info.ts
+        });
+      }
+    }
+  }
+  // en eski başa
+  out.sort((a,b)=>a.enterAt - b.enterAt);
+  return out;
+}
+
+function renderStaleList(list){
+  const tb = $('staleBody');
+  tb.innerHTML = '';
+  if(!list.length){
+    tb.innerHTML = `<tr><td colspan="5" class="empty">24 saati aşan açık oturum yok</td></tr>`;
+    return;
+  }
+  tb.innerHTML = list.map(r=>`
+    <tr data-uid="${r.userId}">
+      <td>${esc(r.userName)}</td>
+      <td>${fmt(r.enterAt)}</td>
+      <td>${durFmt(r.ageMs)}</td>
+      <td>${esc(r.lastAction)} @ ${fmt(r.lastAt)}</td>
+      <td><button class="ghost btn-force-exit" data-uid="${r.userId}">Çıkış Ver</button></td>
+    </tr>
+  `).join('');
+
+  // butonları bağla
+  tb.querySelectorAll('.btn-force-exit').forEach(b=>{
+    b.onclick = async () => {
+      const uid = b.dataset.uid, room = $('roomSelect').value;
+      if(!uid || !room) return;
+      if(!confirm('Bu kullanıcı için “çıkış” kaydı oluşturalım mı?')) return;
+      try{
+        await forceExitForUser(room, uid);
+        toast('Çıkış verildi');
+        // listeyi tazele
+        const fresh = await findStaleInside(room);
+        renderStaleList(fresh);
+      }catch(e){
+        console.error(e);
+        alert('Çıkış verilemedi: ' + (e.message||e));
+      }
+    };
+  });
+}
+
+
+
 // input.value'ya yerel tarih yaz
 function setDtLocal(inputId, date){
   $(inputId).value = dtLocalValue(date);
@@ -570,6 +696,14 @@ $('logout').onclick=()=>auth.signOut().then(()=>location.replace('login.html'));
 document.querySelectorAll('[data-open]').forEach(b=> b.addEventListener('click', ()=> $(b.dataset.open)?.showModal()));
 document.querySelectorAll('dialog [data-close]').forEach(b=> b.addEventListener('click', ()=> b.closest('dialog')?.close()));
 $('openQRmgr').onclick=()=> $('dlg-qr').showModal();
+// dialog açıldığında yükle (stale list)
+document.querySelector('[data-open="dlg-stale"]')?.addEventListener('click', async ()=>{
+  const room = $('roomSelect').value;
+  renderStaleList([]); // temizle
+  const list = await findStaleInside(room);
+  renderStaleList(list);
+});
+
 
 /* ==== rooms / filters ==== */
 async function loadRooms(){
@@ -627,6 +761,34 @@ function initDatePreset(){
 
 
 
+async function forceExitForUser(room, userId){
+  // Önce son görünen adını almaya çalışalım (nice-to-have)
+  let userName = userId;
+  try{
+    const s = await db.ref('users/'+userId+'/displayName').get();
+    if(s.exists()) userName = s.val();
+  }catch(_){}
+
+  const pushId = db.ref().child('attendanceByRoom').push().key;
+  const rec = {
+    id: pushId,
+    userId,
+    userName,
+    roomId: room,
+    action: 'exit',
+    createdAt: firebase.database.ServerValue.TIMESTAMP,
+    method: 'admin',
+    forcedBy: (auth.currentUser?.uid || 'admin')
+  };
+
+  const updates = {};
+  updates[`/attendanceByUser/${userId}/${pushId}`] = rec;
+  updates[`/attendanceByRoom/${room}/${pushId}`]   = rec;
+  await db.ref().update(updates);
+}
+
+
+
 function getRange(){
   const now = Date.now();
 
@@ -663,6 +825,7 @@ async function applyFilters(){
 
   if($('live').checked){
     const aCb=attRef.on('value',s=>renderAttendance(Object.values(s.val()||{})));
+    updateStaleBadge();
     const fCb=fbRef.on('value',s=>renderFeedback(entriesWithId(s.val())));
     const iCb=invRef.on('value',s=>renderInventory(entriesWithId(s.val())));
     const rCb=resRef.on('value',s=>renderReservations(overlap(entriesWithId(s.val()))));
@@ -679,8 +842,19 @@ async function applyFilters(){
   calcOccupancy();
   if(!$('gateBase').value) $('gateBase').value = location.origin + '/gate.html';
   makeQR();
+
+  await updateStaleBadge();
 }
 const entriesWithId=o=>Object.entries(o||{}).map(([id,v])=>({id,...v}));
+
+async function updateStaleBadge(){
+  const room=$('roomSelect').value;
+  if(!room) return;
+  const list = await findStaleInside(room);
+  // İstersen topbara bir uyarı işaretleyebilirsin:
+  $('mePill').textContent = list.length ? `⚠️ ${list.length} açık` : ($('mePill').textContent || '—');
+}
+
 
 /* ==== renderers ==== */
 function renderAttendance(rows){
