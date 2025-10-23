@@ -382,7 +382,7 @@ input[type="number"]{
         });
         </script>
       <div class="muted" id="hello"></div>
-      <a id="adminBtn" href="ieeetechops.com/admin.html" class="btn" style="display:none">🛡️ Admin Paneli</a>
+      <a id="adminBtn" href="/admin.html" class="btn" style="display:none">🛡️ Admin Paneli</a>
       <button id="logout" class="btn secondary">Çıkış</button>
       
     </div>
@@ -453,7 +453,7 @@ input[type="number"]{
     <div class="tile" id="adminTile" style="display:none">
       <h3>Admin</h3>
       <p>Oda, rezervasyon ve talepleri yönet</p>
-      <a class="btn" href="/admin">🛡️ Admin Paneli</a>
+      <a class="btn" href="/admin.html">🛡️ Admin Paneli</a>
     </div>
 
 
@@ -1702,9 +1702,13 @@ function attachDuesTable(uid){
 
   await ensureDisplayName();
 
-  if(!u){ location.replace('login.html?next='+encodeURIComponent('panel.html')); return; }
+  if(!u){
+  location.replace('/login.html?next=' + encodeURIComponent('/panel.html'));
+  return;
+}
+
   $('hello').textContent = `Merhaba, ${u.displayName || u.email || u.uid}`;
-  $('logout')?.addEventListener('click', ()=> auth.signOut().then(()=>location.replace('login.html')));
+  $('logout')?.addEventListener('click', ()=> auth.signOut().then(()=>location.replace('/login.html')));
   watchMyDuesChanges(u.uid);
   watchMyReservations(u.uid);
 

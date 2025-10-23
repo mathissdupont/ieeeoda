@@ -165,7 +165,7 @@
     </button>
   </div>
 
-  <a class="link" href="login.html">Zaten hesabın var mı? Giriş yap</a>
+  <a class="link" href="/login.html">Zaten hesabın var mı? Giriş yap</a>
   <div id="status" class="status mutedText" aria-live="polite"></div>
 </div>
 
@@ -187,9 +187,34 @@
   const db   = firebase.database();
 
   const $ = id => document.getElementById(id);
-  const show = (msg, ok=false)=>{ const el=$('status'); el.className='status '+(ok?'ok':'err'); el.textContent=msg; };
+  const show  = (msg, ok=false)=>{ const el=$('status'); el.className='status '+(ok?'ok':'err'); el.textContent=msg; };
   const muted = (msg)=>{ const el=$('status'); el.className='status mutedText'; el.textContent=msg; };
-  const panelNext = new URL(location.href).searchParams.get('next') || 'panel.html';
+
+  /* ========== SAFE NEXT (open-redirect korumalı) ========== */
+  const ALLOWED_ORIGINS = new Set([
+    location.origin,
+    'https://ieeetechops.com',
+    'https://www.ieeetechops.com'
+  ]);
+
+  function sanitizeNext(n){
+    // boşsa kökten panel
+    if(!n) return '/panel.html';
+    try{
+      // göreli gelirse origin'e bağla
+      const u = new URL(n, location.origin);
+      if(!ALLOWED_ORIGINS.has(u.origin)) return '/panel.html';
+      // köke göre path döndür (temiz)
+      return u.pathname + u.search + u.hash;
+    }catch{ return '/panel.html'; }
+  }
+  function safeReplace(nx){
+    location.replace(new URL(nx, location.origin).toString());
+  }
+
+  const url = new URL(location.href);
+  const rawNext = url.searchParams.get('next');
+  const panelNext = sanitizeNext(rawNext);
 
   async function upsertUserDoc(user, displayNameOverride){
     try{
@@ -202,50 +227,81 @@
     }catch(e){ console.warn('users write skipped:', e); }
   }
 
+  function mapError(e){
+    const code = String(e?.code||'');
+    if (code.includes('email-already-in-use')) return 'Bu e-posta zaten kayıtlı.';
+    if (code.includes('weak-password')) return 'Şifre çok zayıf (en az 6 karakter).';
+    if (code.includes('invalid-email')) return 'Geçersiz e-posta adresi.';
+    if (code.includes('popup-closed-by-user')) return 'Popup kapatıldı, tekrar deneyin.';
+    if (code.includes('popup-blocked') || code.includes('operation-not-supported')) return 'Popup engellendi, yönlendirerek deniyorum.';
+    return e?.message || 'İşlem sırasında bir hata oluştu.';
+  }
+
   async function signupEmail(){
     const email = $('email').value.trim();
     const pass  = $('password').value;
     const name  = $('displayName').value.trim();
     if (!email || !pass) return show('E-posta ve şifre gerekli.');
+
     muted('Hesap oluşturuluyor…');
     try{
       const { user } = await auth.createUserWithEmailAndPassword(email, pass);
-      if (name) await user.updateProfile({ displayName: name });
+      if (name) { try{ await user.updateProfile({ displayName: name }); }catch{} }
       await upsertUserDoc(user, name);
-      try{ await user.sendEmailVerification(); }catch(_) {}
+      try{ await user.sendEmailVerification(); }catch(_){}
       show('Kayıt başarılı. Yönlendiriliyor…', true);
-      setTimeout(()=> location.replace(panelNext), 500);
-    }catch(e){ show(e?.message || 'Kayıt hatası'); }
+      setTimeout(()=> safeReplace(panelNext), 400);
+    }catch(e){
+      show(mapError(e));
+    }
   }
 
   async function signupGoogle(){
     const prov = new firebase.auth.GoogleAuthProvider();
     try{
       muted('Google ile giriş yapılıyor…');
-      const { user } = await auth.signInWithPopup(prov);
-      await upsertUserDoc(user);
+      await auth.signInWithPopup(prov);
+      const u = auth.currentUser;
+      if (u) await upsertUserDoc(u);
       show('Giriş başarılı. Yönlendiriliyor…', true);
-      setTimeout(()=> location.replace(panelNext), 300);
-    }catch(e){ show(e?.message || 'Google ile giriş hatası'); }
+      setTimeout(()=> safeReplace(panelNext), 300);
+    }catch(e){
+      // popup bloklandıysa redirect'e düş
+      if(String(e?.code||'').includes('popup') || String(e?.code||'').includes('operation-not-supported')){
+        try{
+          await auth.signInWithRedirect(prov);
+          return;
+        }catch(er){ show(mapError(er)); return; }
+      }
+      show(mapError(e));
+    }
   }
 
   $('emailSignup').onclick = signupEmail;
   $('googleBtn').onclick   = signupGoogle;
   document.addEventListener('keydown', e=>{ if(e.key==='Enter') signupEmail(); });
-  auth.onAuthStateChanged(u=>{ if(u) location.replace(panelNext); });
 
-  // Tema durumuna göre logo değiştir
+  // Redirect dönüşünde otomatik geçiş
+  auth.getRedirectResult()
+    .then(async (res)=>{
+      const u = auth.currentUser;
+      if (u) { try{ await upsertUserDoc(u); }catch{} safeReplace(panelNext); }
+    })
+    .catch(()=>{});
+
+  // Zaten girişliyse direkt panel
+  auth.onAuthStateChanged(u=>{ if(u) safeReplace(panelNext); });
+
+  // Tema durumuna göre logo
   (function(){
-    var img=document.getElementById('brandLogo');
-    if(!img) return;
-    var light=img.getAttribute('src');
-    var dark =img.dataset.dark;
-    if(!dark) return;
+    var img=document.getElementById('brandLogo'); if(!img) return;
+    var light=img.getAttribute('src'), dark=img.dataset.dark;
     var mm = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-    function apply(){ img.src = (mm && mm.matches) ? dark : light; }
-    if(mm && typeof mm.addEventListener==='function'){ mm.addEventListener('change', apply); }
+    function apply(){ if(dark) img.src = (mm && mm.matches) ? dark : light; }
+    if(mm && mm.addEventListener) mm.addEventListener('change', apply);
     apply();
   })();
 </script>
+
 </body>
 </html>

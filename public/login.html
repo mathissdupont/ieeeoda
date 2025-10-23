@@ -201,20 +201,38 @@
   const $ = id => document.getElementById(id);
   const st = $('st'), email=$('email'), pass=$('pass'), btn=$('btn'), gbtn=$('googleBtn');
 
-  // --- SAFE NEXT (tam URL’yi koru, sadece aynı origin ise kabul et) ---
-  const NOW = new URL(location.href);
-  const rawNext = NOW.searchParams.get('next');      // panel.html?auto=... gibi gelebilir
-  const NEXT_FALLBACK = 'ieeetechops.com/panel.html';
+  // --- LINK FIX: "Kayıt ol" anchora köke göre href ver ---
+  (function fixRegisterHref(){
+    const a = document.querySelector('a[href*="ieeetechops.com/register.html"]');
+    if (a) a.href = '/register.html';
+  })();
+
+  // --- SAFE NEXT ---
+  const NEXT_FALLBACK = '/panel.html';
+  const ALLOWED_ORIGINS = new Set([
+    location.origin,
+    'https://ieeetechops.com',
+    'https://www.ieeetechops.com'
+  ]);
+
   function sanitizeNext(n) {
     if (!n) return NEXT_FALLBACK;
     try {
-      // absolute gelirse origin kontrolü; relative ise OK
-      const u = new URL(n, location.origin);
-      if (u.origin !== location.origin) return NEXT_FALLBACK;
-      return u.pathname + u.search + u.hash;
+      const u = new URL(n, location.origin);        // relative → aynı origin
+      if (!ALLOWED_ORIGINS.has(u.origin)) return NEXT_FALLBACK; // open redirect yok
+      return u.pathname + u.search + u.hash;        // köke göre path döndür
     } catch { return NEXT_FALLBACK; }
   }
-  // sessionStorage ile de yedekle
+
+  // Tüm yönlendirmeleri güvenli-absolute hale getir
+  function safeReplace(nx) {
+    const abs = new URL(nx, location.origin).toString();
+    location.replace(abs);
+  }
+
+  // next değerini belirle + sakla
+  const NOW = new URL(location.href);
+  const rawNext = NOW.searchParams.get('next');
   const next = sanitizeNext(rawNext || sessionStorage.getItem('hept_next'));
   try { sessionStorage.setItem('hept_next', next || NEXT_FALLBACK); } catch {}
 
@@ -232,9 +250,7 @@
                            : firebase.auth.Auth.Persistence.SESSION;
     try { await auth.setPersistence(mode); } catch {}
   }
-  // checkbox değiştiğinde uygula
   $('remember').addEventListener('change', applyPersistence);
-  // sayfa ilk açıldığında da bir kez uygula
   applyPersistence();
 
   function setLoading(on, which='email'){
@@ -265,7 +281,7 @@
     }
   }
 
-  // e-posta/şifre ile giriş
+  // e-posta/şifre
   $('btn').onclick = async ()=>{
     st.textContent=''; st.className='status';
     const mail = (email.value||'').trim();
@@ -275,9 +291,8 @@
       setLoading(true,'email');
       await applyPersistence();
       await auth.signInWithEmailAndPassword(mail, pw);
-      // güvenli yönlendirme
       const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
-      location.replace(nx);
+      safeReplace(nx);
     }catch(e){ showError(e); }
     finally{ setLoading(false,'email'); }
   };
@@ -293,7 +308,7 @@
     }catch(err){ showError(err); }
   };
 
-  // Google ile giriş (popup → redirect fallback)
+  // Google (popup → redirect fallback)
   async function googleSignIn(){
     st.textContent=''; st.className='status';
     try{ await applyPersistence(); }catch{}
@@ -302,9 +317,8 @@
       setLoading(true,'google');
       await auth.signInWithPopup(provider);
       const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
-      location.replace(nx);
+      safeReplace(nx);
     }catch(e){
-      // popup engellendiyse redirect'e düş
       if(String(e.code||'').includes('operation-not-supported') ||
          String(e.code||'').includes('popup-blocked') ||
          String(e.code||'').includes('popup-closed-by-user')){
@@ -324,35 +338,29 @@
   // enter tuşu
   document.addEventListener('keydown', e=>{ if(e.key==='Enter') $('btn').click(); });
 
-  // redirect dönüşünü yakala ve next'e at
+  // redirect dönüşü
   auth.getRedirectResult()
     .then(() => {
       const u = auth.currentUser;
       if (u && !u.isAnonymous) {
         const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
-        location.replace(nx);
+        safeReplace(nx);
       }
-      // anonim kullanıcıyla geldiysek, login ekranında beklesin
     })
-    .catch(()=>{}); // sessiz geç
+    .catch(()=>{});
 
-  // --- login sayfasında otomatik yönlendirme şartı: anonim OLMAMALI ---
+  // login sayfasında anonim oturumu temizle + gerçek kullanıcıyı geçir
   auth.onAuthStateChanged(async (u) => {
     if (!u) return;
-
     if (u.isAnonymous) {
-      // paneldeki ensureAnon'dan kalmış olabilir; login'de bunu temizle
       try { await auth.signOut(); } catch {}
-      return; // ekranda kal
+      return;
     }
-    //düzeltme commiti
-
-    // gerçek (anonim olmayan) oturum varsa panele geçir
     const nx = sanitizeNext(sessionStorage.getItem('hept_next') || NEXT_FALLBACK);
-    location.replace(nx);
+    safeReplace(nx);
   });
 
-    (async () => {
+  (async () => {
     try {
       const u = auth.currentUser || await new Promise(r => {
         const off = auth.onAuthStateChanged(x => { off(); r(x); });
@@ -360,14 +368,15 @@
       if (u && u.isAnonymous) { await auth.signOut(); }
     } catch {}
   })();
-
 </script>
 
 <script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/sw.js").catch(console.error);
-}
+  // SW (varsa)
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(console.error);
+  }
 </script>
+
 
 
 </body>
