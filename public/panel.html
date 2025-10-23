@@ -280,6 +280,22 @@ input[type="number"]{
   text-overflow: ellipsis;
 }
 
+.btn.ghost{
+  background:transparent;
+  color:var(--pri);
+  border:1px solid var(--edge);
+  padding:8px 10px;
+  font-weight:700;
+}
+@media (prefers-color-scheme: dark){
+  .btn.ghost{
+    background:#132235;
+    color:#9bd0ff;
+    border:1px solid #2d3e55;
+  }
+}
+
+
 /* Sağ blok: inline style varsa ezmek için !important kullanıyoruz */
 .right{
   justify-self: end;
@@ -326,9 +342,6 @@ input[type="number"]{
 <div class="wrap">
 
 
-<!-- header’da görünür bir buton -->
-<button id="installBtn" style="display:none">📲 Uygulama olarak yükle</button>
-
 <script>
 let deferredPrompt = null;
 
@@ -366,6 +379,7 @@ window.addEventListener('appinstalled', () => {
       <span class="pill" title="Son hareket" id="lastAction">—</span>
     </div>
     <div class="right" style="display:flex;align-items:center;gap:10px">
+      <button id="installBtn" class="btn ghost" style="display:none">➕ Uygulamayı Yükle</button>
       <div class="muted" id="hello"></div>
       <a id="adminBtn" href="ieeetechops.com/admin.html" class="btn" style="display:none">🛡️ Admin Paneli</a>
       <button id="logout" class="btn secondary">Çıkış</button>
