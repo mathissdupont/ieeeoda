@@ -1,7 +1,7 @@
 {
   "name": "TechOps Oda",
   "short_name": "Oda",
-  "start_url": "/login.html",
+  "start_url": "/login",
   "display": "standalone",
   "background_color": "#0f1a27",
   "theme_color": "#0a7cc1",

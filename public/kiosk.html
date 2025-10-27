@@ -168,7 +168,7 @@ var auth=firebase.auth(), db=firebase.database();
 /* ====== helpers ====== */
 function $(id){ return document.getElementById(id); }
 function urlParam(n){ try{ return new URL(location.href).searchParams.get(n); }catch(_){ return null; } }
-var ROOM = urlParam('room') || 'LAB-101';
+var ROOM = urlParam('room') || 'ieeeoda';
 $('roomName').textContent = 'Oda: ' + ROOM;
 
 function safeText(id, t){ var el=$(id); if(el) el.textContent = t; }
@@ -319,11 +319,24 @@ function makeQR(){
       return;
     }
 
-    return computeHourlyKey(seed, now).then(function(key){
-      var base = location.origin + '/panel.html?auto=1&room=' + encodeURIComponent(ROOM) + '&key=' + encodeURIComponent(key);
+    return computeHourlyKey(seed, now).then(async function(key){
+      // başarıdan sonra Admin Panel’e gitsin
+      var ret = new URL('/panel', location.origin).href; // örn: https://site.com/panel
+      var base = new URL('/scan', location.origin).href
+        + '?room=' + encodeURIComponent(ROOM)
+        + '&key='  + encodeURIComponent(key)
+        + '&ret='  + encodeURIComponent(ret);
+
       var linksTxt = [];
       var nh=new Date(); nh.setUTCMinutes(0,0,0); nh.setUTCHours(nh.getUTCHours()+1);
+        var until = new Date();
+        until.setUTCMinutes(0,0,0);
+        until.setUTCHours(until.getUTCHours()+1);
+        await db.ref('roomKeyNow/'+ROOM).set({ key: String(key).toUpperCase(), until: until.getTime() });
 
+
+
+      
       // her aksiyon için çiz
       var chain = Promise.resolve();
       ACTIONS.forEach(function(a){
@@ -400,7 +413,7 @@ function loadOccupancy(){
 /* ====== auth + loop ====== */
 auth.onAuthStateChanged(function(u){
   if(!u){
-    location.replace('login.html?next='+encodeURIComponent(location.href));
+    location.replace('login?next='+encodeURIComponent(location.href));
     return;
   }
   db.ref('admins/'+u.uid).get().then(function(s){

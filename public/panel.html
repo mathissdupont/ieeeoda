@@ -356,6 +356,9 @@ input[type="number"]{
       <span class="pill" title="Son hareket" id="lastAction">—</span>
     </div>
     <div class="right" style="display:flex;align-items:center;gap:10px">
+      <button id="inboxBtn" class="btn ghost">🔔 Bildirimler
+        <span id="inboxBadge" class="pill" style="margin-left:6px;display:none">0</span>
+      </button>
       <button id="installBtn" class="btn ghost" style="display:none">➕ Uygulamayı Yükle</button>
       <script>
         let deferredPrompt = null;
@@ -382,7 +385,7 @@ input[type="number"]{
         });
         </script>
       <div class="muted" id="hello"></div>
-      <a id="adminBtn" href="/admin.html" class="btn" style="display:none">🛡️ Admin Paneli</a>
+      <a id="adminBtn" href="/admin" class="btn" style="display:none">🛡️ Admin Paneli</a>
       <button id="logout" class="btn secondary">Çıkış</button>
       
     </div>
@@ -659,6 +662,20 @@ input[type="number"]{
   </div>
   <div class="dlg-foot"><button class="btn light" data-close="myInvDlg">Kapat</button></div>
 </dialog>
+<dialog id="inboxDlg">
+  <div class="dlg-head">Bildirimler</div>
+  <div class="dlg-body">
+    <div class="muted" style="margin:-6px 0 10px">Son 50 mesaj; yenisi gelince otomatik görünür.</div>
+    <table id="inboxTable" class="table-slim">
+      <thead><tr><th>Zaman</th><th>Başlık</th><th>Mesaj</th><th></th></tr></thead>
+      <tbody id="inboxRows"><tr><td colspan="4" class="muted">Yükleniyor…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn light" data-close="inboxDlg">Kapat</button>
+  </div>
+</dialog>
+
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
@@ -695,7 +712,108 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.database();
 
-const ADMIN_URL = '/admin.html'; // gerekirse '/admin' yap
+const ADMIN_URL = '/admin'; // gerekirse '/admin' yap
+
+
+
+/* ========================= IN-APP INBOX ========================== */
+let __inboxCache = [];  // {id, title, body, type, ts, action?, expireAt?, priority?, read?}
+
+function fmtShort(ts){
+  return new Date(ts).toLocaleString('tr-TR', { year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+function isExpired(v){
+  return v && typeof v.expireAt === 'number' && Date.now() > v.expireAt;
+}
+function unreadCount(){
+  return __inboxCache.filter(m => !m.read && !isExpired(m)).length;
+}
+function renderInboxTable(){
+  const tb = document.getElementById('inboxRows');
+  if (!tb) return;
+  const rows = __inboxCache
+    .filter(v => !isExpired(v))
+    .sort((a,b)=> (b.ts||0)-(a.ts||0));
+
+  tb.innerHTML = rows.length ? rows.map(v=>{
+    const unreadDot = !v.read ? '🔵 ' : '';
+    const actBtn = v.action && v.action.url ? `<button class="btn light inbox-act" data-id="${v.id}">${v.action.label||'Aç'}</button>` : '';
+    return `<tr data-id="${v.id}">
+      <td>${fmtShort(v.ts||0)}</td>
+      <td>${unreadDot}${(v.title||'')}</td>
+      <td>${(v.body||'')}</td>
+      <td style="text-align:right">${actBtn} <button class="btn light inbox-mark" data-id="${v.id}">Okundu</button></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="4" class="muted">Bildirim yok</td></tr>`;
+
+  // badge
+  const n = unreadCount();
+  const badge = document.getElementById('inboxBadge');
+  if (badge){
+    if (n>0){ badge.style.display='inline-block'; badge.textContent = String(n); }
+    else{ badge.style.display='none'; }
+  }
+}
+async function markAsRead(uid, id){
+  try{
+    // sadece 'read' alanını kullanıcı da yazabilsin istiyorsan rules'ı buna izin verecek şekilde düzenle.
+    await db.ref(`userInbox/${uid}/${id}/read`).set(true);
+  }catch(e){ console.warn('markAsRead failed', e); }
+}
+function attachInbox(uid){
+  const ref = db.ref(`userInbox/${uid}`).limitToLast(50);
+
+  // yeni düşen mesaj → toast + tarayıcı bildirimi (sadece unread/aktif ise)
+  ref.on('child_added', s=>{
+    const v = { id:s.key, ...(s.val()||{}) };
+    __inboxCache = [v, ...__inboxCache.filter(x=>x.id!==v.id)];
+    if (!v.read && !isExpired(v)){
+      Notif.show(v.title||'Bildirim', (v.body||''));
+      toast(`${v.title||'Bildirim'}: ${(v.body||'')}`, true);
+    }
+    renderInboxTable();
+  });
+
+  // güncellemeler (okundu işaretleme vs.)
+  ref.on('child_changed', s=>{
+    const v = { id:s.key, ...(s.val()||{}) };
+    __inboxCache = __inboxCache.map(x=> x.id===v.id ? v : x);
+    renderInboxTable();
+  });
+
+  // silinirse listeden çıkar
+  ref.on('child_removed', s=>{
+    __inboxCache = __inboxCache.filter(x=> x.id!==s.key);
+    renderInboxTable();
+  });
+
+  // butonlar
+  document.getElementById('inboxBtn')?.addEventListener('click', ()=> {
+    document.getElementById('inboxDlg')?.showModal();
+  });
+  document.querySelector('[data-close="inboxDlg"]')?.addEventListener('click', ()=> {
+    document.getElementById('inboxDlg')?.close();
+  });
+
+  // tablo içi delegasyon
+  document.getElementById('inboxTable')?.addEventListener('click', async (e)=>{
+    const act = e.target.closest('.inbox-act');
+    const mrk = e.target.closest('.inbox-mark');
+    const id = act?.dataset?.id || mrk?.dataset?.id;
+    if (!id) return;
+    const msg = __inboxCache.find(x=>x.id===id);
+    if (!msg) return;
+
+    if (act && msg.action && msg.action.url){
+      try{ window.open(msg.action.url, '_blank', 'noopener'); }catch(_){}
+      // linke tıklanınca da okundu yap
+      await markAsRead(uid, id);
+    }
+    if (mrk){
+      await markAsRead(uid, id);
+    }
+  });
+}
 
 
 
@@ -819,7 +937,7 @@ async function requireLogin(){
   const u = await waitAuth();
   if(!u){
     // ÖNCEKİ: login.html?next=panel.html  (parametreleri kaybediyordu)
-    location.replace('login.html?next=' + encodeURIComponent(location.href));
+    location.replace('login?next=' + encodeURIComponent(location.href));
     throw new Error('Oturum yok');
   }
   return u;
@@ -1188,7 +1306,24 @@ $('resSend')?.addEventListener('click', async ()=>{
 
 
 
+
+
 /* ======== Bildirim aracı ======== */
+
+// 1A) Yeni AİDAT kaydı eklendiğinde “hatırlatma” bildirimi göster
+function watchMyDuesNew(uid){
+  const ref = db.ref(`duesPayments/${uid}`).limitToLast(1);
+  ref.on('child_added', s=>{
+    const v = s.val() || {};
+    // durum "pending" ise kullanıcıya bildir (yeni talep/hatırlatma)
+    if (String(v.status||'').toLowerCase() === 'pending') {
+      Notif.show('Aidat hatırlatması', `Dönem: ${v.month} • Tutar: ${fmtTRY(v.amount||0)}`);
+      toast('Yeni aidat bildirimi var ✅', true);
+    }
+  });
+}
+
+
 const Notif = {
   async ensurePerm(){
     try{
@@ -1703,14 +1838,23 @@ function attachDuesTable(uid){
   await ensureDisplayName();
 
   if(!u){
-  location.replace('/login.html?next=' + encodeURIComponent('/panel.html'));
+  location.replace('/login?next=' + encodeURIComponent('/panel.html'));
   return;
 }
 
   $('hello').textContent = `Merhaba, ${u.displayName || u.email || u.uid}`;
-  $('logout')?.addEventListener('click', ()=> auth.signOut().then(()=>location.replace('/login.html')));
+  $('logout')?.addEventListener('click', ()=> auth.signOut().then(()=>location.replace('/login')));
   watchMyDuesChanges(u.uid);
   watchMyReservations(u.uid);
+  attachInbox(u.uid);
+    document.getElementById('inboxBtn')?.addEventListener('click', async ()=>{
+    document.getElementById('inboxDlg')?.showModal();
+    const todo = __inboxCache.filter(m => !m.read && !isExpired(m)).map(m=> m.id);
+    for (const id of todo){
+      await markAsRead(u.uid, id);
+    }
+  });
+
 
 
   attachMyLog(u.uid);

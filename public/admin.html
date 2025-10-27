@@ -243,10 +243,11 @@ dialog td{ color: var(--ink); }
     <div class="tile"><h3>Rezervasyonlar</h3><p>Onayla / reddet / sil</p><button class="btn light" data-open="dlg-res">📅 Aç</button></div>
     <div class="tile"><h3>Admin Yönetimi</h3><p>E-posta ile admin ver/kaldır</p><button class="btn light" data-open="dlg-admin">🛡️ Aç</button></div>
     <div class="tile"><h3>Finans</h3><p>Faturalar & Aidat bildirimleri</p><button class="btn light" data-open="dlg-fin">💰 Aç</button></div>
+    <div class="tile"><h3>İçeride Unutulanlar</h3><p>24 saati geçen açık oturumlar</p><button class="btn light" data-open="dlg-stale">⏰ Aç</button></div>
     <div class="tile">
-      <h3>İçeride Unutulanlar</h3>
-      <p>24 saati geçen açık oturumlar</p>
-      <button class="btn light" data-open="dlg-stale">⏰ Aç</button>
+      <h3>Bildirim Gönder</h3>
+      <p>Tek kullanıcıya veya toplu mesaj</p>
+      <button class="btn light" data-open="dlg-inbox">🔔 Aç</button>
     </div>
 
   </section>
@@ -414,6 +415,39 @@ dialog td{ color: var(--ink); }
   <div class="dlg-foot"><button class="ghost" data-close>Kapat</button></div>
 </dialog>
 
+<dialog id="dlg-inbox">
+  <div class="dlg-head">
+    <span>Bildirim Gönder</span>
+    <button class="ghost" data-close>✕</button>
+  </div>
+  <div class="dlg-body">
+    <div class="row" style="gap:8px; align-items:flex-end; margin-bottom:10px">
+      <input id="inbEmails" placeholder="E-posta(lar), virgülle — boş bırak: sadece UID alanını kullan" style="min-width:320px">
+      <input id="inbUids" placeholder="UID(ler), virgülle (opsiyonel)" style="min-width:260px">
+    </div>
+    <div class="row" style="gap:8px; align-items:flex-end; margin-bottom:10px">
+      <input id="inbTitle" placeholder="Başlık" style="min-width:260px">
+      <select id="inbType">
+        <option value="notice">notice</option>
+        <option value="dues">dues</option>
+        <option value="reservation">reservation</option>
+        <option value="reminder">reminder</option>
+      </select>
+      <input id="inbExpire" type="datetime-local" title="Süresi (opsiyonel)">
+    </div>
+    <textarea id="inbBody" rows="4" placeholder="Mesaj içeriği" style="width:100%"></textarea>
+    <div class="row" style="gap:8px; align-items:center; margin-top:10px">
+      <input id="inbActionLabel" placeholder="CTA etiketi (opsiyonel)" style="max-width:200px">
+      <input id="inbActionUrl" placeholder="CTA URL (opsiyonel)" style="min-width:320px">
+      <button id="inbSend">Gönder</button>
+      <span id="inbMsg" class="muted"></span>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="ghost" data-close>Kapat</button></div>
+</dialog>
+
+
+
 <!-- QR / Room Key Manager -->
 <dialog id="dlg-qr">
   <div class="dlg-head"><span>QR & Oda Anahtarı</span><button class="ghost" data-close>✕</button></div>
@@ -571,7 +605,7 @@ const auth=firebase.auth(), db=firebase.database();
 
     // 2) Login yok → login.html
     if (!user) {
-      location.replace('login.html?next=' + encodeURIComponent(location.href));
+      location.replace('login?next=' + encodeURIComponent(location.href));
       return;
     }
 
@@ -604,7 +638,7 @@ const auth=firebase.auth(), db=firebase.database();
   } catch (e) {
     console.error('[gate] fatal', e);
     // Güvenli fallback: login’e dön
-    location.replace('login.html?next=' + encodeURIComponent(location.href));
+    location.replace('login?next=' + encodeURIComponent(location.href));
   }
 })();
 
@@ -1198,6 +1232,57 @@ async function findUserByEmail(mail){
   const q=await db.ref('users').orderByChild('email').equalTo(mail.toLowerCase()).limitToFirst(1).get();
   if(!q.exists()) return null; const [uid,rec]=Object.entries(q.val())[0]; return {uid,...rec};
 }
+
+// --- In-app inbox helpers ---
+async function sendInboxToUser(uid, payload){
+  const ref = db.ref(`userInbox/${uid}`).push();
+  const msg = {
+    title: (payload.title||'Duyuru').slice(0,120),
+    body:  (payload.body||'').slice(0,2000),
+    type:  payload.type || 'notice',
+    ts:    Date.now(),
+    action: payload.action || null,        // {label, url}
+    expireAt: payload.expireAt || null,    // epoch ms
+    priority: payload.priority || 'normal',
+    read: false
+  };
+  await ref.set(msg);
+  return ref.key;
+}
+
+async function sendInboxBulkByUids(uids, payload){
+  const updates = {};
+  const base = {
+    title: (payload.title||'Duyuru').slice(0,120),
+    body:  (payload.body||'').slice(0,2000),
+    type:  payload.type || 'notice',
+    ts:    Date.now(),
+    action: payload.action || null,
+    expireAt: payload.expireAt || null,
+    priority: payload.priority || 'normal',
+    read: false
+  };
+  uids.forEach(uid=>{
+    const id = db.ref().child('userInbox').push().key;
+    updates[`/userInbox/${uid}/${id}`] = base;
+  });
+  await db.ref().update(updates);
+  return uids.length;
+}
+
+async function resolveEmailsToUids(emails){
+  const out = [];
+  for(const mail of emails){
+    const u = await findUserByEmail(mail);
+    if(u && u.uid) out.push(u.uid);
+  }
+  return out;
+}
+
+
+
+
+
 $('findUser').onclick=async()=>{
   const mail=$('emailFind').value.trim(); if(!mail) return;
   const u=await findUserByEmail(mail);
@@ -1289,17 +1374,23 @@ async function loadInvoices(){
 async function sendReminder(invId){
   const s=await db.ref('invoices/'+invId).get(); if(!s.exists()) return;
   const inv=s.val(); if(inv.status==='paid') return toast('Zaten ödenmiş');
-  const noteId = db.ref(`userNotifications/${inv.userId}`).push().key;
+
+  const month = (inv.title||'').replace('Aidat ','') || '';
   const payload = {
-    id: noteId, type: 'dues_reminder',
-    month: (inv.title||'').replace('Aidat ','') || '',
-    amount: inv.total || 0, invId, createdAt: Date.now()
+    title: 'Aidat hatırlatması',
+    body:  `${month} dönemi için ₺${(+inv.total||0).toFixed(2)} tutarında bekleyen faturanız var.`,
+    type:  'dues',
+    action: { label: 'Paneli aç', url: '/panel.html#dues' },
+    expireAt: Date.now() + 7*24*3600e3
   };
-  await db.ref(`userNotifications/${inv.userId}/${noteId}`).set(payload);
-  // sayım için küçük index
-  await db.ref(`duesRemindersIndex/${invId}/${noteId}`).set({createdAt: payload.createdAt});
+  await sendInboxToUser(inv.userId, payload);
+
+  // (Opsiyonel küçük sayaç tutmak istiyorsan)
+  await db.ref(`duesRemindersIndex/${invId}`).push({createdAt: Date.now()});
+
   setStatus('Hatırlatma gönderildi', true);
 }
+
 
 
 
@@ -1336,6 +1427,49 @@ $('fillThisMonth').onclick=()=>{
 };
 $('fillDefaultAmount').onclick=()=>{ $('finDueAmount').value=100; $('reqAmount').value=100; };
 
+// === Inbox dialog submit ===
+$('inbSend')?.addEventListener('click', async ()=>{
+  try{
+    const emails = ($('inbEmails').value||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+    const manualUids = ($('inbUids').value||'').split(',').map(s=>s.trim()).filter(Boolean);
+    const title = ($('inbTitle').value||'').trim();
+    const body  = ($('inbBody').value||'').trim();
+    const type  = $('inbType').value || 'notice';
+    const exp   = $('inbExpire').value ? new Date($('inbExpire').value).getTime() : null;
+    const aLabel= ($('inbActionLabel').value||'').trim();
+    const aUrl  = ($('inbActionUrl').value||'').trim();
+
+    if(!title || !body){ alert('Başlık ve mesaj zorunlu'); return; }
+
+    // e-posta → uid çöz
+    let uids = [...manualUids];
+    if(emails.length){
+      const resolved = await resolveEmailsToUids(emails);
+      uids = [...new Set(uids.concat(resolved))];
+    }
+    if(!uids.length){ alert('En az bir e-posta veya UID gir'); return; }
+
+    const payload = {
+      title, body, type,
+      expireAt: exp || null,
+      action: (aLabel && aUrl) ? {label:aLabel, url:aUrl} : null
+    };
+
+    if(uids.length === 1){
+      await sendInboxToUser(uids[0], payload);
+    }else{
+      await sendInboxBulkByUids(uids, payload);
+    }
+
+    $('inbMsg').textContent = `Gönderildi → ${uids.length} kullanıcı`;
+    setTimeout(()=>{$('inbMsg').textContent='';}, 2000);
+    // küçük temizlik
+    //$('dlg-inbox').close(); // istersen otomatik kapat
+  }catch(e){
+    console.error('inbox send ERR', e);
+    $('inbMsg').textContent = 'Gönderilemedi';
+  }
+});
 
 
 

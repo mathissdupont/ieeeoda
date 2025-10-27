@@ -1,0 +1,143 @@
+<!DOCTYPE html><html lang="tr"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Oda Giriş/Çıkış</title>
+<style>
+  body{margin:0;font-family:system-ui,Inter,Roboto,Arial;background:#0b1118;color:#e8eef6;display:grid;place-items:center;height:100vh}
+  .card{max-width:520px;width:92%;background:#0f1a27;border:1px solid #1f2b3b;border-radius:16px;padding:18px;box-shadow:0 16px 50px #0006}
+  .muted{color:#9bb0c8}.ok{color:#62d29a}.err{color:#ff8a8a}
+  button{padding:10px 12px;border-radius:12px;border:1px solid #1f2b3b;background:#2aa3ff;color:#031424;font-weight:900;cursor:pointer}
+</style>
+</head><body>
+<div class="card">
+  <h2>İşlem</h2>
+  <div id="msg" class="muted">Kontrol ediliyor…</div>
+  <div id="detail" class="muted" style="margin-top:8px;font-size:13px"></div>
+  <div style="margin-top:12px"><button id="retry" style="display:none">Tekrar Dene</button></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey:"AIzaSyDJtcrJ6Eh4BfZnn0M-4z9QYi_2AS-ikHw",
+  authDomain:"ieee-oda.firebaseapp.com",
+  databaseURL:"https://ieee-oda-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"ieee-oda",
+  storageBucket:"ieee-oda.firebasestorage.app",
+  messagingSenderId:"788998880363",
+  appId:"1:788998880363:web:5eacc71c326cffe7b3452e"
+};
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth(), db=firebase.database();
+
+const $=id=>document.getElementById(id);
+const qp=new URLSearchParams(location.search);
+const room=qp.get('room')||''; const key=qp.get('key')||''; const act=qp.get('act')||'enter';
+
+function setMsg(t,cls){ const el=$('msg'); el.textContent=t; el.className=cls||''; }
+function setDet(t){ $('detail').textContent=t||''; }
+$('retry').onclick=()=>location.reload();
+
+// === computeHourlyKey (admin panel ile birebir aynı) ===
+async function computeHourlyKey(seed, date){
+  const d = date ? new Date(date) : new Date();
+  const stamp = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}T${String(d.getUTCHours()).padStart(2,'0')}`;
+  const txt = `${seed}|${stamp}`;
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+  const hex = [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  return hex.slice(0,8).toUpperCase();
+}
+
+async function main(){
+  if(!room || !key){ setMsg('Eksik parametre', 'err'); setDet('room/key yok'); return; }
+
+  // login
+  const u = await new Promise(res=>{
+    const off=auth.onAuthStateChanged(x=>{ off(); res(x||null); });
+  });
+  if(!u){
+    const next = location.pathname + location.search;
+    location.replace('/login?next='+encodeURIComponent(next));
+    return;
+  }
+
+  // 1) roomKeyNow ile QR doğrula
+  const cur = await db.ref('roomKeyNow/'+room).get();
+  if(!cur.exists()){
+    setMsg('Anahtar yayında değil', 'err');
+    setDet('roomKeyNow bulunamadı'); return;
+  }
+  const { key: currentKey, until } = cur.val() || {};
+  const now = Date.now();
+  const skewMs = 30 * 1000; // 30 sn tolerans
+  if (!currentKey || now > (+until + skewMs)) {
+    setMsg('Geçersiz/süresi dolmuş QR', 'err');
+    setDet('Anahtar zaman aşımı'); $('retry').style.display='inline-block'; return;
+  }
+  if (String(currentKey).toUpperCase() !== String(key).toUpperCase()){
+    setMsg('Geçersiz QR', 'err');
+    setDet(`beklenen=${currentKey} gelen=${key}`); $('retry').style.display='inline-block'; return;
+  }
+
+  // 2) yaz (kurallara uygun)
+  const userId = u.uid;
+  const userName = u.displayName || u.email || u.uid;
+  const pushId = db.ref().child('attendanceByRoom').push().key;
+  const rec = {
+    id: pushId, userId, userName, roomId: room,
+    action: act, createdAt: Date.now(),
+    method:'qr'
+  };
+
+  // teker teker yaz → hangi path düşüyor görmen de kolay olur
+  try{
+    await db.ref(`/attendanceByUser/${userId}/${pushId}`).set(rec);
+  }catch(e){
+    setMsg('Yazma reddedildi (user)', 'err');
+    setDet(e && (e.message||e.code||String(e)));
+    return;
+  }
+  try{
+    await db.ref(`/attendanceByRoom/${room}/${pushId}`).set(rec);
+  }catch(e){
+    setMsg('Yazma reddedildi (room)', 'err');
+    setDet(e && (e.message||e.code||String(e)));
+    return;
+  }
+
+  setMsg('İşlem kaydedildi ✔️', 'ok');
+  setDet(`${act} • oda=${room}`);
+  // başarıdan sonra geri dön
+// başarıdan sonra Admin Panel'e yönlendir (aynı tab)
+    setTimeout(()=>{
+    // ✅ BAŞARI: Admin Panel'e yönlendir (çok adımlı, iOS-friendly)
+const TARGET_PANEL = '/panel'; // <-- SENDEKİ GERÇEK YOLU YAZ
+                                   // ör: '/panel', '/admin', '/admin/index.html'
+
+setTimeout(() => {
+  const url = TARGET_PANEL + (TARGET_PANEL.includes('?') ? '&' : '?') + 'from=scan&ts=' + Date.now();
+  console.log('[scan] redirecting to', url);
+
+  // 1) replace
+  try { window.location.replace(url); } catch(_) {}
+
+  // 2) assign
+  try { window.location.assign(url); } catch(_) {}
+
+  // 3) href fallback
+  try { window.location.href = url; } catch(_) {}
+
+  // 4) meta refresh (en sert düşüş)
+  const meta = document.createElement('meta');
+  meta.httpEquiv = 'refresh';
+  meta.content = '0;url=' + url;
+  document.head.appendChild(meta);
+}, 15); // istersen 0 yap → anında gitsin
+    }, 15); // istersen 0 yap, anında gitsin
+}
+
+
+main().catch(e=>{ setMsg('Hata', 'err'); setDet(e && (e.message||String(e))); });
+</script>
+</body></html>

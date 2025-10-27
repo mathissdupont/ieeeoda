@@ -165,7 +165,7 @@
     </button>
   </div>
 
-  <a class="link" href="/login.html">Zaten hesabın var mı? Giriş yap</a>
+  <a class="link" href="/login">Zaten hesabın var mı? Giriş yap</a>
   <div id="status" class="status mutedText" aria-live="polite"></div>
 </div>
 
@@ -194,19 +194,21 @@
   const ALLOWED_ORIGINS = new Set([
     location.origin,
     'https://ieeetechops.com',
-    'https://www.ieeetechops.com'
+    'https://www.ieeetechops.com',
+    'ieee-oda.firebaseapp.com',
+    'ieee-oda.web.app'
   ]);
 
   function sanitizeNext(n){
     // boşsa kökten panel
-    if(!n) return '/panel.html';
+    if(!n) return '/panel';
     try{
       // göreli gelirse origin'e bağla
       const u = new URL(n, location.origin);
-      if(!ALLOWED_ORIGINS.has(u.origin)) return '/panel.html';
+      if(!ALLOWED_ORIGINS.has(u.origin)) return '/panel';
       // köke göre path döndür (temiz)
       return u.pathname + u.search + u.hash;
-    }catch{ return '/panel.html'; }
+    }catch{ return '/panel'; }
   }
   function safeReplace(nx){
     location.replace(new URL(nx, location.origin).toString());

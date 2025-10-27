@@ -204,15 +204,17 @@
   // --- LINK FIX: "Kayıt ol" anchora köke göre href ver ---
   (function fixRegisterHref(){
     const a = document.querySelector('a[href*="ieeetechops.com/register.html"]');
-    if (a) a.href = '/register.html';
+    if (a) a.href = '/register';
   })();
 
   // --- SAFE NEXT ---
-  const NEXT_FALLBACK = '/panel.html';
+  const NEXT_FALLBACK = '/panel';
   const ALLOWED_ORIGINS = new Set([
     location.origin,
     'https://ieeetechops.com',
-    'https://www.ieeetechops.com'
+    'https://www.ieeetechops.com',
+    'ieee-oda.firebaseapp.com',
+    'ieee-oda.web.app'
   ]);
 
   function sanitizeNext(n) {
